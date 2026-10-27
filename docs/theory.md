@@ -5,7 +5,8 @@ the constraints and forces, how the derivatives are obtained, the time integrati
 linear algebra. It is written for a review of the algorithms; every section names the source
 file it describes, and the formulas use the symbols of the code. The software architecture
 (modules, file formats, viewer, assistant tools) is described in [Architecture](architecture.md)
-and is not repeated here.
+and is not repeated here. FreeDyn 2.0 succeeds the FreeDyn multibody code (Witteveen,
+Lauss, Oberpeilsteiner 2021), whose solver it reproduces in the legacy profile (7.2).
 
 ## 1. Notation
 
@@ -302,7 +303,8 @@ Library force laws (`fdgen/forces.py`, details in [Forces](reference/forces.md))
   to \(d\) and \(\psi\).
 - **Expression forces**: a force or torque given by a formula in measures, parameters, splines
   and time (`fdgen/expression_forces.py`), compiled into the model plugin (12.3).
-- **Tire** (`fdgen/tire.py`): point contact below the wheel center on the road tangent plane,
+- **Tire** (`fdgen/tire.py`): point contact below the wheel center on the road tangent plane
+  (an analytic road, or an OpenCRG road (ASAM OpenCRG) evaluated by the runtime),
   normal force \(F_z = \operatorname{softplus}(k_z \delta + c_z \dot\delta)\), slips from the contact
   point velocity, a simplified Magic Formula with load dependence and cosine weighting for
   combined slip, rolling resistance and aligning moment; \(F\) acts at the contact point (as
@@ -348,8 +350,13 @@ an inconsistent initial configuration is an error.
 `runtime/src/hht.cpp`. Hilber-Hughes-Taylor with \(\alpha \in [-\tfrac13, 0]\),
 
 $$
-\beta = \tfrac14 (1 - \alpha)^2, \qquad \gamma = \tfrac12 - \alpha .
+\beta = \tfrac14 (1 - \alpha)^2, \qquad \gamma = \tfrac12 - \alpha
 $$
+
+(Hilber, Hughes, Taylor 1977), Newmark's formulas (Newmark 1959) for the positions and
+velocities. \(\alpha < 0\) gives the numerical damping of high frequencies that index-3
+formulations need: with \(\alpha = 0\) (trapezoidal rule) the solution is weakly unstable
+(Cardona and Géradin 1989).
 
 Two forms are implemented. The generated functions do not know which one runs: the runtime
 passes **effective coefficients** \(c = (\alpha', \beta', \gamma', h)\).
@@ -396,7 +403,7 @@ q_{n+1} = \underbrace{q_n + h \dot q_n + \tfrac{h^2}{2}(1 - 2\beta) \ddot q_n}_{
 \dot q_{n+1} = \underbrace{\dot q_n + (1 - \gamma) h \ddot q_n}_{\dot q_\text{pred}} + \gamma h \ddot q_{n+1}.
 $$
 
-This is the formulation of the legacy FreeDyn solver; with the legacy profile both programs
+This is the formulation of the legacy FreeDyn solver (Witteveen, Lauss, Oberpeilsteiner 2021); with the legacy profile both programs
 take the same steps with the same Newton iterations and agree to round-off. The legacy
 "modified Newmark" option (Newmark on the global angular velocity of Euler-parameter bodies,
 with the chain-rule correction of the Jacobian) is available for that comparison only.
@@ -420,7 +427,7 @@ $$
 \qquad v_{n+1} = v_n + h(1 - \gamma)\,a_n + h\gamma\, a_{n+1}.
 $$
 
-This is HHT in the generalized-\(\alpha\) family with \(\alpha_m = 0\), \(\alpha_f = -\alpha\).
+This is HHT in the generalized-\(\alpha\) family (Chung and Hulbert 1993) with \(\alpha_m = 0\), \(\alpha_f = -\alpha\).
 Since \(dq/d\dot v_{n+1} = (1 + \alpha)\beta h^2\) and \(dv/d\dot v_{n+1} = (1 + \alpha)\gamma h\),
 the effective coefficients are \((0,\ (1 + \alpha)\beta,\ (1 + \alpha)\gamma,\ h)\), and the same
 generated residual and matrix serve both forms. The update of a rigid body is
@@ -666,11 +673,18 @@ that states each.
   Programming Computation* 11, 1-36.
 - Arnold, M., Brüls, O. (2007). Convergence of the generalized-\(\alpha\) scheme for constrained
   mechanical systems. *Multibody System Dynamics* 18, 185-202.
+- ASAM e.V. *ASAM OpenCRG*: road surface description in curved regular grids. Standard,
+  https://www.asam.net/standards/detail/opencrg/.
 - Arnold, M., Brüls, O., Cardona, A. (2015). Error analysis of generalized-\(\alpha\) Lie group
   time integration methods for constrained mechanical systems. *Numerische Mathematik* 129,
   149-179.
 - Brüls, O., Cardona, A., Arnold, M. (2012). Lie group generalized-\(\alpha\) time integration of
   constrained flexible multibody systems. *Mechanism and Machine Theory* 48, 121-137.
+- Cardona, A., Géradin, M. (1989). Time integration of the equations of motion in mechanism
+  analysis. *Computers & Structures* 33(3), 801-820.
+- Chung, J., Hulbert, G. M. (1993). A time integration algorithm for structural dynamics with
+  improved numerical dissipation: the generalized-\(\alpha\) method. *Journal of Applied
+  Mechanics* 60(2), 371-375.
 - Davis, T. A., Palamadai Natarajan, E. (2010). Algorithm 907: KLU, a direct sparse solver
   for circuit simulation problems. *ACM Transactions on Mathematical Software* 37(3), 36.
 - Hairer, E., Nørsett, S. P., Wanner, G. (1993). *Solving Ordinary Differential Equations I*,
@@ -681,5 +695,12 @@ that states each.
 - Negrut, D., Rampalli, R., Ottarsson, G., Sharf, A. (2007). On an implementation of the
   Hilber-Hughes-Taylor method in the context of index 3 differential-algebraic equations of
   multibody dynamics. *Journal of Computational and Nonlinear Dynamics* 2(1), 73-85.
+- Newmark, N. M. (1959). A method of computation for structural dynamics. *Journal of the
+  Engineering Mechanics Division, ASCE* 85(EM3), 67-94.
 - Pacejka, H. B. (2006). *Tire and Vehicle Dynamics*, 2nd ed. Butterworth-Heinemann.
 - Shabana, A. A. (2005). *Dynamics of Multibody Systems*, 3rd ed. Cambridge University Press.
+- Witteveen, W., Lauss, T., Oberpeilsteiner, S. (2021). FreeDyn: a free, flexible and state of
+  the art multibody simulation package for education, research and industrial applications.
+  In: Kerschen, G., Brake, M. R. W., Renson, L. (eds.), *Nonlinear Structures & Systems,
+  Volume 1*, Conference Proceedings of the Society for Experimental Mechanics Series.
+  Springer, Cham. https://doi.org/10.1007/978-3-030-47626-7_8
