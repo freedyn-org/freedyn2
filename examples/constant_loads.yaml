@@ -1,0 +1,11 @@
+# Constant global force at the center of mass and constant global torque on a free body:
+# R = R0 + F t^2 / (2 m) (exact for Newmark) and H = H0 + M t for any inertia (to the
+# integration error).
+model: constant_loads
+gravity: [0, 0, 0]
+bodies:
+  body: {mass: 2.0, inertia: [0.1, 0.2, 0.3], angular_velocity: [0.5, 2.0, 0.1]}
+forces:
+  push: {type: force, body1: body, vector: [1.0, -2.0, 0.5]}
+  twist: {type: torque, body1: body, vector: [0.2, 0.0, -0.1]}
+solver: {type: HHT, alpha: -0.1, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

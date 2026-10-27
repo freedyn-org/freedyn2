@@ -1,0 +1,15 @@
+# Mass on a prismatic joint with a spring law from an Akima spline (data from a table file). The data lie on a straight
+# line, so the Akima spline is exactly linear (also beyond the data): m z'' = -k z, z'(0) = v0.
+model: spline_slider
+gravity: [0, 0, 0]
+splines:
+  law: {file: data/spline_slider_law.txt, header_lines: 2, type: akima}  # columns 0 (z), 1 (F)
+bodies:
+  mass: {mass: 2.0, inertia: [1, 1, 1], velocity: [0, 0, 0.5]}
+joints:
+  slider: {type: prismatic, body1: mass}
+measures:
+  z: {type: displacement, body1: mass, component: z}
+forces:
+  spring: {type: expression_force, body1: mass, direction: [0, 0, 1], force: law(z)}
+solver: {type: HHT, alpha: -0.1, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

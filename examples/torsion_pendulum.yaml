@@ -1,0 +1,11 @@
+# Torsion pendulum: a disk on a revolute joint (axis z) with a torsion spring-damper to the ground.
+# J3 phi'' + d phi' + k phi = 0, phi'(0) = 1: analytic reference in tests/cpp.
+model: torsion_pendulum
+gravity: [0, 0, 0]
+bodies:
+  disk: {mass: 1.0, inertia: [0.25, 0.25, 0.5], angular_velocity: [0, 0, 1.0]}
+joints:
+  axle: {type: revolute, body1: disk}
+forces:
+  spring: {type: torsion_spring, body1: disk, stiffness: 8.0, damping: 0.2}
+solver: {type: HHT, alpha: -0.1, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

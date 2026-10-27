@@ -1,0 +1,71 @@
+site_name: FreeDyn 2.0
+site_description: Multibody dynamics for engineers and their assistants
+site_url: https://freedyn-org.github.io/freedyn2/
+repo_url: https://github.com/freedyn-org/freedyn2
+edit_uri: edit/main/docs/
+docs_dir: docs
+strict: true
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle: {icon: material/weather-night, name: Dark mode}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle: {icon: material/weather-sunny, name: Light mode}
+
+extra_css:
+  - stylesheets/extra.css
+
+hooks:
+  - tools/docs_hooks.py   # key tables from schema/model.schema.json
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc: {permalink: true}
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed: {alternate_style: true}
+  - pymdownx.arithmatex: {generic: true}
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Tutorial – tuning a quarter car: tutorial.md
+  - Tutorial – a car on an OpenCRG road: tutorial-crg.md
+  - Working with an assistant: assistants.md
+  - The viewer: viewer.md
+  - Model reference:
+      - The model file: reference/model-file.md
+      - Bodies and geometry: reference/bodies.md
+      - Hardpoints and frames: reference/hardpoints.md
+      - Joints: reference/joints.md
+      - Forces: reference/forces.md
+      - Measures, expressions, drivers: reference/measures.md
+      - Sensors and accelerations: reference/sensors.md
+      - Tires and roads: reference/tires-roads.md
+      - Solver and real time: reference/solver.md
+      - Checks and references: reference/checks.md
+      - Result channels: reference/results.md
+  - Coming from Adams: from-adams.md
+  - Examples: examples.md
+  - Command line: cli.md
+  - For developers:
+      - Architecture: architecture.md
+      - Extensions: extensions.md
+      - Numerical findings: findings.md

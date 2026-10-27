@@ -1,0 +1,46 @@
+Header freeDynHeader
+% Large maximum step and tight tolerance, so that the step size control and step rejections are active
+EndHeader
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = spinner
+	BodyID = 1
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 3.0,-1.0,8.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 1.0
+	LocationCenterMass = 0.0,0.0,0.0
+	Inertia = 0.1,0.25,0.3
+	OrientationPAI = 1.0,0.0,0.0,0.0,0.0,-1.0,0.0,1.0,0.0
+EndBody
+%
+Simulation Dynamic
+	SimulationTimeBegin = 0.000000
+	InitialPositionFromFile = 0
+	InitialVelocityFromFile = 0
+	SimulationTimeEnd = 5.0
+	OutputTimeBegin = 0.000000
+	OutputTimeStepSize = 5.0e-02
+	isExactOutputTimeEnforced = yes
+	WriteConstraintForceResultFile = no
+	WriteForceResultFile = no
+	WriteVelocityResultFile = yes
+	WriteStateResultFile = yes
+	WriteAccelerationResultFile = no
+	WriteExtConstraintLagrangeResultFile = no
+	WriteMeasureResultFile = no
+EndSimulation
+%
+Solver HHT
+	Alpha = -0.2
+	MaxNumberOfInnerIterations = 10,0
+	GlobalErrorTolerance = 1.0e-08
+	SolverMinTimeStep = 1.000000e-14
+	SolverMaxTimeStep = 5.0e-02
+	ModifyNewmark = no
+	MaxNumOfTimeStepsUsingSameFactorizedJacobian = 0
+	UsePardisoScalingAndMatching = no
+	DebugLevel = 0
+	DebugTimeBegin = 0.000000
+	DebugTimeEnd = 5.0
+EndSolver

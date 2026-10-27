@@ -1,0 +1,98 @@
+# A car on an OpenCRG test track (data/test_track.crg, written by data/make_test_track.py):
+# a speed bump, washboard, a pothole under the left wheels only, banking. The car is built
+# from hardpoints (the right side mirrors the left), with the built-in tire, a speed
+# controller on the rear wheels, and a sensor at the driver's head (motion cueing input).
+model: car_on_crg
+gravity: [0, 0, -9.81]
+
+parameters:
+  m_chassis: 1200.0     # [kg] sprung mass
+  k_front: 30000.0      # [N/m] suspension springs
+  k_rear: 32000.0
+  c_front: 2500.0       # [N s/m] dampers
+  c_rear: 2500.0
+  k_tire: 250000.0      # [N/m] vertical tire stiffness
+  r0: 0.3               # [m] unloaded tire radius
+  v_set: 15.0           # [m/s] speed the controller holds
+  k_speed: 300.0        # [N m / (m/s)] speed controller gain per rear wheel
+  c_air: 0.42           # [kg/m] 1/2 rho cw A
+  z_wheel: =r0 - (m_chassis / 4 + 45) * 9.81 / k_tire   # wheel center height at rest (tire deflected)
+
+points:
+  wheel_fl: [2.6, 0.8, =z_wheel]
+  wheel_fr: {mirror: wheel_fl}
+  wheel_rl: [0.0, 0.8, =z_wheel]
+  wheel_rr: {mirror: wheel_rl}
+  top_fl: {from: wheel_fl, offset: [0.0, -0.1, 0.35]}   # spring mounts on the chassis
+  top_fr: {mirror: top_fl}
+  top_rl: {from: wheel_rl, offset: [0.0, -0.1, 0.35]}
+  top_rr: {mirror: top_rl}
+  head: [1.1, 0.37, 1.15]                                # driver's head
+
+frames:
+  axle: {z: [0, 1, 0]}                                   # wheel axes: global y
+
+bodies:
+  chassis:
+    mass: =m_chassis
+    inertia: [450.0, 1800.0, 2000.0]
+    position: [1.3, 0.0, 0.55]
+    velocity: [=v_set, 0, 0]
+    shapes: [{type: box, size: [4.2, 1.5, 0.6], position: [1.3, 0.0, 0.92], color: "#4c6ef5"}]
+  carrier_fl: {mass: 30.0, inertia: [0.5, 0.5, 0.5], position: wheel_fl, velocity: [=v_set, 0, 0]}
+  carrier_fr: {mass: 30.0, inertia: [0.5, 0.5, 0.5], position: wheel_fr, velocity: [=v_set, 0, 0]}
+  carrier_rl: {mass: 30.0, inertia: [0.5, 0.5, 0.5], position: wheel_rl, velocity: [=v_set, 0, 0]}
+  carrier_rr: {mass: 30.0, inertia: [0.5, 0.5, 0.5], position: wheel_rr, velocity: [=v_set, 0, 0]}
+  wheel_fl:
+    {mass: 15.0, inertia: [0.6, 1.0, 0.6], position: wheel_fl, velocity: [=v_set, 0, 0],
+     angular_velocity: [0, =v_set / r0, 0], shapes: [{type: cylinder, radius: 0.3, length: 0.2, orientation: [0.7071068, -0.7071068, 0, 0], color: "#343a40"}]}
+  wheel_fr:
+    {mass: 15.0, inertia: [0.6, 1.0, 0.6], position: wheel_fr, velocity: [=v_set, 0, 0],
+     angular_velocity: [0, =v_set / r0, 0], shapes: [{type: cylinder, radius: 0.3, length: 0.2, orientation: [0.7071068, -0.7071068, 0, 0], color: "#343a40"}]}
+  wheel_rl:
+    {mass: 15.0, inertia: [0.6, 1.0, 0.6], position: wheel_rl, velocity: [=v_set, 0, 0],
+     angular_velocity: [0, =v_set / r0, 0], shapes: [{type: cylinder, radius: 0.3, length: 0.2, orientation: [0.7071068, -0.7071068, 0, 0], color: "#343a40"}]}
+  wheel_rr:
+    {mass: 15.0, inertia: [0.6, 1.0, 0.6], position: wheel_rr, velocity: [=v_set, 0, 0],
+     angular_velocity: [0, =v_set / r0, 0], shapes: [{type: cylinder, radius: 0.3, length: 0.2, orientation: [0.7071068, -0.7071068, 0, 0], color: "#343a40"}]}
+
+joints:  # carriers slide vertically in the chassis, wheels turn about their axle
+  guide_fl: {type: prismatic, body1: carrier_fl, body2: chassis, location: wheel_fl}
+  guide_fr: {type: prismatic, body1: carrier_fr, body2: chassis, location: wheel_fr}
+  guide_rl: {type: prismatic, body1: carrier_rl, body2: chassis, location: wheel_rl}
+  guide_rr: {type: prismatic, body1: carrier_rr, body2: chassis, location: wheel_rr}
+  hub_fl: {type: revolute, body1: wheel_fl, body2: carrier_fl, location: wheel_fl, orientation: axle}
+  hub_fr: {type: revolute, body1: wheel_fr, body2: carrier_fr, location: wheel_fr, orientation: axle}
+  hub_rl: {type: revolute, body1: wheel_rl, body2: carrier_rl, location: wheel_rl, orientation: axle}
+  hub_rr: {type: revolute, body1: wheel_rr, body2: carrier_rr, location: wheel_rr, orientation: axle}
+
+forces:
+  spring_fl: {type: spring_damper, body1: carrier_fl, body2: chassis, point1: wheel_fl, point2: top_fl,
+              stiffness: =k_front, damping: =c_front, preload: =-m_chassis / 4 * 9.81}
+  spring_fr: {type: spring_damper, body1: carrier_fr, body2: chassis, point1: wheel_fr, point2: top_fr,
+              stiffness: =k_front, damping: =c_front, preload: =-m_chassis / 4 * 9.81}
+  spring_rl: {type: spring_damper, body1: carrier_rl, body2: chassis, point1: wheel_rl, point2: top_rl,
+              stiffness: =k_rear, damping: =c_rear, preload: =-m_chassis / 4 * 9.81}
+  spring_rr: {type: spring_damper, body1: carrier_rr, body2: chassis, point1: wheel_rr, point2: top_rr,
+              stiffness: =k_rear, damping: =c_rear, preload: =-m_chassis / 4 * 9.81}
+  tire_fl: {type: tire, body1: wheel_fl, radius: =r0, tire: {kz: =k_tire}}
+  tire_fr: {type: tire, body1: wheel_fr, radius: =r0, tire: {kz: =k_tire}}
+  tire_rl: {type: tire, body1: wheel_rl, radius: =r0, tire: {kz: =k_tire}}
+  tire_rr: {type: tire, body1: wheel_rr, radius: =r0, tire: {kz: =k_tire}}
+  drive_rl: {type: expression_torque, body1: wheel_rl, body2: carrier_rl, axis: [0, 1, 0], frame: body,
+             torque: k_speed * (v_set - vx)}
+  drive_rr: {type: expression_torque, body1: wheel_rr, body2: carrier_rr, axis: [0, 1, 0], frame: body,
+             torque: k_speed * (v_set - vx)}
+  air: {type: expression_force, body1: chassis, direction: [1, 0, 0], force: -c_air * vx * abs(vx)}
+
+measures:
+  vx: {type: velocity, body1: chassis, component: x}
+
+sensors:
+  head: {body1: chassis, point: head}
+
+road:
+  crg: data/test_track.crg
+  friction: 1.0
+
+solver: {type: HHT, alpha: -0.1, end_time: 13.0, step: 0.001, output_step: 0.01}

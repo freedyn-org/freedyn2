@@ -1,0 +1,11 @@
+# Two free bodies coupled only by internal forces (spring-damper and torsion spring-damper):
+# total linear momentum is conserved exactly, total angular momentum to the integration error.
+model: two_bodies
+gravity: [0, 0, 0]
+bodies:
+  a: {mass: 1.0, inertia: [0.1, 0.2, 0.3], position: [-0.5, 0, 0], velocity: [0.1, 0.3, 0], angular_velocity: [0, 0.5, 1.0]}
+  b: {mass: 2.0, inertia: [0.3, 0.2, 0.4], position: [0.5, 0, 0.2], velocity: [-0.2, 0, 0.1], angular_velocity: [0.4, 0, -0.5]}
+forces:
+  link: {type: spring_damper, body1: a, body2: b, point1: [-0.4, 0.1, 0], point2: [0.4, -0.1, 0.1], stiffness: 50.0, damping: 0.5}
+  twist: {type: torsion_spring, body1: a, body2: b, stiffness: 2.0, damping: 0.1}
+solver: {type: HHT, alpha: -0.1, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

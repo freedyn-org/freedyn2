@@ -1,0 +1,35 @@
+# Double compound pendulum: two 1 m rods, hinged to the ground and to each other, released from
+# the horizontal (chaotic). Same model as examples/compare/double_pendulum.fds.
+model: double_pendulum
+gravity: [0, 0, -9.81]
+bodies:
+  rod1:
+    mass: 1.0
+    inertia: [0.01, 0.0833333333333333, 0.0833333333333333]
+    position: [0.5, 0, 0]
+    shapes:  # for the viewer (freedyn2 view) only
+      - {type: box, size: [1.0, 0.05, 0.05]}
+      - {type: cylinder, radius: 0.04, length: 0.08, position: [1, 0, 0], orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]}
+  rod2:
+    mass: 1.0
+    inertia: [0.01, 0.0833333333333333, 0.0833333333333333]
+    position: [1.5, 0, 0]
+    shapes:
+      - {type: box, size: [1.0, 0.05, 0.05], color: "#e15759"}
+      - {type: sphere, radius: 0.06, position: [2, 0, 0], color: "#e15759"}
+ground:
+  shapes:
+    - {type: box, size: [0.3, 0.3, 0.05], position: [0, 0, 0.1], color: "#777777"}
+joints:
+  hinge1:
+    type: revolute
+    body1: rod1
+    location: [0, 0, 0]
+    orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]  # joint z = global y
+  hinge2:
+    type: revolute
+    body1: rod2
+    body2: rod1
+    location: [1, 0, 0]
+    orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]
+solver: {type: HHT, alpha: -0.1, end_time: 10.0, step: 1.0e-3, output_step: 1.0e-2}

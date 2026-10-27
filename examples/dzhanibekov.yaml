@@ -1,0 +1,10 @@
+# Intermediate axis theorem: spin about the middle principal axis (J2) with a tiny perturbation.
+# alpha < 0 is required here: with alpha = 0 a parasitic mode of theta.thetadot grows (see README).
+model: dzhanibekov
+gravity: [0, 0, 0]
+bodies:
+  wingnut:
+    mass: 1.0
+    inertia: [0.1, 0.2, 0.3]
+    angular_velocity: [1.0e-3, 5.0, 1.0e-3]  # global = body frame at t = 0
+solver: {type: HHT, alpha: -0.1, end_time: 20.0, step: 1.0e-3, output_step: 1.0e-2}

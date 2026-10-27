@@ -1,0 +1,16 @@
+# Damped oscillator: a mass on a vertical prismatic joint, hung on a spring-damper, under gravity.
+# m z'' + d z' + k z = -m g (spring unstressed at z = 0): analytic reference in tests/cpp.
+model: oscillator
+gravity: [0, 0, -9.81]
+bodies:
+  mass: {mass: 2.0, inertia: [1, 1, 1]}
+joints:
+  slider: {type: prismatic, body1: mass}     # joint axis z (identity orientation)
+forces:
+  spring:
+    type: spring_damper
+    body1: mass                              # point1: center of mass
+    point2: [0, 0, 1]                        # on the ground; free length: initial distance
+    stiffness: 200.0
+    damping: 4.0
+solver: {type: HHT, alpha: -0.1, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

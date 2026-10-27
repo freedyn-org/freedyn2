@@ -1,0 +1,183 @@
+Header freeDynHeader
+% FreeDyn 2.0: two disks on revolute joints (axis z) with torsion torques from legacy Measure Rotational (Angle over several revolutions, AngleVel, LocalAngleVel); linear in the joint angles
+EndHeader
+%
+%---------------- Rigid Bodies ------------------------
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = disk1
+	BodyID = 1
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,20.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 1.0
+	LocationCenterMass = 0.0,0.0,0.0
+	Inertia = 0.5,0.5,1.0
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+Body Rigid_EulerParameter_PAI
+	BodyName = disk2
+	BodyID = 2
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,-5.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 1.0
+	LocationCenterMass = 0.0,0.0,0.5
+	Inertia = 0.2,0.2,0.4
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+%---------------- Constraints ------------------------
+%
+Constraint Generic
+	ConstraintID = 1
+	BodyIDs = 1, 0
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = yes
+	azFixed = no
+	Location = 0.0,0.0,0.0
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+Constraint Generic
+	ConstraintID = 2
+	BodyIDs = 2, 1
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = yes
+	azFixed = no
+	Location = 0.0,0.0,0.5
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+%---------------- Measures ------------------------
+%
+Measure Rotational
+	MeasureName = phi1
+	MeasureID = 3
+	BodyIDs = 1,0
+	MeasureCoordinate = Angle
+	MeasureVec = 1.0,0.0,0.0
+	MeasurePlaneVec1 = 1.0,0.0,0.0
+	MeasurePlaneVec2 = 0.0,1.0,0.0
+	UseInitialValueAsOffset = no
+EndMeasure
+Measure Rotational
+	MeasureName = w1
+	MeasureID = 4
+	BodyIDs = 1,0
+	MeasureCoordinate = AngleVel
+	MeasureVec = 1.0,0.0,0.0
+	MeasurePlaneVec1 = 1.0,0.0,0.0
+	MeasurePlaneVec2 = 0.0,1.0,0.0
+EndMeasure
+Measure Rotational
+	MeasureName = wl1
+	MeasureID = 5
+	BodyIDs = 1,0
+	MeasureCoordinate = LocalAngleVel
+	Component = 2
+EndMeasure
+Measure Rotational
+	MeasureName = phi21
+	MeasureID = 6
+	BodyIDs = 2,1
+	MeasureCoordinate = Angle
+	MeasureVec = 1.0,0.0,0.0
+	MeasurePlaneVec1 = 1.0,0.0,0.0
+	MeasurePlaneVec2 = 0.0,1.0,0.0
+	UseInitialValueAsOffset = yes
+EndMeasure
+Measure Rotational
+	MeasureName = w21
+	MeasureID = 7
+	BodyIDs = 2,1
+	MeasureCoordinate = AngleVel
+	MeasureVec = 1.0,0.0,0.0
+	MeasurePlaneVec1 = 1.0,0.0,0.0
+	MeasurePlaneVec2 = 0.0,1.0,0.0
+EndMeasure
+%
+%---------------- Forces ------------------------
+%
+Force GenericTorque
+	ForceID = 8
+	BodyIDs = 1,0
+	Label = spring1
+	AxisType = SpaceFixed
+	Axis = 0.0,0.0,1.0
+	TorqueExpression = -PARVAL[k1]*MEAVAL[phi1]-PARVAL[c1]*MEAVAL[w1]-PARVAL[c3]*MEAVAL[wl1]
+EndForce
+Force GenericTorque
+	ForceID = 9
+	BodyIDs = 2,1
+	Label = spring2
+	AxisType = BodyFixed
+	Axis = 0.0,0.0,1.0
+	TorqueExpression = -PARVAL[k2]*MEAVAL[phi21]-PARVAL[c2]*MEAVAL[w21]
+EndForce
+%
+%---------------- Data Objects ------------------------
+%
+DataObject Parameter
+	Label = k1
+	VisualizationID = 10
+	InitialValue = 4.0
+EndDataObject
+DataObject Parameter
+	Label = k2
+	VisualizationID = 11
+	InitialValue = 10.0
+EndDataObject
+DataObject Parameter
+	Label = c1
+	VisualizationID = 12
+	InitialValue = 0.05
+EndDataObject
+DataObject Parameter
+	Label = c2
+	VisualizationID = 13
+	InitialValue = 0.02
+EndDataObject
+DataObject Parameter
+	Label = c3
+	VisualizationID = 14
+	InitialValue = 0.01
+EndDataObject
+%
+%---------------- Solver ------------------------
+%
+Simulation Dynamic
+	SimulationTimeBegin = 0.0
+	InitialPositionFromFile = 0
+	InitialVelocityFromFile = 0
+	SimulationTimeEnd = 10.0
+	OutputTimeBegin = 0.0
+	OutputTimeStepSize = 1.0e-02
+	isExactOutputTimeEnforced = yes
+	WriteConstraintForceResultFile = no
+	WriteForceResultFile = no
+	WriteVelocityResultFile = yes
+	WriteStateResultFile = yes
+	WriteAccelerationResultFile = yes
+	WriteExtConstraintLagrangeResultFile = no
+	WriteMeasureResultFile = no
+EndSimulation
+%
+Solver HHT
+	Alpha = -0.1
+	MaxNumberOfInnerIterations = 10,0
+	GlobalErrorTolerance = 1.0e-06
+	SolverMinTimeStep = 1.0e-14
+	SolverMaxTimeStep = 1.0e-03
+	ModifyNewmark = no
+	MaxNumOfTimeStepsUsingSameFactorizedJacobian = 0
+	UsePardisoScalingAndMatching = no
+	DebugLevel = 0
+	DebugTimeBegin = 0.0
+	DebugTimeEnd = 10.0
+EndSolver

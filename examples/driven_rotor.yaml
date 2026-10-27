@@ -1,0 +1,20 @@
+# Prescribed rotation phi1 = w t of a rotor (driver on a continuous angle measure, several
+# revolutions); a flywheel is coupled to it by a revolute joint and a torsion spring:
+# J2 psi'' = -k psi for psi = phi2 - phi1, psi(0) = 0, psi'(0) = -w (both start at rest; the
+# velocity projection gives the rotor its rate w). The driver torque is the multiplier.
+model: driven_rotor
+gravity: [0, 0, 0]
+parameters: {w: 2.0}
+bodies:
+  rotor: {mass: 1.0, inertia: [0.5, 0.5, 1.0]}
+  flywheel: {mass: 1.0, inertia: [0.2, 0.2, 0.4], position: [0, 0, 0.5]}
+joints:
+  bearing: {type: revolute, body1: rotor}
+  hub: {type: revolute, body1: flywheel, body2: rotor, location: [0, 0, 0.5]}
+forces:
+  coupling: {type: torsion_spring, body1: flywheel, body2: rotor, stiffness: 10.0}
+measures:
+  phi: {type: angle, body1: rotor}
+drivers:
+  motor: {measure: phi, motion: w * t}
+solver: {type: HHT, alpha: -0.01, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

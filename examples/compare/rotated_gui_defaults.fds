@@ -1,0 +1,46 @@
+Header freeDynHeader
+% Rotated, slightly non-orthonormal orientation as written by the GUI (6 decimals), GUI solver defaults: alpha -0.3, no Qvv derivatives in the Jacobian
+EndHeader
+%
+Body Rigid_EulerParameter_PAI
+ID = 0c1d2e3f-0000-4000-8000-000000000001
+Name = rotated
+	InitialVelocityVector = 0.200000,-0.100000,0.300000
+	InitialOmegaVector = 1.000000,-2.000000,3.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 1.500000
+	LocationCenterMass = 0.100000,0.200000,-0.300000
+	Inertia = 0.050000,0.120000,0.200000
+	OrientationPAI = 0.866025,0.500000,0.000000,-0.353553,0.612372,0.707107,0.353553,-0.612372,0.707107
+EndBody
+%
+Simulation Dynamic
+	SimulationTimeBegin = 0.000000
+	InitialPositionFromFile = 0
+	InitialVelocityFromFile = 0
+	SimulationTimeEnd = 5.000000
+	OutputTimeBegin = 0.000000
+	OutputTimeStepSize = 1.000000e-02
+	isExactOutputTimeEnforced = yes
+	WriteConstraintForceResultFile = no
+	WriteForceResultFile = no
+	WriteVelocityResultFile = yes
+	WriteStateResultFile = yes
+	WriteAccelerationResultFile = no
+	WriteExtConstraintLagrangeResultFile = no
+	WriteMeasureResultFile = no
+EndSimulation
+%
+Solver HHT
+	Alpha = -0.300000
+	MaxNumberOfInnerIterations = 10,0
+	GlobalErrorTolerance = 1.000000e-06
+	SolverMinTimeStep = 1.000000e-14
+	SolverMaxTimeStep = 1.000000e-03
+	ModifyNewmark = no
+	MaxNumOfTimeStepsUsingSameFactorizedJacobian = 0
+	UsePardisoScalingAndMatching = no
+	DebugLevel = 0
+	DebugTimeBegin = 0.000000
+	DebugTimeEnd = 5.000000
+EndSolver

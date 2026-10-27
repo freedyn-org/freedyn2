@@ -1,0 +1,64 @@
+[build-system]
+# The wheel holds the Python package and the compiled runtime (CMake); building runs the
+# generator (CasADi) to produce the element code.
+requires = ["scikit-build-core>=0.10", "casadi>=3.6", "numpy", "pyyaml", "jsonschema"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "freedyn2"
+version = "0.1.0"
+description = "FreeDyn 2.0: multibody dynamics with generated code; real-time solver, viewer, MCP server"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+dependencies = ["casadi>=3.6", "numpy", "pyyaml", "jsonschema", "mcp"]  # mcp: freedyn2 mcp works out of the box
+classifiers = ["Programming Language :: Python :: 3", "Programming Language :: C++",
+               "Topic :: Scientific/Engineering :: Physics", "Operating System :: Microsoft :: Windows",
+               "Operating System :: POSIX :: Linux"]
+
+[project.urls]
+Source = "https://github.com/freedyn-org/freedyn2"
+
+[project.scripts]
+freedyn2 = "fdgen.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest"]
+screenshots = ["playwright"]  # the MCP tool screenshot (also: playwright install chromium)
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.version = ">=3.21"
+cmake.build-type = "Release"
+wheel.packages = ["generator/fdgen"]
+wheel.py-api = "py3"  # programs, no extension module: one wheel per platform for all Python versions
+sdist.exclude = ["build", "legacy/build", "**/__pycache__", "extensions"]  # extensions are packages of their own
+
+[tool.scikit-build.cmake.define]
+BUILD_TESTING = "OFF"
+FD_BUILD_EXAMPLES = "OFF"
+
+# Wheels for Windows and Linux (cibuildwheel, .github/workflows/wheels.yml). The dependencies
+# (Eigen, KLU) are built once per platform by tools/build_deps.py.
+[tool.cibuildwheel]
+build = "cp312-*"
+skip = "*-musllinux_* *-win32 *_i686"
+test-requires = ["pytest"]
+test-command = [
+  "freedyn2 run {project}/examples/compare/pendulum.fds -o pendulum.csv -- --linear-solver klu",
+  "freedyn2 run {project}/examples/driven_rotor.yaml -o driven_rotor.csv",
+  "freedyn2 check {project}/examples/double_pendulum.yaml --run",
+]
+
+[tool.cibuildwheel.linux]
+before-build = "python {project}/tools/build_deps.py /tmp/fd-deps"
+environment = { CMAKE_PREFIX_PATH = "/tmp/fd-deps", LD_LIBRARY_PATH = "/tmp/fd-deps/lib" }
+
+[tool.cibuildwheel.windows]
+before-build = "python {project}/tools/build_deps.py C:/fd-deps"
+environment = { CMAKE_PREFIX_PATH = "C:/fd-deps" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+pythonpath = ["generator"]

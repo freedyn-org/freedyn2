@@ -1,0 +1,15 @@
+# Disk on a revolute joint wound up by an expression torque of a continuous angle measure:
+# J phi'' = -k phi, phi'(0) = 20 rad/s: amplitude 10 rad, so the angle passes +-pi several times
+# (revolutions are counted by the measure's element state).
+model: winding_spring
+gravity: [0, 0, 0]
+parameters: {k: 4.0}
+bodies:
+  disk: {mass: 1.0, inertia: [0.5, 0.5, 1.0], angular_velocity: [0, 0, 20.0]}
+joints:
+  axle: {type: revolute, body1: disk}
+measures:
+  phi: {type: angle, body1: disk}
+forces:
+  spring: {type: expression_torque, body1: disk, axis: [0, 0, 1], torque: -k * phi}
+solver: {type: HHT, alpha: -0.01, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

@@ -1,0 +1,10 @@
+nonlinear spring law of examples/compare/spline_spring.fds
+   x [m]     id   F [N]
+-0.2  1   600.0
+-0.1 2 150.0
+  -0.05   3   50.0
+
+0.0 4 0.0
+0.05 5 -40.0
+0.1   6  -120.0
+0.2 7 -500.0

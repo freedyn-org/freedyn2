@@ -1,0 +1,14 @@
+# Rigid body on a bushing (6-dof spring) at its center of mass, no damping, no gravity.
+# Translation is exactly linear here: x(t) = v0 / w sin(w t) per axis, w^2 = k / m; the
+# total energy (kinetic + bushing potential) is conserved.
+model: bushing_mount
+gravity: [0, 0, 0]
+bodies:
+  block: {mass: 2.0, inertia: [0.1, 0.2, 0.3], velocity: [0.01, -0.02, 0.03], angular_velocity: [0.05, 0.02, -0.04]}
+forces:
+  mount:
+    type: bushing
+    body1: block
+    stiffness: [1000, 2000, 3000]
+    rot_stiffness: [10, 20, 30]
+solver: {type: HHT, alpha: -0.01, end_time: 2.0, step: 1.0e-3, output_step: 1.0e-2}

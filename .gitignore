@@ -1,0 +1,12 @@
+build/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+*.csv
+
+# tire data sets (.tir) stay outside the repository (FREEDYN2_TIR)
+*.tir
+
+# documentation: generated live examples, the built site
+docs/live/
+site/

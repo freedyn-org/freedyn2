@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]  # work branches run once, through their pull request
+  pull_request:
+
+# a new push to a pull request cancels its runs still in progress
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeigen3-dev libsuitesparse-dev
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+      - name: Lint
+        run: python -m pyflakes generator legacy tests/python examples/extension tools
+      - name: Configure and build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE="$(which python)"
+          cmake --build build -j
+      - name: C++ tests
+        run: ctest --test-dir build --output-on-failure -V
+      - name: Python tests (with the runtime built)
+        run: python -m pytest -v
+      - name: freedyn2 run (.fds and .yaml, model plugin)
+        env:
+          PYTHONPATH: generator
+        run: |
+          python -m fdgen.cli run examples/compare/pendulum.fds -o pendulum.csv
+          python -m fdgen.cli run examples/compare/spline_spring.fds -o spline_spring.csv
+          python -m fdgen.cli run examples/driven_rotor.yaml -o driven_rotor.csv -- --linear-solver klu
+
+  # Windows: MSVC; Eigen and KLU (SuiteSparse with only KLU and its parts, no BLAS, as DLLs:
+  # LGPL, linked dynamically) from tools/build_deps.py as for the wheels, cached; model plugins
+  # compiled with MSVC (CC=cl) as a user with Visual Studio Build Tools would.
+  windows:
+    runs-on: windows-latest
+    env:
+      CC: cl
+      PYTHONPATH: generator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: actions/cache@v4
+        with:
+          path: deps
+          key: deps-${{ runner.os }}-msvc-${{ hashFiles('tools/build_deps.py') }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python tools/build_deps.py deps
+      - name: Configure and build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$PWD\deps" `
+            -DPython3_EXECUTABLE="$((Get-Command python).Source)"
+          cmake --build build
+      - name: C++ tests
+        run: ctest --test-dir build --output-on-failure
+      - name: Python tests
+        run: python -m pytest -v
+      - name: freedyn2 run (.fds and .yaml, model plugin)
+        run: |
+          python -m fdgen.cli run examples/compare/pendulum.fds -o pendulum.csv
+          python -m fdgen.cli run examples/driven_rotor.yaml -o driven_rotor.csv -- --linear-solver klu
+
+  # FreeDyn 2.0 against the legacy kernel (freedyn-org/me, private). Needs a repository
+  # secret FREEDYN_ME_TOKEN with read access to freedyn-org/me; skipped without it.
+  legacy-compare:
+    runs-on: ubuntu-24.04
+    env:
+      HAS_TOKEN: ${{ secrets.FREEDYN_ME_TOKEN != '' }}
+    steps:
+      - name: Notice
+        if: env.HAS_TOKEN != 'true'
+        run: echo "::notice::FREEDYN_ME_TOKEN is not set, legacy comparison skipped"
+      - uses: actions/checkout@v4
+        if: env.HAS_TOKEN == 'true'
+      - uses: actions/checkout@v4
+        if: env.HAS_TOKEN == 'true'
+        with:
+          repository: freedyn-org/me
+          token: ${{ secrets.FREEDYN_ME_TOKEN }}
+          path: me
+      - uses: actions/setup-python@v5
+        if: env.HAS_TOKEN == 'true'
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        if: env.HAS_TOKEN == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeigen3-dev libsuitesparse-dev
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt mkl-devel
+      - name: Build FreeDyn 2.0
+        if: env.HAS_TOKEN == 'true'
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE="$(which python)"
+          cmake --build build -j
+      - name: Build legacy FreeDyn
+        if: env.HAS_TOKEN == 'true'
+        run: MKL_ROOT="$(python -c 'import sys; print(sys.prefix)')" python legacy/build_legacy.py me -o build/legacy
+      - name: Compare
+        if: env.HAS_TOKEN == 'true'
+        run: |
+          python -m pytest -v tests/python/test_legacy_compare.py tests/python/test_legacy_physics.py
+          python legacy/compare.py examples/compare/*.fds --level exact --markdown exact.md
+          python legacy/compare.py examples/compare/*.fds --level physics --markdown physics.md
+          PYTHONPATH=generator python -m fdgen.cli compare examples/compare/*.fds --legacy build/legacy/build/FreeDyn --markdown demo.md
+          { echo "### freedyn2 compare (both programs on the same .fds, converged reference)"; cat demo.md; echo
+            echo "### Exact (legacy profile)"; cat exact.md; echo; echo "### Physics (v2 profile vs reference)"; cat physics.md; } >> "$GITHUB_STEP_SUMMARY"

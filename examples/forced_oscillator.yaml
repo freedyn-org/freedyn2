@@ -1,0 +1,19 @@
+# Forced damped oscillator with an expression force (compiled into the model plugin):
+# m z'' = -k z - d z' + F0 sin(w t), z(0) = z'(0) = 0, on a prismatic joint along z.
+model: forced_oscillator
+gravity: [0, 0, 0]
+parameters: {k: 200.0, d: 4.0, F0: 10.0, w: 7.0}
+bodies:
+  mass: {mass: 2.0, inertia: [1, 1, 1]}
+joints:
+  slider: {type: prismatic, body1: mass}
+measures:
+  z: {type: displacement, body1: mass, component: z}
+  vz: {type: velocity, body1: mass, component: z}
+forces:
+  drive:
+    type: expression_force
+    body1: mass
+    direction: [0, 0, 1]
+    force: -k * z - d * vz + F0 * sin(w * t)
+solver: {type: HHT, alpha: -0.1, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

@@ -1,0 +1,2 @@
+# The user documentation (mkdocs.yml, docs/): mkdocs build --strict
+mkdocs-material==9.8.0

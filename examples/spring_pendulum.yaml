@@ -1,0 +1,14 @@
+# Elastic 3D pendulum: a rigid body hung on a spring at a point off its center of mass, under
+# gravity, started sideways. No damping: energy T + m g z + k (l - l0)^2 / 2 is conserved.
+model: spring_pendulum
+gravity: [0, 0, -9.81]
+bodies:
+  bob:
+    mass: 1.0
+    inertia: [0.02, 0.03, 0.04]
+    position: [0.6, 0.0, -0.8]
+    velocity: [0.0, 1.5, 0.0]
+    angular_velocity: [0.3, -0.2, 1.0]
+forces:
+  spring: {type: spring_damper, body1: bob, point1: [0.6, 0.0, -0.7], stiffness: 100.0, length: 0.8}
+solver: {type: HHT, alpha: -0.01, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

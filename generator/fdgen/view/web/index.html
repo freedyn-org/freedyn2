@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeDyn 2 Viewer</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --text: #1d2330; --muted: #677085; --line: #dde1e8;
+  --accent: #2f6fdf; --error-bg: #fff1f0; --error: #b42318; --scene: #e9edf3;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171d; --panel: #1c2028; --text: #e4e8ef; --muted: #8d96a8; --line: #2c323d;
+    --accent: #6d9cff; --error-bg: #3a1714; --error: #ff8a80; --scene: #1a1e25;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { display: grid; grid-template-columns: 1fr 340px; grid-template-rows: auto 1fr auto var(--plot-h, 260px); height: 100vh; }
+header { grid-column: 1 / 3; display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+  background: var(--panel); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 14px; margin: 0; font-weight: 600; }
+header .model { color: var(--muted); }
+#status { margin-left: auto; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+@keyframes pulse { 50% { opacity: 0.2; } }
+/* compute state: current (green), values changed but not computed (amber), computing (blue), error (red) */
+:root { --ok: #2b8a3e; --pending: #e67700; --running: #1c7ed6; --failed: #d9480f; }
+#state { display: flex; align-items: center; gap: 8px; padding: 3px 4px 3px 10px; border-radius: 14px; font-weight: 600;
+  border: 1px solid var(--line); white-space: nowrap; position: relative; overflow: hidden; }
+#state .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); flex: none; }
+#state.pending { border-color: var(--pending); color: var(--pending); background: color-mix(in srgb, var(--pending) 10%, transparent); }
+#state.pending .dot { background: var(--pending); }
+#state.running { border-color: var(--running); color: var(--running); }
+#state.running .dot { background: var(--running); animation: pulse 0.8s infinite; }
+#state.failed { border-color: var(--failed); color: var(--failed); }
+#state.failed .dot { background: var(--failed); }
+#state .bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--running); transition: width 0.3s; }
+#state button { padding: 1px 10px; border-radius: 10px; }
+#state button.go { background: var(--pending); border-color: var(--pending); color: #fff; }
+#state select { padding: 1px 4px; border-radius: 10px; font-weight: normal; }
+body.stale #view canvas { filter: grayscale(0.85) opacity(0.65); transition: filter 0.2s; }
+#stale-note { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: none; padding: 4px 12px;
+  border-radius: 12px; background: var(--panel); border: 1px solid var(--pending); color: var(--pending); font-size: 12px; z-index: 3; }
+body.stale #stale-note { display: block; }
+body.running #stale-note { border-color: var(--running); color: var(--running); }
+#runs { display: flex; gap: 6px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+#runs[hidden] { display: none; }
+#runs .title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; margin-right: 2px; }
+#runs .run { display: inline-flex; align-items: center; gap: 4px; padding: 1px 4px 1px 8px; border: 1px solid var(--line);
+  border-radius: 12px; font-size: 12px; white-space: nowrap; cursor: pointer; user-select: none; color: var(--muted); }
+#runs .run.on { color: var(--text); border-color: var(--text); }
+#runs .run.current { border-width: 2px; border-color: var(--accent); cursor: default; }
+#runs .run.ref { background: color-mix(in srgb, var(--muted) 15%, transparent); }
+#runs .run .lbl { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+#runs .run .star { color: #e67700; }
+#runs .run.fan { border-style: dashed; }
+#runs .run.fan .scale { display: inline-block; width: 40px; height: 6px; border-radius: 2px;
+  background: linear-gradient(90deg, hsl(220,75%,45%), hsl(165,75%,45%), hsl(110,75%,45%), hsl(55,75%,45%), hsl(0,75%,45%)); }
+#runs .run.fan.off .scale { opacity: 0.3; }
+.pane-head select.kpi { font-size: 11px; padding: 0 4px; }
+.tune-row.pending .name { color: var(--pending); font-weight: 600; }
+.tune-row.pending { box-shadow: inset 3px 0 0 var(--pending); padding-left: 4px; }
+#view { position: relative; min-height: 0; background: var(--scene); }
+#view canvas { display: block; width: 100%; height: 100%; }
+#error { position: absolute; left: 12px; right: 12px; top: 12px; display: none; padding: 10px 12px;
+  background: var(--error-bg); color: var(--error); border-radius: 6px; white-space: pre-wrap;
+  font-family: ui-monospace, Consolas, monospace; font-size: 12px; max-height: 60%; overflow: auto; }
+#overlay { position: absolute; left: 12px; bottom: 10px; color: var(--muted); font-size: 12px; pointer-events: none; }
+#inspector { position: absolute; right: 12px; top: 12px; width: min(360px, calc(100% - 24px)); max-height: calc(100% - 24px);
+  overflow: auto; display: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); }
+#inspector h3 { margin: 0 0 2px; font-size: 14px; }
+#inspector .kind { color: var(--muted); margin-bottom: 8px; }
+#inspector pre { margin: 6px 0 0; padding: 8px; background: var(--bg); border-radius: 5px; overflow: auto;
+  font: 12px/1.45 ui-monospace, Consolas, monospace; max-height: 260px; }
+#inspector .close { position: absolute; right: 8px; top: 6px; border: 0; background: none; font-size: 16px; color: var(--muted); }
+.link { color: var(--accent); cursor: pointer; text-decoration: none; }
+.link:hover { text-decoration: underline; }
+#checks { max-height: 220px; overflow: auto; }
+#checks .summary { color: var(--muted); margin-bottom: 4px; }
+#checks .item { display: flex; gap: 6px; padding: 2px 0; align-items: baseline; }
+#checks .item.clickable { cursor: pointer; }
+#checks .item.clickable:hover { background: var(--bg); }
+#checks .sev { flex: none; font-size: 10px; font-weight: 700; border-radius: 3px; padding: 0 4px; color: #fff; }
+.sev.error, .sev.failed { background: #d9480f; } .sev.warning { background: #e67700; } .sev.info { background: #868e96; }
+.sev.passed { background: #2b8a3e; }
+
+aside { grid-row: 2 / 5; grid-column: 2; background: var(--panel); border-left: 1px solid var(--line);
+  display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+aside section { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+aside h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+aside label { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
+#channels-section { flex: 1; display: flex; flex-direction: column; min-height: 220px; }
+aside details summary { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+  font-weight: 600; cursor: pointer; user-select: none; }
+aside details[open] summary { margin-bottom: 6px; }
+aside summary .badge { text-transform: none; letter-spacing: 0; margin-left: 4px; padding: 0 5px; border-radius: 8px;
+  background: var(--accent); color: #fff; font-weight: 600; }
+.muted { color: var(--muted); }
+.small { font-size: 11px; }
+.row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+#tune { max-height: 240px; overflow: auto; }
+.tune-row { display: flex; align-items: center; gap: 4px; padding: 1px 0; }
+.tune-row .name { flex: 0 0 92px; font: 12px ui-monospace, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tune-row.changed .name { color: var(--accent); font-weight: 600; }
+.tune-row.unused { opacity: 0.45; }
+.tune-row input[type=number] { width: 74px; font: 12px ui-monospace, Consolas, monospace; padding: 1px 4px;
+  border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); }
+.tune-row input[type=range] { flex: 1; min-width: 40px; accent-color: var(--accent); }
+.icon { border: 0; background: none; color: var(--muted); padding: 0 3px; font-size: 13px; }
+.icon:hover { color: var(--text); }
+#modes-list { max-height: 180px; overflow: auto; font-variant-numeric: tabular-nums; }
+#modes-list div { display: flex; gap: 8px; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
+#modes-list div:hover { background: var(--bg); }
+#modes-list div.on { background: var(--accent); color: #fff; }
+#modes-list span:first-child { width: 22px; color: var(--muted); }
+#modes-list .was { color: var(--muted); font-size: 11px; }
+#modes-list .up { color: #2b8a3e; } #modes-list .down { color: #d9480f; }
+#modes-info.preview { color: var(--pending); }
+#modes-list div.on span:first-child { color: #fff; }
+#note-text { width: 100%; min-height: 54px; resize: vertical; font: inherit; padding: 5px 7px; border: 1px solid var(--line);
+  border-radius: 5px; background: var(--bg); color: var(--text); }
+#notes-list { max-height: 260px; overflow: auto; }
+.note { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.note .meta { color: var(--muted); font-size: 11px; display: flex; gap: 6px; align-items: center; }
+.note .meta .st { font-size: 10px; font-weight: 700; color: #fff; border-radius: 3px; padding: 0 4px; background: #e67700; }
+.note.done .meta .st { background: #2b8a3e; }
+.note.done .text { color: var(--muted); }
+.note .reply { margin-top: 4px; padding: 4px 8px; border-left: 3px solid var(--accent); background: var(--bg); border-radius: 0 4px 4px 0; white-space: pre-wrap; }
+.note img { max-width: 100%; margin-top: 4px; border-radius: 4px; border: 1px solid var(--line); cursor: zoom-in; }
+#filter { width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--text); }
+#channels { flex: 1; overflow: auto; margin-top: 6px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+#channels div { padding: 2px 6px; border-radius: 4px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#channels div:hover { background: var(--bg); }
+#channels div.on { color: #fff; }
+#bodies { max-height: 160px; overflow: auto; }
+select, button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 3px 8px; }
+button { cursor: pointer; }
+#timeline { grid-column: 1; display: flex; align-items: center; gap: 10px; padding: 6px 14px;
+  background: var(--panel); border-top: 1px solid var(--line); }
+#time { flex: 1; accent-color: var(--accent); }
+#tlabel { font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; }
+#plot { grid-column: 1; position: relative; background: var(--panel); border-top: 1px solid var(--line); min-height: 0;
+  display: flex; flex-direction: column; }
+#plot-split { position: absolute; left: 0; right: 0; top: -4px; height: 8px; cursor: ns-resize; z-index: 2; }
+#plot-split:hover { background: var(--accent); opacity: 0.25; }
+.plot-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.plot-bar button { padding: 2px 8px; font-size: 12px; }
+.plot-bar button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.plot-bar .sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+.plot-bar .help { margin-left: auto; color: var(--muted); font-size: 11px; }
+#plot-ask { display: none; gap: 6px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+#plot-ask input { flex: 1; font: 12px ui-monospace, Consolas, monospace; padding: 4px 6px; border: 1px solid var(--accent);
+  border-radius: 4px; background: var(--bg); color: var(--text); }
+#plot-ask .err { color: var(--error); font-size: 12px; }
+.panes { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; }
+#plot.empty .panes::before { content: "click a channel (right) to plot it · + time / x-y / spectrum add plots · ƒ formulas";
+  margin: auto; color: var(--muted); }
+.pane { flex: 1 1 0; min-height: 130px; display: flex; flex-direction: column; position: relative; border-bottom: 1px solid var(--line); }
+.pane.active { box-shadow: inset 3px 0 0 var(--accent); }
+.pane.drop { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.pane canvas { flex: 1; min-height: 0; width: 100%; display: block; cursor: crosshair; touch-action: none; }
+.pane-head { display: flex; align-items: center; gap: 6px; padding: 2px 8px 0 10px; min-height: 22px; }
+.pane-head .chips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.pane-head .mode { color: var(--muted); font-size: 11px; }
+.pane-head .close { border: 0; background: none; color: var(--muted); font-size: 15px; padding: 0 4px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font: 11px ui-monospace, Consolas, monospace; padding: 1px 6px;
+  border: 1px solid var(--line); border-radius: 10px; cursor: pointer; user-select: none; }
+.chip.off { opacity: 0.4; text-decoration: line-through; }
+.chip i, .measure i { display: inline-block; width: 10px; height: 3px; border-radius: 1px; margin-right: 2px; vertical-align: middle; }
+.chip small { color: var(--muted); }
+.chip b { font-weight: normal; color: var(--muted); padding-left: 2px; }
+.chip b:hover { color: var(--error); }
+.pane-hint { position: absolute; inset: 22px 0 0 0; display: flex; align-items: center; justify-content: center; color: var(--muted); pointer-events: none; }
+.measure { display: none; max-height: 30%; overflow: auto; border-top: 1px solid var(--line); font-size: 12px; }
+.measure table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.measure th, .measure td { padding: 2px 8px; text-align: right; white-space: nowrap; }
+.measure th:first-child, .measure td:first-child { text-align: left; }
+.measure th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+.measure .hint { padding: 4px 8px; color: var(--muted); }
+body.plots-max #view { min-height: 60px; }
+@media (max-width: 760px) {
+  body { display: flex; flex-direction: column; height: auto; }
+  header { flex-wrap: wrap; }
+  #status { margin-left: 0; width: 100%; overflow-wrap: anywhere; }
+  #view { height: 55vh; order: 1; }
+  #timeline { order: 2; }
+  #plot { height: 360px; order: 3; }
+  aside { order: 4; border-left: 0; }
+  #channels { max-height: 240px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>FreeDyn 2 Viewer</h1><span class="model" id="model"></span>
+  <span id="status"></span>
+  <span id="state" class="current" hidden><span class="dot"></span><span class="text">up to date</span></span>
+  <button id="report" title="a report of this view: checks, tuned values, eigenmodes, pictures (one HTML file to print or send)">Report</button>
+</header>
+<div id="view"><div id="stale-note">results of the values before · not the current ones</div><div id="error"></div><div id="inspector"></div><div id="overlay"></div></div>
+<aside>
+  <section>
+    <h2>Checks</h2>
+    <div id="checks">no model</div>
+  </section>
+  <section>
+    <h2>View</h2>
+    <label><input type="checkbox" id="show-joints" checked> joints</label>
+    <label><input type="checkbox" id="show-forces" checked> springs, bushings, tires</label>
+    <label title="named points and frames of the model file (points, frames)"><input type="checkbox" id="show-points"> hardpoints</label>
+    <label><input type="checkbox" id="show-frames"> body frames</label>
+    <label><input type="checkbox" id="show-trace"> traces of the bodies</label>
+    <label title="force and torque vectors from the force outputs (red: forces, purple: torques)"><input type="checkbox" id="show-arrows"> force arrows
+      <input type="range" id="arrow-scale" min="-1.5" max="1.5" step="0.05" value="0" style="flex:1" title="scale of the arrows" disabled></label>
+    <label title="the reference run (★ in the run strip): grey bodies"><input type="checkbox" id="show-reference" checked disabled> reference run</label>
+    <label>follow <select id="follow"><option value="">nothing</option></select></label>
+    <label><button id="fit">fit view</button></label>
+  </section>
+  <section id="tune-section">
+    <details id="tune-details"><summary>Tune <span class="badge" id="tune-badge" hidden></span></summary>
+      <div id="tune"></div>
+      <div class="row">
+        <button id="tune-reset" title="all values of the model file again">reset all</button>
+        <select id="tune-policy" title="when to compute after a change">
+          <option value="adaptive">compute: adaptive</option><option value="auto">compute: always</option>
+          <option value="manual">compute: on Enter</option></select>
+        <button id="tune-note" title="a note to the assistant with the tuned values: take them into the model file">→ assistant</button>
+      </div>
+    </details>
+  </section>
+  <section id="modes-section">
+    <details id="modes-details"><summary>Eigenmodes</summary>
+      <div class="row"><button id="modes-run" title="linearize about the current state and compute the eigenmodes">compute at t</button>
+        <label class="small" title="the eigenvalues follow the sliders at once (about the state of the current run)"><input type="checkbox" id="modes-live"> live</label>
+        <button id="modes-stop" title="back to the motion (also: move the time)">stop</button>
+        <input type="range" id="modes-amp" min="0.1" max="4" step="0.1" value="1" style="flex:1" title="amplitude of the animation"></div>
+      <div class="muted small" id="modes-info">linearized about the state at the current time: meaningful in an equilibrium or a steady motion</div>
+      <div id="modes-list"></div>
+    </details>
+  </section>
+  <section id="notes-section">
+    <details id="notes-details"><summary>Notes to the assistant <span class="badge" id="notes-badge" hidden></span></summary>
+      <textarea id="note-text" placeholder="what is wrong, what should change … (ctrl+enter sends)"></textarea>
+      <div class="row">
+        <button id="note-send">send</button>
+        <label class="small"><input type="checkbox" id="note-image" checked> with the picture</label>
+      </div>
+      <div class="muted small" id="note-context"></div>
+      <div id="notes-list"></div>
+    </details>
+  </section>
+  <section>
+    <h2>Bodies</h2>
+    <div id="bodies"></div>
+  </section>
+  <section id="channels-section">
+    <h2>Channels (click to plot)</h2>
+    <input id="filter" placeholder="filter, e.g. tire_fl force">
+    <div id="channels"></div>
+  </section>
+</aside>
+<div id="timeline">
+  <button id="play" title="play / pause (space)">▶</button>
+  <input type="range" id="time" min="0" max="1000" value="0">
+  <span id="tlabel">t = 0.000 s</span>
+  <select id="speed" title="playback speed">
+    <option value="0.1">0.1×</option><option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+    <option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option>
+  </select>
+</div>
+<div id="plot" class="empty">
+  <div id="plot-split" title="drag: size of the plots"></div>
+  <div id="runs" hidden></div>
+  <div class="plot-bar">
+    <button id="plot-add-time" title="a plot over time">+ time</button>
+    <button id="plot-add-xy" title="a plot over another channel">+ x-y</button>
+    <button id="plot-add-fft" title="spectrum of the visible time range (channels of the active plot)">+ spectrum</button>
+    <button id="plot-add-kpi" title="a key figure (max, rms, ... over the visible time range) of the channels of the active plot over the value of a sweep (≋ in Tune)">+ key figure</button>
+    <span class="sep"></span>
+    <button id="plot-formula" title="a channel from a formula">ƒ formula</button>
+    <button id="plot-measure" title="cursors A and B: differences, min, max, mean, rms">A|B cursors</button>
+    <button id="plot-reset" title="all zoom back (double click in a plot)">reset zoom</button>
+    <button id="plot-delta" title="difference to the reference run (★ in the run strip)" disabled>Δ reference</button>
+    <span class="sep"></span>
+    <button id="plot-png" title="the plots as an image">PNG</button>
+    <button id="plot-csv" title="the plotted channels in the visible range">CSV</button>
+    <button id="plot-max" title="large plots">⤢</button>
+    <span class="help">wheel: zoom · shift+wheel: values · drag: zoom range · shift+drag: pan · double click: reset</span>
+  </div>
+  <div id="plot-ask"><input spellcheck="false"><span class="err"></span></div>
+  <div class="panes"></div>
+  <div class="measure"></div>
+</div>
+<!-- modules -->
+<script type="importmap">
+{"imports": {"three": "./vendor/three.module.min.js",
+             "three/addons/OrbitControls.js": "./vendor/OrbitControls.js",
+             "three/addons/STLLoader.js": "./vendor/STLLoader.js",
+             "three/addons/OBJLoader.js": "./vendor/OBJLoader.js",
+             "fdview/plot.js": "./plot.js",
+             "fdview/channels.js": "./channels.js",
+             "fdview/panels.js": "./panels.js",
+             "fdview/runs.js": "./runs.js"}}
+</script>
+<script type="module" src="./viewer.js"></script>
+<!-- /modules -->
+</body>
+</html>

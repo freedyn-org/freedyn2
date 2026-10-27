@@ -1,0 +1,17 @@
+# Compound pendulum: a 1 m rod hinged at one end to the ground, released from the horizontal.
+# Same model as examples/compare/pendulum.fds.
+model: pendulum
+gravity: [0, 0, -9.81]
+bodies:
+  rod:
+    mass: 1.0
+    inertia: [0.01, 0.0833333333333333, 0.0833333333333333]  # rod along body x
+    position: [0.5, 0, 0]                                     # center of mass
+joints:
+  hinge:
+    type: revolute
+    body1: rod                 # body2 defaults to the ground
+    location: [0, 0, 0]
+    # Joint frame: the revolute joint turns about its z axis; rotate it onto global y.
+    orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]
+solver: {type: HHT, alpha: -0.1, end_time: 10.0, step: 1.0e-3, output_step: 1.0e-2}

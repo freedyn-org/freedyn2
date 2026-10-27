@@ -1,0 +1,221 @@
+Header freeDynHeader
+% Note: In-line-of-sight to the ground points from the ground to the body (tension < 0 here),
+% body-body from body 1 to body 2 (tension > 0).
+% FreeDyn 2.0: two bodies hung on expression springs (line of sight, body-body), body-fixed force, torques with a step; all legacy Measure Translational kinds
+EndHeader
+%
+%---------------- Rigid Bodies ------------------------
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = upper
+	BodyID = 1
+	InitialVelocityVector = 0.2,0.5,0.0
+	InitialOmegaVector = 0.3,-0.2,1.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 1.0
+	LocationCenterMass = 0.3,0.0,-0.8
+	Inertia = 0.02,0.03,0.04
+	OrientationPAI = 0.7071067811865476,0.7071067811865476,0.0,-0.7071067811865476,0.7071067811865476,0.0,0.0,0.0,1.0
+EndBody
+Body Rigid_EulerParameter_PAI
+	BodyName = lower
+	BodyID = 2
+	InitialVelocityVector = 0.0,-0.3,0.1
+	InitialOmegaVector = -0.5,0.4,0.2
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.5
+	LocationCenterMass = 0.5,0.2,-1.5
+	Inertia = 0.01,0.012,0.015
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+%---------------- Measures ------------------------
+%
+Measure Translational
+	MeasureName = d1
+	MeasureID = 3
+	BodyIDs = 1,0
+	MeasureMode = disp
+	MeasureCoordinate = XYZ
+	MeasureLocation_Body1 = 0.3,0.0,-0.7
+	MeasureLocation_Body2 = 0.0,0.0,0.0
+	UseInitialValueAsOffset = yes
+EndMeasure
+Measure Translational
+	MeasureName = v1
+	MeasureID = 4
+	BodyIDs = 1,0
+	MeasureMode = vel
+	MeasureCoordinate = XYZ
+	MeasureLocation_Body1 = 0.3,0.0,-0.7
+	MeasureLocation_Body2 = 0.0,0.0,0.0
+	UseInitialValueAsOffset = no
+EndMeasure
+Measure Translational
+	MeasureName = d12
+	MeasureID = 5
+	BodyIDs = 1,2
+	MeasureMode = disp
+	MeasureCoordinate = XYZ
+	MeasureLocation_Body1 = 0.4,0.1,-0.9
+	MeasureLocation_Body2 = 0.5,0.2,-1.4
+	UseInitialValueAsOffset = yes
+EndMeasure
+Measure Translational
+	MeasureName = v12
+	MeasureID = 6
+	BodyIDs = 1,2
+	MeasureMode = vel
+	MeasureCoordinate = XYZ
+	MeasureLocation_Body1 = 0.4,0.1,-0.9
+	MeasureLocation_Body2 = 0.5,0.2,-1.4
+	UseInitialValueAsOffset = no
+EndMeasure
+Measure Translational
+	MeasureName = x12
+	MeasureID = 7
+	BodyIDs = 1,2
+	MeasureMode = disp
+	MeasureCoordinate = X
+	MeasureLocation_Body1 = 0.4,0.1,-0.9
+	MeasureLocation_Body2 = 0.5,0.2,-1.4
+	UseInitialValueAsOffset = yes
+EndMeasure
+Measure Translational
+	MeasureName = vy12
+	MeasureID = 8
+	BodyIDs = 1,2
+	MeasureMode = vel
+	MeasureCoordinate = Y
+	MeasureLocation_Body1 = 0.4,0.1,-0.9
+	MeasureLocation_Body2 = 0.5,0.2,-1.4
+	UseInitialValueAsOffset = no
+EndMeasure
+Measure Translational
+	MeasureName = zg
+	MeasureID = 9
+	BodyIDs = 2,0
+	MeasureMode = disp
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 0.5,0.2,-1.5
+	MeasureLocation_Body2 = 0.0,0.0,0.0
+	UseInitialValueAsOffset = yes
+EndMeasure
+Measure Translational
+	MeasureName = vxg
+	MeasureID = 10
+	BodyIDs = 2,0
+	MeasureMode = vel
+	MeasureCoordinate = X
+	MeasureLocation_Body1 = 0.5,0.2,-1.5
+	MeasureLocation_Body2 = 0.0,0.0,0.0
+	UseInitialValueAsOffset = no
+EndMeasure
+%
+%---------------- Forces ------------------------
+%
+Force Gravity
+	ForceID = 11
+	GravityAccVector = 0.0,0.0,-9.81
+	ActivationTime = 0.0
+EndForce
+Force GenericForce
+	ForceID = 12
+	BodyIDs = 1,0
+	Label = hang
+	PointOfApplication_Body1 = 0.3,0.0,-0.7
+	PointOfApplication_Body2 = 0.0,0.0,0.0
+	ForceDirectionType = In-line-of-sight
+	ForceExpression = -PARVAL[k1]*MEAVAL[d1]-PARVAL[c1]*MEAVAL[v1]
+EndForce
+Force GenericForce
+	ForceID = 13
+	BodyIDs = 2,1
+	Label = link
+	PointOfApplication_Body1 = 0.5,0.2,-1.4
+	PointOfApplication_Body2 = 0.4,0.1,-0.9
+	ForceDirectionType = In-line-of-sight
+	ForceExpression = PARVAL[k2]*MEAVAL[d12]+PARVAL[c2]*MEAVAL[v12]
+EndForce
+Force GenericForce
+	ForceID = 14
+	BodyIDs = 2,0
+	Label = side
+	PointOfApplication_Body1 = 0.5,0.2,-1.5
+	PointOfApplication_Body2 = 0.0,0.0,0.0
+	ForceDirectionType = BodyFixed
+	ForceDirection = 0.0,1.0,0.0
+	ForceExpression = -20.0*MEAVAL[x12]-0.5*MEAVAL[vy12]-0.2*MEAVAL[vxg]
+EndForce
+Force GenericTorque
+	ForceID = 15
+	BodyIDs = 2,1
+	Label = motor
+	AxisType = BodyFixed
+	Axis = 0.0,0.0,1.0
+	TorqueExpression = 0.02*STEP[SIMTIME[],0.5,0,1.5,1,polynomial]-0.01*MEAVAL[zg]
+EndForce
+Force GenericTorque
+	ForceID = 16
+	BodyIDs = 1,0
+	Label = brake
+	AxisType = SpaceFixed
+	Axis = 1.0,0.0,0.0
+	TorqueExpression = -0.01*sin(3*SIMTIME[])^2
+EndForce
+%
+%---------------- Data Objects ------------------------
+%
+DataObject Parameter
+	Label = k1
+	VisualizationID = 17
+	InitialValue = 300.0
+EndDataObject
+DataObject Parameter
+	Label = c1
+	VisualizationID = 18
+	InitialValue = 1.0
+EndDataObject
+DataObject Parameter
+	Label = k2
+	VisualizationID = 19
+	InitialValue = 200.0
+EndDataObject
+DataObject Parameter
+	Label = c2
+	VisualizationID = 20
+	InitialValue = 0.5
+EndDataObject
+%
+%---------------- Solver ------------------------
+%
+Simulation Dynamic
+	SimulationTimeBegin = 0.0
+	InitialPositionFromFile = 0
+	InitialVelocityFromFile = 0
+	SimulationTimeEnd = 5.0
+	OutputTimeBegin = 0.0
+	OutputTimeStepSize = 1.0e-02
+	isExactOutputTimeEnforced = yes
+	WriteConstraintForceResultFile = no
+	WriteForceResultFile = no
+	WriteVelocityResultFile = yes
+	WriteStateResultFile = yes
+	WriteAccelerationResultFile = yes
+	WriteExtConstraintLagrangeResultFile = no
+	WriteMeasureResultFile = no
+EndSimulation
+%
+Solver HHT
+	Alpha = -0.1
+	MaxNumberOfInnerIterations = 10,0
+	GlobalErrorTolerance = 1.0e-06
+	SolverMinTimeStep = 1.0e-14
+	SolverMaxTimeStep = 1.0e-03
+	ModifyNewmark = no
+	MaxNumOfTimeStepsUsingSameFactorizedJacobian = 0
+	UsePardisoScalingAndMatching = no
+	DebugLevel = 0
+	DebugTimeBegin = 0.0
+	DebugTimeEnd = 10.0
+EndSolver

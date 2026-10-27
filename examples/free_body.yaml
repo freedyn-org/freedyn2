@@ -1,0 +1,12 @@
+# Step 0: one rigid body floating in empty space, moved only by initial conditions.
+model: free_body
+gravity: [0, 0, 0]
+bodies:
+  body1:
+    mass: 2.0
+    inertia: [0.1, 0.2, 0.3]           # principal moments, body frame
+    position: [0, 0, 0]                # global, center of mass
+    orientation: [1, 0, 0, 0]          # Euler parameters (theta0..theta3)
+    velocity: [0.1, 0.0, 0.0]          # global
+    angular_velocity: [0.5, 2.0, 0.1]  # GLOBAL components (body frame = global at theta = [1,0,0,0])
+solver: {type: HHT, alpha: -0.1, end_time: 10.0, step: 1.0e-3, output_step: 1.0e-2}

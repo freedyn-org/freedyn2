@@ -1,0 +1,96 @@
+Header freeDynHeader
+% FreeDyn 2.0: double compound pendulum (two rods, 1 m), revolute joints about global y, released horizontally
+EndHeader
+%
+%---------------- Rigid Bodies ------------------------
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = rod1
+	BodyID = 1
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 1.0
+	LocationCenterMass = 0.5,0.0,0.0
+	Inertia = 0.01,0.0833333333333333,0.0833333333333333
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+Body Rigid_EulerParameter_PAI
+	BodyName = rod2
+	BodyID = 2
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 1.0
+	LocationCenterMass = 1.5,0.0,0.0
+	Inertia = 0.01,0.0833333333333333,0.0833333333333333
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+%---------------- Constraints ------------------------
+%
+Constraint Generic
+	ConstraintID = 1
+	BodyIDs = 1, 0
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = yes
+	azFixed = no
+	Location = 0.0,0.0,0.0
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,0.0,-1.0,0.0,1.0,0.0
+EndConstraint
+Constraint Generic
+	ConstraintID = 2
+	BodyIDs = 2, 1
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = yes
+	azFixed = no
+	Location = 1.0,0.0,0.0
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,0.0,-1.0,0.0,1.0,0.0
+EndConstraint
+%
+%---------------- Forces ------------------------
+%
+Force Gravity
+	ForceID = 1
+	GravityAccVector = 0.0,0.0,-9.81
+	ActivationTime = 0.0
+EndForce
+%
+%---------------- Solver ------------------------
+%
+Simulation Dynamic
+	SimulationTimeBegin = 0.0
+	InitialPositionFromFile = 0
+	InitialVelocityFromFile = 0
+	SimulationTimeEnd = 10.0
+	OutputTimeBegin = 0.0
+	OutputTimeStepSize = 1.0e-02
+	isExactOutputTimeEnforced = yes
+	WriteConstraintForceResultFile = no
+	WriteForceResultFile = no
+	WriteVelocityResultFile = yes
+	WriteStateResultFile = yes
+	WriteAccelerationResultFile = yes
+	WriteExtConstraintLagrangeResultFile = no
+	WriteMeasureResultFile = no
+EndSimulation
+%
+Solver HHT
+	Alpha = -0.1
+	MaxNumberOfInnerIterations = 10,0
+	GlobalErrorTolerance = 1.0e-06
+	SolverMinTimeStep = 1.0e-14
+	SolverMaxTimeStep = 1.0e-03
+	ModifyNewmark = no
+	MaxNumOfTimeStepsUsingSameFactorizedJacobian = 0
+	UsePardisoScalingAndMatching = no
+	DebugLevel = 0
+	DebugTimeBegin = 0.0
+	DebugTimeEnd = 10.0
+EndSolver

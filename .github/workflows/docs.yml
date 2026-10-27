@@ -1,0 +1,58 @@
+name: Docs
+
+# The user documentation (mkdocs.yml, docs/) with the live examples (tools/docs_examples.py:
+# viewers exported with the runtime). Built on every pull request that touches it; published
+# to GitHub Pages from main once Pages is enabled (Settings → Pages → Source: GitHub Actions,
+# and the repository variable PAGES_ENABLED = true).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths: [docs/**, mkdocs.yml, tools/docs_*.py, examples/**, schema/**, generator/fdgen/view/**, .github/workflows/docs.yml]
+  workflow_dispatch:
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeigen3-dev libsuitesparse-dev
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt -r requirements-docs.txt
+      - name: Build the runtime
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFD_BUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DPython3_EXECUTABLE="$(which python)"
+          cmake --build build -j --target freedyn2_run freedyn2_road
+      - name: Live examples
+        run: python tools/docs_examples.py
+      - name: Build the site
+        run: mkdocs build --strict
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true'
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

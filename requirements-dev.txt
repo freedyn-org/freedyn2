@@ -1,0 +1,9 @@
+# Development: the generator, tests and lint without installing the package (PYTHONPATH=generator,
+# set for pytest in pyproject.toml); the runtime is built with CMake (README).
+casadi>=3.6
+numpy
+pyyaml
+jsonschema
+pytest
+mcp
+pyflakes

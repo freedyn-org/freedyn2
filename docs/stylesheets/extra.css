@@ -1,0 +1,2 @@
+/* key tables: keep the key in one line */
+.md-typeset table td:first-child code { white-space: nowrap; }

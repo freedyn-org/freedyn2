@@ -1,0 +1,928 @@
+Header freeDynHeader
+% FreeDyn 2.0: 1 fictitious car(s) on a chassis dynamometer (examples/scaling/make_car.py)
+EndHeader
+%
+DataObject Parameter
+	Label = k_susp
+	VisualizationID = 1
+	InitialValue = 30000.0
+EndDataObject
+%
+DataObject Parameter
+	Label = c_susp
+	VisualizationID = 2
+	InitialValue = 2500.0
+EndDataObject
+%
+DataObject Parameter
+	Label = f_susp
+	VisualizationID = 3
+	InitialValue = 3041.1000000000004
+EndDataObject
+%
+DataObject Parameter
+	Label = k_tire
+	VisualizationID = 4
+	InitialValue = 250000.0
+EndDataObject
+%
+DataObject Parameter
+	Label = c_tire
+	VisualizationID = 5
+	InitialValue = 300.0
+EndDataObject
+%
+DataObject Parameter
+	Label = f_tire
+	VisualizationID = 6
+	InitialValue = 3482.55
+EndDataObject
+%
+DataObject Parameter
+	Label = t_engine
+	VisualizationID = 7
+	InitialValue = 100.0
+EndDataObject
+%
+DataObject Parameter
+	Label = c_engine
+	VisualizationID = 8
+	InitialValue = 0.05
+EndDataObject
+%
+DataObject Parameter
+	Label = i_gear
+	VisualizationID = 9
+	InitialValue = 3.0
+EndDataObject
+%
+DataObject Parameter
+	Label = k_gear
+	VisualizationID = 10
+	InitialValue = 2000.0
+EndDataObject
+%
+DataObject Parameter
+	Label = c_gear
+	VisualizationID = 11
+	InitialValue = 2.0
+EndDataObject
+%
+DataObject Parameter
+	Label = i_diff
+	VisualizationID = 12
+	InitialValue = 4.0
+EndDataObject
+%
+DataObject Parameter
+	Label = k_diff
+	VisualizationID = 13
+	InitialValue = 8000.0
+EndDataObject
+%
+DataObject Parameter
+	Label = c_diff
+	VisualizationID = 14
+	InitialValue = 8.0
+EndDataObject
+%
+DataObject Parameter
+	Label = k_shaft
+	VisualizationID = 15
+	InitialValue = 3000.0
+EndDataObject
+%
+DataObject Parameter
+	Label = c_shaft
+	VisualizationID = 16
+	InitialValue = 3.0
+EndDataObject
+%
+DataObject Parameter
+	Label = c_roller
+	VisualizationID = 17
+	InitialValue = 30.0
+EndDataObject
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = chassis1
+	BodyID = 18
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 1200.0
+	LocationCenterMass = 1.3,0.0,0.55
+	Inertia = 450.0,1800.0,2000.0
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = carrier_fl1
+	BodyID = 19
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 30.0
+	LocationCenterMass = 2.6,0.8,0.3
+	Inertia = 0.5,0.5,0.5
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = wheel_fl1
+	BodyID = 20
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 15.0
+	LocationCenterMass = 2.6,0.8,0.3
+	Inertia = 0.6,1.0,0.6
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Constraint Generic
+	ConstraintID = 21
+	BodyIDs = 19, 18
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = no
+	axFixed = yes
+	ayFixed = yes
+	azFixed = yes
+	Location = 2.6,0.8,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Constraint Generic
+	ConstraintID = 22
+	BodyIDs = 20, 19
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = no
+	azFixed = yes
+	Location = 2.6,0.8,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Measure Translational
+	MeasureName = dz_fl1
+	MeasureID = 23
+	BodyIDs = 18,19
+	MeasureMode = disp
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 2.6,0.8,0.55
+	MeasureLocation_Body2 = 2.6,0.8,0.3
+	UseInitialValueAsOffset = yes
+EndMeasure
+%
+Measure Translational
+	MeasureName = vz_fl1
+	MeasureID = 24
+	BodyIDs = 18,19
+	MeasureMode = vel
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 2.6,0.8,0.55
+	MeasureLocation_Body2 = 2.6,0.8,0.3
+EndMeasure
+%
+Force GenericForce
+	ForceID = 25
+	BodyIDs = 19,18
+	Label = susp_fl1
+	PointOfApplication_Body1 = 2.6,0.8,0.3
+	PointOfApplication_Body2 = 2.6,0.8,0.55
+	ForceDirectionType = BodyFixed
+	ForceDirection = 0.0,0.0,1.0
+	ForceExpression = -PARVAL[f_susp]-PARVAL[k_susp]*MEAVAL[dz_fl1]-PARVAL[c_susp]*MEAVAL[vz_fl1]
+EndForce
+%
+Measure Translational
+	MeasureName = zt_fl1
+	MeasureID = 26
+	BodyIDs = 20,0
+	MeasureMode = disp
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 2.6,0.8,0.3
+	MeasureLocation_Body2 = 2.6,0.8,0.0
+	UseInitialValueAsOffset = yes
+EndMeasure
+%
+Measure Translational
+	MeasureName = vt_fl1
+	MeasureID = 27
+	BodyIDs = 20,0
+	MeasureMode = vel
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 2.6,0.8,0.3
+	MeasureLocation_Body2 = 2.6,0.8,0.0
+EndMeasure
+%
+Force GenericForce
+	ForceID = 28
+	BodyIDs = 20,0
+	Label = tire_fl1
+	PointOfApplication_Body1 = 2.6,0.8,0.3
+	PointOfApplication_Body2 = 2.6,0.8,0.0
+	ForceDirectionType = SpaceFixed
+	ForceDirection = 0.0,0.0,1.0
+	ForceExpression = PARVAL[f_tire]-PARVAL[k_tire]*(MEAVAL[zt_fl1]-(STEP[SIMTIME[],1.5,0,1.55,0.03,polynomial]-STEP[SIMTIME[],1.6,0,1.65,0.03,polynomial]))-PARVAL[c_tire]*MEAVAL[vt_fl1]
+EndForce
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = carrier_fr1
+	BodyID = 29
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 30.0
+	LocationCenterMass = 2.6,-0.8,0.3
+	Inertia = 0.5,0.5,0.5
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = wheel_fr1
+	BodyID = 30
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 15.0
+	LocationCenterMass = 2.6,-0.8,0.3
+	Inertia = 0.6,1.0,0.6
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Constraint Generic
+	ConstraintID = 31
+	BodyIDs = 29, 18
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = no
+	axFixed = yes
+	ayFixed = yes
+	azFixed = yes
+	Location = 2.6,-0.8,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Constraint Generic
+	ConstraintID = 32
+	BodyIDs = 30, 29
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = no
+	azFixed = yes
+	Location = 2.6,-0.8,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Measure Translational
+	MeasureName = dz_fr1
+	MeasureID = 33
+	BodyIDs = 18,29
+	MeasureMode = disp
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 2.6,-0.8,0.55
+	MeasureLocation_Body2 = 2.6,-0.8,0.3
+	UseInitialValueAsOffset = yes
+EndMeasure
+%
+Measure Translational
+	MeasureName = vz_fr1
+	MeasureID = 34
+	BodyIDs = 18,29
+	MeasureMode = vel
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 2.6,-0.8,0.55
+	MeasureLocation_Body2 = 2.6,-0.8,0.3
+EndMeasure
+%
+Force GenericForce
+	ForceID = 35
+	BodyIDs = 29,18
+	Label = susp_fr1
+	PointOfApplication_Body1 = 2.6,-0.8,0.3
+	PointOfApplication_Body2 = 2.6,-0.8,0.55
+	ForceDirectionType = BodyFixed
+	ForceDirection = 0.0,0.0,1.0
+	ForceExpression = -PARVAL[f_susp]-PARVAL[k_susp]*MEAVAL[dz_fr1]-PARVAL[c_susp]*MEAVAL[vz_fr1]
+EndForce
+%
+Measure Translational
+	MeasureName = zt_fr1
+	MeasureID = 36
+	BodyIDs = 30,0
+	MeasureMode = disp
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 2.6,-0.8,0.3
+	MeasureLocation_Body2 = 2.6,-0.8,0.0
+	UseInitialValueAsOffset = yes
+EndMeasure
+%
+Measure Translational
+	MeasureName = vt_fr1
+	MeasureID = 37
+	BodyIDs = 30,0
+	MeasureMode = vel
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 2.6,-0.8,0.3
+	MeasureLocation_Body2 = 2.6,-0.8,0.0
+EndMeasure
+%
+Force GenericForce
+	ForceID = 38
+	BodyIDs = 30,0
+	Label = tire_fr1
+	PointOfApplication_Body1 = 2.6,-0.8,0.3
+	PointOfApplication_Body2 = 2.6,-0.8,0.0
+	ForceDirectionType = SpaceFixed
+	ForceDirection = 0.0,0.0,1.0
+	ForceExpression = PARVAL[f_tire]-PARVAL[k_tire]*(MEAVAL[zt_fr1]-(STEP[SIMTIME[],1.5,0,1.55,0.02,polynomial]-STEP[SIMTIME[],1.6,0,1.65,0.02,polynomial]))-PARVAL[c_tire]*MEAVAL[vt_fr1]
+EndForce
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = carrier_rl1
+	BodyID = 39
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 30.0
+	LocationCenterMass = 0.0,0.8,0.3
+	Inertia = 0.5,0.5,0.5
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = wheel_rl1
+	BodyID = 40
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 15.0
+	LocationCenterMass = 0.0,0.8,0.3
+	Inertia = 0.6,1.0,0.6
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Constraint Generic
+	ConstraintID = 41
+	BodyIDs = 39, 18
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = no
+	axFixed = yes
+	ayFixed = yes
+	azFixed = yes
+	Location = 0.0,0.8,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Constraint Generic
+	ConstraintID = 42
+	BodyIDs = 40, 39
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = no
+	azFixed = yes
+	Location = 0.0,0.8,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Measure Translational
+	MeasureName = dz_rl1
+	MeasureID = 43
+	BodyIDs = 18,39
+	MeasureMode = disp
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 0.0,0.8,0.55
+	MeasureLocation_Body2 = 0.0,0.8,0.3
+	UseInitialValueAsOffset = yes
+EndMeasure
+%
+Measure Translational
+	MeasureName = vz_rl1
+	MeasureID = 44
+	BodyIDs = 18,39
+	MeasureMode = vel
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 0.0,0.8,0.55
+	MeasureLocation_Body2 = 0.0,0.8,0.3
+EndMeasure
+%
+Force GenericForce
+	ForceID = 45
+	BodyIDs = 39,18
+	Label = susp_rl1
+	PointOfApplication_Body1 = 0.0,0.8,0.3
+	PointOfApplication_Body2 = 0.0,0.8,0.55
+	ForceDirectionType = BodyFixed
+	ForceDirection = 0.0,0.0,1.0
+	ForceExpression = -PARVAL[f_susp]-PARVAL[k_susp]*MEAVAL[dz_rl1]-PARVAL[c_susp]*MEAVAL[vz_rl1]
+EndForce
+%
+Measure Translational
+	MeasureName = zt_rl1
+	MeasureID = 46
+	BodyIDs = 40,0
+	MeasureMode = disp
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 0.0,0.8,0.3
+	MeasureLocation_Body2 = 0.0,0.8,0.0
+	UseInitialValueAsOffset = yes
+EndMeasure
+%
+Measure Translational
+	MeasureName = vt_rl1
+	MeasureID = 47
+	BodyIDs = 40,0
+	MeasureMode = vel
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 0.0,0.8,0.3
+	MeasureLocation_Body2 = 0.0,0.8,0.0
+EndMeasure
+%
+Force GenericForce
+	ForceID = 48
+	BodyIDs = 40,0
+	Label = tire_rl1
+	PointOfApplication_Body1 = 0.0,0.8,0.3
+	PointOfApplication_Body2 = 0.0,0.8,0.0
+	ForceDirectionType = SpaceFixed
+	ForceDirection = 0.0,0.0,1.0
+	ForceExpression = PARVAL[f_tire]-PARVAL[k_tire]*(MEAVAL[zt_rl1]-(STEP[SIMTIME[],1.76,0,1.81,0.03,polynomial]-STEP[SIMTIME[],1.86,0,1.91,0.03,polynomial]))-PARVAL[c_tire]*MEAVAL[vt_rl1]
+EndForce
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = carrier_rr1
+	BodyID = 49
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 30.0
+	LocationCenterMass = 0.0,-0.8,0.3
+	Inertia = 0.5,0.5,0.5
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = wheel_rr1
+	BodyID = 50
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 15.0
+	LocationCenterMass = 0.0,-0.8,0.3
+	Inertia = 0.6,1.0,0.6
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Constraint Generic
+	ConstraintID = 51
+	BodyIDs = 49, 18
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = no
+	axFixed = yes
+	ayFixed = yes
+	azFixed = yes
+	Location = 0.0,-0.8,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Constraint Generic
+	ConstraintID = 52
+	BodyIDs = 50, 49
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = no
+	azFixed = yes
+	Location = 0.0,-0.8,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Measure Translational
+	MeasureName = dz_rr1
+	MeasureID = 53
+	BodyIDs = 18,49
+	MeasureMode = disp
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 0.0,-0.8,0.55
+	MeasureLocation_Body2 = 0.0,-0.8,0.3
+	UseInitialValueAsOffset = yes
+EndMeasure
+%
+Measure Translational
+	MeasureName = vz_rr1
+	MeasureID = 54
+	BodyIDs = 18,49
+	MeasureMode = vel
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 0.0,-0.8,0.55
+	MeasureLocation_Body2 = 0.0,-0.8,0.3
+EndMeasure
+%
+Force GenericForce
+	ForceID = 55
+	BodyIDs = 49,18
+	Label = susp_rr1
+	PointOfApplication_Body1 = 0.0,-0.8,0.3
+	PointOfApplication_Body2 = 0.0,-0.8,0.55
+	ForceDirectionType = BodyFixed
+	ForceDirection = 0.0,0.0,1.0
+	ForceExpression = -PARVAL[f_susp]-PARVAL[k_susp]*MEAVAL[dz_rr1]-PARVAL[c_susp]*MEAVAL[vz_rr1]
+EndForce
+%
+Measure Translational
+	MeasureName = zt_rr1
+	MeasureID = 56
+	BodyIDs = 50,0
+	MeasureMode = disp
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 0.0,-0.8,0.3
+	MeasureLocation_Body2 = 0.0,-0.8,0.0
+	UseInitialValueAsOffset = yes
+EndMeasure
+%
+Measure Translational
+	MeasureName = vt_rr1
+	MeasureID = 57
+	BodyIDs = 50,0
+	MeasureMode = vel
+	MeasureCoordinate = Z
+	MeasureLocation_Body1 = 0.0,-0.8,0.3
+	MeasureLocation_Body2 = 0.0,-0.8,0.0
+EndMeasure
+%
+Force GenericForce
+	ForceID = 58
+	BodyIDs = 50,0
+	Label = tire_rr1
+	PointOfApplication_Body1 = 0.0,-0.8,0.3
+	PointOfApplication_Body2 = 0.0,-0.8,0.0
+	ForceDirectionType = SpaceFixed
+	ForceDirection = 0.0,0.0,1.0
+	ForceExpression = PARVAL[f_tire]-PARVAL[k_tire]*(MEAVAL[zt_rr1]-(STEP[SIMTIME[],1.76,0,1.81,0.02,polynomial]-STEP[SIMTIME[],1.86,0,1.91,0.02,polynomial]))-PARVAL[c_tire]*MEAVAL[vt_rr1]
+EndForce
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = engine1
+	BodyID = 59
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 20.0
+	LocationCenterMass = 2.2,0.0,0.45
+	Inertia = 0.25,0.3,0.3
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Constraint Generic
+	ConstraintID = 60
+	BodyIDs = 59, 18
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = no
+	ayFixed = yes
+	azFixed = yes
+	Location = 2.2,0.0,0.45
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = propshaft1
+	BodyID = 61
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 10.0
+	LocationCenterMass = 1.3,0.0,0.35
+	Inertia = 0.02,0.5,0.5
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Constraint Generic
+	ConstraintID = 62
+	BodyIDs = 61, 18
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = no
+	ayFixed = yes
+	azFixed = yes
+	Location = 1.3,0.0,0.35
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = halfshaft_l1
+	BodyID = 63
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 5.0
+	LocationCenterMass = 0.0,0.4,0.3
+	Inertia = 0.1,0.05,0.1
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Constraint Generic
+	ConstraintID = 64
+	BodyIDs = 63, 18
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = no
+	azFixed = yes
+	Location = 0.0,0.4,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = halfshaft_r1
+	BodyID = 65
+	InitialVelocityVector = 0.0,0.0,0.0
+	InitialOmegaVector = 0.0,0.0,0.0
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 5.0
+	LocationCenterMass = 0.0,-0.4,0.3
+	Inertia = 0.1,0.05,0.1
+	OrientationPAI = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndBody
+%
+Constraint Generic
+	ConstraintID = 66
+	BodyIDs = 65, 18
+	dxFixed = yes
+	dyFixed = yes
+	dzFixed = yes
+	axFixed = yes
+	ayFixed = no
+	azFixed = yes
+	Location = 0.0,-0.4,0.3
+	ConstraintOrientation = 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0
+EndConstraint
+%
+Measure Rotational
+	MeasureName = phi_e1
+	MeasureID = 67
+	BodyIDs = 59,18
+	MeasureCoordinate = Angle
+	MeasureVec = 0.0,1.0,0.0
+	MeasurePlaneVec1 = 0.0,1.0,0.0
+	MeasurePlaneVec2 = 0.0,0.0,1.0
+	UseInitialValueAsOffset = no
+EndMeasure
+%
+Measure Rotational
+	MeasureName = w_e1
+	MeasureID = 68
+	BodyIDs = 59,18
+	MeasureCoordinate = AngleVel
+	MeasureVec = 0.0,1.0,0.0
+	MeasurePlaneVec1 = 0.0,1.0,0.0
+	MeasurePlaneVec2 = 0.0,0.0,1.0
+EndMeasure
+%
+Measure Rotational
+	MeasureName = phi_p1
+	MeasureID = 69
+	BodyIDs = 61,18
+	MeasureCoordinate = Angle
+	MeasureVec = 0.0,1.0,0.0
+	MeasurePlaneVec1 = 0.0,1.0,0.0
+	MeasurePlaneVec2 = 0.0,0.0,1.0
+	UseInitialValueAsOffset = no
+EndMeasure
+%
+Measure Rotational
+	MeasureName = w_p1
+	MeasureID = 70
+	BodyIDs = 61,18
+	MeasureCoordinate = AngleVel
+	MeasureVec = 0.0,1.0,0.0
+	MeasurePlaneVec1 = 0.0,1.0,0.0
+	MeasurePlaneVec2 = 0.0,0.0,1.0
+EndMeasure
+%
+Measure Rotational
+	MeasureName = phi_hl1
+	MeasureID = 71
+	BodyIDs = 63,18
+	MeasureCoordinate = Angle
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+	UseInitialValueAsOffset = no
+EndMeasure
+%
+Measure Rotational
+	MeasureName = w_hl1
+	MeasureID = 72
+	BodyIDs = 63,18
+	MeasureCoordinate = AngleVel
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+EndMeasure
+%
+Measure Rotational
+	MeasureName = phi_hr1
+	MeasureID = 73
+	BodyIDs = 65,18
+	MeasureCoordinate = Angle
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+	UseInitialValueAsOffset = no
+EndMeasure
+%
+Measure Rotational
+	MeasureName = w_hr1
+	MeasureID = 74
+	BodyIDs = 65,18
+	MeasureCoordinate = AngleVel
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+EndMeasure
+%
+Force GenericTorque
+	ForceID = 75
+	BodyIDs = 59,18
+	Label = engine_torque1
+	AxisType = BodyFixed
+	Axis = 1.0,0.0,0.0
+	TorqueExpression = PARVAL[t_engine]*STEP[SIMTIME[],0.5,0,1.0,1,polynomial]-PARVAL[c_engine]*MEAVAL[w_e1]-(PARVAL[k_gear]*(MEAVAL[phi_e1]/PARVAL[i_gear]-MEAVAL[phi_p1])+PARVAL[c_gear]*(MEAVAL[w_e1]/PARVAL[i_gear]-MEAVAL[w_p1]))/PARVAL[i_gear]
+EndForce
+%
+Force GenericTorque
+	ForceID = 76
+	BodyIDs = 61,18
+	Label = gear_out1
+	AxisType = BodyFixed
+	Axis = 1.0,0.0,0.0
+	TorqueExpression = (PARVAL[k_gear]*(MEAVAL[phi_e1]/PARVAL[i_gear]-MEAVAL[phi_p1])+PARVAL[c_gear]*(MEAVAL[w_e1]/PARVAL[i_gear]-MEAVAL[w_p1]))-(PARVAL[k_diff]*(MEAVAL[phi_p1]/PARVAL[i_diff]-0.5*(MEAVAL[phi_hl1]+MEAVAL[phi_hr1]))+PARVAL[c_diff]*(MEAVAL[w_p1]/PARVAL[i_diff]-0.5*(MEAVAL[w_hl1]+MEAVAL[w_hr1])))/PARVAL[i_diff]
+EndForce
+%
+Force GenericTorque
+	ForceID = 77
+	BodyIDs = 63,18
+	Label = diff_l1
+	AxisType = BodyFixed
+	Axis = 0.0,1.0,0.0
+	TorqueExpression = 0.5*(PARVAL[k_diff]*(MEAVAL[phi_p1]/PARVAL[i_diff]-0.5*(MEAVAL[phi_hl1]+MEAVAL[phi_hr1]))+PARVAL[c_diff]*(MEAVAL[w_p1]/PARVAL[i_diff]-0.5*(MEAVAL[w_hl1]+MEAVAL[w_hr1])))
+EndForce
+%
+Measure Rotational
+	MeasureName = psi_rl1
+	MeasureID = 78
+	BodyIDs = 40,63
+	MeasureCoordinate = Angle
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+	UseInitialValueAsOffset = no
+EndMeasure
+%
+Measure Rotational
+	MeasureName = dpsi_rl1
+	MeasureID = 79
+	BodyIDs = 40,63
+	MeasureCoordinate = AngleVel
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+EndMeasure
+%
+Force GenericTorque
+	ForceID = 80
+	BodyIDs = 40,63
+	Label = shaft_rl1
+	AxisType = BodyFixed
+	Axis = 0.0,1.0,0.0
+	TorqueExpression = -PARVAL[k_shaft]*MEAVAL[psi_rl1]-PARVAL[c_shaft]*MEAVAL[dpsi_rl1]
+EndForce
+%
+Measure Rotational
+	MeasureName = ww_rl1
+	MeasureID = 81
+	BodyIDs = 40,39
+	MeasureCoordinate = AngleVel
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+EndMeasure
+%
+Force GenericTorque
+	ForceID = 82
+	BodyIDs = 40,39
+	Label = roller_rl1
+	AxisType = BodyFixed
+	Axis = 0.0,1.0,0.0
+	TorqueExpression = -PARVAL[c_roller]*MEAVAL[ww_rl1]
+EndForce
+%
+Force GenericTorque
+	ForceID = 83
+	BodyIDs = 65,18
+	Label = diff_r1
+	AxisType = BodyFixed
+	Axis = 0.0,1.0,0.0
+	TorqueExpression = 0.5*(PARVAL[k_diff]*(MEAVAL[phi_p1]/PARVAL[i_diff]-0.5*(MEAVAL[phi_hl1]+MEAVAL[phi_hr1]))+PARVAL[c_diff]*(MEAVAL[w_p1]/PARVAL[i_diff]-0.5*(MEAVAL[w_hl1]+MEAVAL[w_hr1])))
+EndForce
+%
+Measure Rotational
+	MeasureName = psi_rr1
+	MeasureID = 84
+	BodyIDs = 50,65
+	MeasureCoordinate = Angle
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+	UseInitialValueAsOffset = no
+EndMeasure
+%
+Measure Rotational
+	MeasureName = dpsi_rr1
+	MeasureID = 85
+	BodyIDs = 50,65
+	MeasureCoordinate = AngleVel
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+EndMeasure
+%
+Force GenericTorque
+	ForceID = 86
+	BodyIDs = 50,65
+	Label = shaft_rr1
+	AxisType = BodyFixed
+	Axis = 0.0,1.0,0.0
+	TorqueExpression = -PARVAL[k_shaft]*MEAVAL[psi_rr1]-PARVAL[c_shaft]*MEAVAL[dpsi_rr1]
+EndForce
+%
+Measure Rotational
+	MeasureName = ww_rr1
+	MeasureID = 87
+	BodyIDs = 50,49
+	MeasureCoordinate = AngleVel
+	MeasureVec = 0.0,0.0,1.0
+	MeasurePlaneVec1 = 0.0,0.0,1.0
+	MeasurePlaneVec2 = 1.0,0.0,0.0
+EndMeasure
+%
+Force GenericTorque
+	ForceID = 88
+	BodyIDs = 50,49
+	Label = roller_rr1
+	AxisType = BodyFixed
+	Axis = 0.0,1.0,0.0
+	TorqueExpression = -PARVAL[c_roller]*MEAVAL[ww_rr1]
+EndForce
+%
+Force Gravity
+	ForceID = 89
+	GravityAccVector = 0.0,0.0,-9.81
+	ActivationTime = 0.0
+EndForce
+%
+Simulation Dynamic
+	SimulationTimeBegin = 0.0
+	InitialPositionFromFile = 0
+	InitialVelocityFromFile = 0
+	SimulationTimeEnd = 5.0
+	OutputTimeBegin = 0.0
+	OutputTimeStepSize = 1.0e-02
+	isExactOutputTimeEnforced = yes
+	WriteConstraintForceResultFile = no
+	WriteForceResultFile = no
+	WriteVelocityResultFile = yes
+	WriteStateResultFile = yes
+	WriteAccelerationResultFile = yes
+	WriteExtConstraintLagrangeResultFile = no
+	WriteMeasureResultFile = no
+EndSimulation
+%
+Solver HHT
+	Alpha = -0.1
+	MaxNumberOfInnerIterations = 10,0
+	GlobalErrorTolerance = 1.0e-06
+	SolverMinTimeStep = 1.0e-14
+	SolverMaxTimeStep = 1.0e-03
+	ModifyNewmark = no
+	MaxNumOfTimeStepsUsingSameFactorizedJacobian = 0
+	UsePardisoScalingAndMatching = no
+	DebugLevel = 0
+	DebugTimeBegin = 0.0
+	DebugTimeEnd = 5.0
+EndSolver

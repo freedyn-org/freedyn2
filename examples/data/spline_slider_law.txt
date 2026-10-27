@@ -1,0 +1,9 @@
+# spring law of examples/spline_slider.yaml (linear data: the Akima spline is exactly linear)
+   z [m]    F [N]
+-0.5 100.0
+-0.2 40.0
+-0.1 20.0
+0.0 0.0
+0.1 -20.0
+0.3 -60.0
+0.5 -100.0

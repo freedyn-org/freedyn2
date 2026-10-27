@@ -1,0 +1,17 @@
+# The example extension of docs/extensions.md: pip install examples/extension
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "freedyn2-drag"
+version = "0.1.0"
+description = "Example extension of FreeDyn 2.0: air drag at a point"
+requires-python = ">=3.10"
+dependencies = ["freedyn2"]
+
+[project.entry-points."freedyn2.extensions"]
+drag = "freedyn2_drag:extension"
+
+[tool.setuptools]
+packages = ["freedyn2_drag"]

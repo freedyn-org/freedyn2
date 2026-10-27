@@ -1,0 +1,69 @@
+# Quarter car over a bump: the body (a quarter of the car) on its suspension, the wheel on a
+# tire spring, both moving vertically. The road is a cosine bump of height h and length L that
+# the car crosses at speed v; it moves the tire's lower end. The tutorial of the documentation
+# (docs/tutorial.md) tunes this model in the viewer.
+model: quarter_car
+gravity: [0, 0, -9.81]
+parameters:
+  m_body: 400.0      # [kg] a quarter of the car
+  m_wheel: 40.0      # [kg] wheel, hub, brake, half the link masses
+  k_spring: 25000.0  # [N/m] suspension spring
+  c_damper: 1800.0   # [N s/m] suspension damper
+  k_tire: 200000.0   # [N/m] tire, vertical
+  c_tire: 50.0       # [N s/m]
+  h: 0.04            # [m] bump height
+  L: 0.6             # [m] bump length
+  v: 10.0            # [m/s] speed
+  t0: 0.5            # [s] the tire reaches the bump
+bodies:
+  body:
+    mass: =m_body
+    inertia: [20, 20, 20]
+    position: [0, 0, 0.65]
+    shapes:
+      - {type: box, size: [0.6, 0.5, 0.25], color: "#4e79a7"}
+  wheel:
+    mass: =m_wheel
+    inertia: [0.8, 1.2, 0.8]
+    position: [0, 0, 0.3]
+    shapes:
+      - {type: cylinder, radius: 0.3, length: 0.2, orientation: [0.7071068, -0.7071068, 0, 0], color: "#555555"}
+ground:
+  shapes:
+    - {type: box, size: [3, 0.6, 0.02], position: [0, 0, -0.01], color: "#bbbbbb"}
+joints:
+  body_guide:   # the body moves vertically only
+    type: prismatic
+    body1: body
+    location: [0, 0, 0.65]
+  wheel_guide:  # the wheel moves vertically relative to the body
+    type: prismatic
+    body1: wheel
+    body2: body
+    location: [0, 0, 0.3]
+forces:
+  suspension:
+    type: spring_damper
+    body1: wheel
+    body2: body
+    point1: [0, 0, 0.3]
+    point2: [0, 0, 0.65]
+    stiffness: =k_spring
+    damping: =c_damper
+    preload: =-m_body * 9.81       # compression carries the body
+  tire:
+    type: expression_force
+    body1: wheel
+    point1: [0, 0, 0.3]
+    direction: [0, 0, 1]
+    # static load + tire spring on (road height - wheel travel) + damping
+    force: >-
+      (m_body + m_wheel) * 9.81
+      + k_tire * (if_else((t > t0) * (t < t0 + L / v), 0.5 * h * (1 - cos(2 * pi * v * (t - t0) / L)), 0) - z_wheel)
+      - c_tire * vz_wheel
+measures:
+  z_wheel: {type: displacement, body1: wheel, component: z, offset: initial}
+  vz_wheel: {type: velocity, body1: wheel, component: z}
+checks:
+  mass: {total: 440, tolerance: 1}
+solver: {type: HHT, alpha: -0.1, end_time: 2.5, step: 0.001, output_step: 0.005}

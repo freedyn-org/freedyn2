@@ -1,0 +1,333 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/freedyn-org/freedyn2/schema/model.schema.json",
+  "title": "FreeDyn 2.0 model",
+  "description": "Bodies, joints, forces, measures, drivers, road and solver settings of a FreeDyn 2.0 model (docs/architecture.md). Shapes are for the viewer only.",
+  "type": "object",
+  "required": ["model", "bodies", "solver"],
+  "additionalProperties": false,
+  "properties": {
+    "model": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "References the results are checked against (freedyn2 check, the viewer, the MCP server); no effect on the simulation. Tolerances are absolute, in the unit of the channel.",
+      "properties": {
+        "mass": {"type": "object", "required": ["total", "tolerance"], "additionalProperties": false,
+                 "properties": {"total": {"type": "number"}, "tolerance": {"type": "number", "minimum": 0}},
+                 "description": "Total mass of the bodies [kg], e.g. from the weight list."},
+        "values": {"type": "array", "items": {"type": "object", "required": ["channel", "value", "tolerance"], "additionalProperties": false,
+          "properties": {"name": {"type": "string"}, "channel": {"type": "string", "description": "Result channel, e.g. chassis1.R_z."},
+                         "time": {"type": "number", "description": "Default 0."}, "value": {"type": "number"},
+                         "tolerance": {"type": "number", "minimum": 0}}}},
+        "curves": {"type": "array", "items": {"type": "object", "required": ["channel", "file", "tolerance"], "additionalProperties": false,
+          "properties": {"name": {"type": "string"},
+                         "channel": {"type": "string", "description": "Result channel compared with the curve."},
+                         "x_channel": {"type": "string", "description": "Result channel of the abscissa (e.g. a wheel travel for a K&C curve). Default t."},
+                         "file": {"type": "string", "description": "CSV file (relative to the model file), optionally with a header line; lines starting with # are skipped."},
+                         "x": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "string"}], "description": "Column (index or header name) of the abscissa. Default 0."},
+                         "y": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "string"}], "description": "Column of the values. Default 1."},
+                         "tolerance": {"type": "number", "minimum": 0, "description": "Largest allowed deviation where the curve and the results overlap."}}}}
+      }
+    },
+    "ground": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The fixed ground: shapes for the viewer (frame global).",
+      "properties": {"shapes": {"$ref": "#/$defs/shapes"}}
+    },
+    "gravity": {
+      "$ref": "#/$defs/vec3",
+      "description": "Global gravity acceleration, acting at the centers of mass. Default [0, 0, 0]."
+    },
+    "joints": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"$ref": "#/$defs/joint"}
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Named model parameters, used in force expressions and in formulas: any number of the model may be written as \"=expression\" of the parameters (e.g. stiffness: =k_susp, position: [0, 0, =h + 0.25]); a parameter may itself be a formula of others (fdgen.formulas).",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"type": "number"}
+    },
+    "road": {
+      "type": "object",
+      "description": "Road surface of the tires: analytic (fdgen.tire: height = sum of harmonics + slope, friction mu0 with an optional patch) or an OpenCRG file (crg; evaluated by the runtime, fd::Road).",
+      "additionalProperties": false,
+      "properties": {
+        "crg": {"type": "string", "description": "OpenCRG file of the road height (relative to the model file): curved reference line, slope, banking."},
+        "crg_friction": {"type": "string", "description": "OpenCRG file whose grid values are the friction coefficient (same placement as crg). Default: friction."},
+        "position": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3, "description": "OpenCRG road: translation of the CRG frame in the world [m]. Default [0, 0, 0]."},
+        "heading": {"type": "number", "description": "OpenCRG road: rotation of the CRG frame about z [rad]. Default 0."},
+        "harmonics": {
+          "type": "array", "maxItems": 16,
+          "items": {
+            "type": "object", "required": ["amplitude", "wavelength"], "additionalProperties": false,
+            "properties": {
+              "amplitude": {"type": "number"},
+              "wavelength": {"type": "number", "exclusiveMinimum": 0},
+              "heading": {"type": "number", "description": "Direction of the wave vector from the x axis [rad]. Default 0."},
+              "phase": {"type": "number", "description": "[rad]. Default 0."}
+            }
+          }
+        },
+        "slope": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "description": "[dh/dx, dh/dy]. Default [0, 0]."},
+        "friction": {"type": "number", "exclusiveMinimum": 0, "description": "mu0. Default 1."},
+        "patch": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "friction": {"type": "number", "exclusiveMinimum": 0},
+            "x": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+            "y": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+            "edge": {"type": "number", "exclusiveMinimum": 0, "description": "Width of the smooth edges [m]. Default 0.5."}
+          }
+        }
+      }
+    },
+    "splines": {
+      "type": "object",
+      "description": "Named cubic splines y(x), called like functions in force expressions: name(x).",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "file": {"type": "string", "description": "Text table with the data instead of x / y (relative to the model file): columns separated by spaces, as the legacy spline data files."},
+          "header_lines": {"type": "integer", "minimum": 0, "description": "file: lines to skip. Default 0."},
+          "columns": {"type": "array", "items": {"type": "integer", "minimum": 0}, "minItems": 2, "maxItems": 2, "description": "file: column indices (from 0) of x and y. Default [0, 1]."},
+          "x": {"type": "array", "items": {"type": "number"}, "minItems": 3, "description": "Strictly increasing."},
+          "y": {"type": "array", "items": {"type": "number"}, "minItems": 3},
+          "type": {"enum": ["akima", "zcc"], "description": "akima (default): Akima, linear beyond the ends; zcc: zero clamped C2 cubic, quadratic beyond the last point (legacy FreeDyn splines)."}
+        }
+      }
+    },
+    "drivers": {
+      "type": "object",
+      "description": "Prescribed motion: the measure (displacement, distance or angle) follows motion(t), a constraint m(q) - f(t) = 0 (model plugin).",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {
+        "type": "object",
+        "required": ["measure", "motion"],
+        "additionalProperties": false,
+        "properties": {
+          "measure": {"type": "string"},
+          "motion": {"type": "string", "description": "Expression of t, parameters and splines, e.g. '0.1 * sin(2 * pi * t)'."},
+          "ramp": {"type": "number", "minimum": 0, "description": "Activation time Ta: for t < Ta a 7th order polynomial from the initial measure value at rest joins the motion C2 at Ta (legacy TimeMotion ActivationPeriod). Default 0: the motion must start at the initial configuration."}
+        }
+      }
+    },
+    "measures": {
+      "type": "object",
+      "description": "Named scalar measures of the state used in force expressions.",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"$ref": "#/$defs/measure"}
+    },
+    "points": {
+      "type": "object",
+      "description": "Named points (hardpoints), global at t = 0: wherever a point is given (location, point, point1, point2, position) its name may stand instead of the numbers.",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"$ref": "#/$defs/point_definition"}
+    },
+    "frames": {
+      "type": "object",
+      "description": "Named frames, global at t = 0: their name may stand for an orientation (and, in a point field, for the origin).",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"$ref": "#/$defs/frame_definition"}
+    },
+    "sensors": {
+      "type": "object",
+      "description": "Points whose motion is written as result channels: acceleration and specific force (a - g, what an accelerometer measures), angular velocity and acceleration, from the accelerations the solver computes (no difference quotients). For motion cueing and sensor models; no effect on the simulation.",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"$ref": "#/$defs/sensor"}
+    },
+    "forces": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"$ref": "#/$defs/force"}
+    },
+    "bodies": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"$ref": "#/$defs/body"}
+    },
+    "solver": {"$ref": "#/$defs/solver"}
+  },
+  "$defs": {
+    "vec3": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+    "point": {"anyOf": [{"$ref": "#/$defs/vec3"}, {"type": "string"}], "description": "[x, y, z] global at t = 0, or the name of a point (points) or frame (frames: its origin)."},
+    "orientation": {"anyOf": [{"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}, {"type": "string"}], "description": "Euler parameters, global at t = 0, or the name of a frame (frames)."},
+    "point_definition": {
+      "description": "A point: [x, y, z] (numbers or =formulas), {mirror: name} (y negated: the other side of a vehicle), {from: name, offset: [dx, dy, dz]} or {in: body or frame, local: [x, y, z]} (in the body frame at t = 0: center of mass, principal axes; or in the axes of a frame from its origin).",
+      "anyOf": [
+        {"$ref": "#/$defs/vec3"},
+        {"type": "object", "required": ["mirror"], "additionalProperties": false, "properties": {"mirror": {"type": "string"}}},
+        {"type": "object", "required": ["from", "offset"], "additionalProperties": false, "properties": {"from": {"type": "string"}, "offset": {"$ref": "#/$defs/vec3"}}},
+        {"type": "object", "required": ["in", "local"], "additionalProperties": false, "properties": {"in": {"type": "string"}, "local": {"$ref": "#/$defs/vec3"}}}
+      ]
+    },
+    "frame_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "in": {"type": "string", "description": "A body or frame: origin, orientation and [x, y, z] directions are then in its frame (a body: center of mass, principal axes at t = 0); point names stay global."},
+        "origin": {"$ref": "#/$defs/point", "description": "Origin. Default [0, 0, 0]."},
+        "orientation": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4, "description": "Euler parameters, global. Default [1, 0, 0, 0], or from z (and x)."},
+        "z": {"description": "Direction of the z axis: [x, y, z] or two point names [from, to].", "anyOf": [{"$ref": "#/$defs/vec3"}, {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}]},
+        "x": {"description": "Direction the x axis points to (made normal to z): [x, y, z] or two point names. Default the global x axis (y if z is along x).", "anyOf": [{"$ref": "#/$defs/vec3"}, {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}]}
+      }
+    },
+    "body": {
+      "type": "object",
+      "required": ["mass", "inertia"],
+      "additionalProperties": false,
+      "properties": {
+        "mass": {"type": "number", "exclusiveMinimum": 0},
+        "inertia": {
+          "description": "Principal moments of inertia about the center of mass, body frame.",
+          "type": "array",
+          "items": {"type": "number", "exclusiveMinimum": 0},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "position": {"$ref": "#/$defs/point", "description": "Global position of the center of mass. Default [0,0,0]."},
+        "orientation": {"$ref": "#/$defs/orientation", "description": "Principal axes as Euler parameters [theta0, theta1, theta2, theta3], theta0 scalar part. Normalized by the generator. Default [1,0,0,0]."},
+        "velocity": {"$ref": "#/$defs/vec3", "description": "Global velocity of the center of mass. Default [0,0,0]."},
+        "angular_velocity": {"$ref": "#/$defs/vec3", "description": "Angular velocity in GLOBAL components. Default [0,0,0]."},
+        "shapes": {"$ref": "#/$defs/shapes"}
+      }
+    },
+    "shapes": {
+      "description": "Geometry for the viewer (freedyn2 view); no effect on the simulation. Without shapes the viewer draws a box of the body's mass and inertia (a wheel for the body of a tire).",
+      "type": "array",
+      "items": {"$ref": "#/$defs/shape"}
+    },
+    "shape": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"enum": ["box", "cylinder", "sphere", "mesh"], "description": "box: edge lengths size along the shape axes. cylinder: radius and length, axis along the shape z axis. sphere: radius. mesh: an STL or OBJ file (relative to the model file), vertices in shape coordinates, times scale."},
+        "size": {"$ref": "#/$defs/vec3", "description": "box: edge lengths [m]."},
+        "radius": {"type": "number", "exclusiveMinimum": 0, "description": "cylinder, sphere [m]."},
+        "length": {"type": "number", "exclusiveMinimum": 0, "description": "cylinder [m]."},
+        "file": {"type": "string", "description": "mesh: .stl (binary or ASCII) or .obj file."},
+        "scale": {"oneOf": [{"type": "number", "exclusiveMinimum": 0}, {"$ref": "#/$defs/vec3"}], "description": "mesh: factor of the file coordinates, e.g. 0.001 for mm. Default 1."},
+        "frame": {"enum": ["global", "body"], "description": "position and orientation global at t = 0 (as all model input, default; e.g. a mesh exported from a CAD assembly: position [0,0,0]) or in the body frame."},
+        "position": {"$ref": "#/$defs/vec3", "description": "Origin of the shape frame. Default the body frame origin (center of mass)."},
+        "orientation": {"description": "Shape frame as Euler parameters. Default the body frame.", "type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4},
+        "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "description": "#rrggbb. Default a color per body."},
+        "opacity": {"type": "number", "minimum": 0, "maximum": 1, "description": "Default 1."}
+      }
+    },
+    "force": {
+      "type": "object",
+      "required": ["type", "body1"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": ["spring_damper", "force", "torque", "torsion_spring", "bushing", "expression_force", "expression_torque", "tire"],
+          "description": "spring_damper: line of sight between point1 (body1) and point2 (body2 or ground), s = k (l - l0) + d ldot + f0, tension > 0. force / torque: constant vector on body1. torsion_spring: about the z axis of the frame (orientation) fixed on body2 or the ground, tau = -k (phi - phi0) - d phidot + tau0 on body1. expression_force / expression_torque: magnitude from an expression of t, parameters and measures (compiled into the model plugin), along direction / axis on body1 and opposite on body2."
+        },
+        "body1": {"type": "string", "description": "A body."},
+        "body2": {"type": "string", "description": "spring_damper, torsion_spring: a body or 'ground'. Default ground."},
+        "point1": {"$ref": "#/$defs/point", "description": "spring_damper: point on body1, global, at t = 0. Default its center of mass."},
+        "point2": {"$ref": "#/$defs/point", "description": "spring_damper: point on body2 / the ground, global, at t = 0. Default its center of mass (the origin for the ground)."},
+        "point": {"$ref": "#/$defs/point", "description": "force: point of application, global, at t = 0. Default the center of mass."},
+        "vector": {"$ref": "#/$defs/vec3", "description": "force / torque: force [N] or torque [N m]."},
+        "frame": {"enum": ["global", "body"], "description": "force / torque: components of vector in the global frame (fixed direction) or in the body1 frame (turns with the body). Default global."},
+        "orientation": {"$ref": "#/$defs/orientation", "description": "torsion_spring (axis z) / bushing: frame as Euler parameters, global, at t = 0. Default [1,0,0,0]."},
+        "stiffness": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "k [N/m] or [N m/rad]; bushing: translational stiffness along the frame axes (number or 3)."},
+        "damping": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "d [N s/m] or [N m s/rad]; bushing: per frame axis. Default 0."},
+        "rot_stiffness": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "bushing: rotational stiffness about the frame axes [N m/rad]."},
+        "rot_damping": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "bushing: rotational damping [N m s/rad]. Default 0."},
+        "location": {"$ref": "#/$defs/point", "description": "bushing: frame origin, global, at t = 0. Default the center of mass of body1."},
+        "radius": {"type": "number", "exclusiveMinimum": 0, "description": "tire: unloaded radius r0 [m]. Default 0.3."},
+        "tire": {"type": "object", "additionalProperties": {"type": "number"}, "description": "tire: parameters overriding the defaults: fdgen.tire.TIRE_KEYS (kz, cz, Magic Formula coefficients, ...)."},
+        "length": {"type": "number", "exclusiveMinimum": 0, "description": "spring_damper: free length l0. Default the initial distance."},
+        "angle": {"type": "number", "description": "torsion_spring: phi0 [rad]. Default 0 (the initial configuration)."},
+        "preload": {"type": "number", "description": "f0 [N] or tau0 [N m]. Default 0."},
+        "force": {"type": "string", "description": "expression_force: force law, e.g. '-c * y - d * vy + 10 * sin(t)'."},
+        "torque": {"type": "string", "description": "expression_torque: torque law."},
+        "direction": {
+          "description": "expression_force: 'line_of_sight' (default, from point1 to point2) or a vector (global at t = 0; fixed in space or, with frame body, in body1).",
+          "oneOf": [{"const": "line_of_sight"}, {"$ref": "#/$defs/vec3"}]
+        },
+        "axis": {"$ref": "#/$defs/vec3", "description": "expression_torque: axis, global at t = 0 (fixed in space or, with frame body, in body1)."}
+      }
+    },
+    "sensor": {
+      "type": "object",
+      "required": ["body1"],
+      "additionalProperties": false,
+      "properties": {
+        "body1": {"type": "string", "description": "The body that carries the sensor."},
+        "point": {"$ref": "#/$defs/point", "description": "Position, global, at t = 0. Default the center of mass of body1."},
+        "orientation": {"$ref": "#/$defs/orientation", "description": "Axes of the sensor frame as Euler parameters, global at t = 0, then fixed in body1. Default [1, 0, 0, 0]: the global axes at t = 0 (e.g. x forward, z up in a vehicle model)."}
+      }
+    },
+    "measure": {
+      "type": "object",
+      "required": ["type", "body1"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": ["displacement", "velocity", "distance", "distance_rate", "angle", "angular_rate", "direction", "angular_velocity"],
+          "description": "displacement / velocity: component of P1 - P2 / V1 - V2 in frame; distance: |P1 - P2| and its rate; angle: rotation of body1 about the z axis of orientation fixed on body2 (as torsion_spring) and its rate; direction: component of the global vector in the frame (default body1), e.g. the vertical in a vehicle frame (lean); angular_velocity: component of omega1 - omega2 in frame (global or a body)."
+        },
+        "body1": {"type": "string"},
+        "body2": {"type": "string", "description": "A body or 'ground'. Default ground."},
+        "point1": {"$ref": "#/$defs/point", "description": "Point on body1, global, at t = 0. Default its center of mass."},
+        "point2": {"$ref": "#/$defs/point", "description": "Point on body2 or the ground, global, at t = 0. Default its center of mass / the origin."},
+        "component": {"enum": ["x", "y", "z"]},
+        "vector": {"$ref": "#/$defs/vec3", "description": "direction: a global vector."},
+        "frame": {"type": "string", "description": "displacement / velocity: 'global' (default) or a body whose frame gives the components."},
+        "orientation": {"$ref": "#/$defs/orientation", "description": "angle: frame (axis z), global at t = 0."},
+        "offset": {"oneOf": [{"enum": ["none", "initial"]}, {"type": "number"}], "description": "initial: subtract the initial value (displacement, distance, angle); a number: subtract it. Default none."}
+      }
+    },
+    "joint": {
+      "type": "object",
+      "required": ["type", "body1"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": ["fixed", "spherical", "revolute", "cylindrical", "prismatic", "generic"],
+          "description": "Presets fix directions of the joint frame (joint axis z): revolute about z, prismatic and cylindrical along z. generic: the fix list."
+        },
+        "body1": {"type": "string", "description": "A body."},
+        "body2": {"type": "string", "description": "A body or 'ground'. Default ground."},
+        "location": {"$ref": "#/$defs/point", "description": "Joint point, global, at t = 0."},
+        "orientation": {"$ref": "#/$defs/orientation", "description": "Joint frame as Euler parameters, global, at t = 0. Default [1,0,0,0]."},
+        "fix": {
+          "type": "array",
+          "items": {"enum": ["dx", "dy", "dz", "ax", "ay", "az"]},
+          "uniqueItems": true,
+          "description": "generic only: fixed translations (d) and rotations (a) along/about the joint axes."
+        }
+      }
+    },
+    "solver": {
+      "type": "object",
+      "required": ["type", "end_time", "step"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"const": "HHT"},
+        "alpha": {"type": "number", "minimum": -0.3333333333333333, "maximum": 0, "default": -0.1},
+        "end_time": {"type": "number", "exclusiveMinimum": 0},
+        "step": {"type": "number", "exclusiveMinimum": 0},
+        "output_step": {"type": "number", "exclusiveMinimum": 0, "description": "Must be an integer multiple of step. Default: step."},
+        "newton_tol": {"type": "number", "exclusiveMinimum": 0, "default": 1e-10},
+        "max_newton": {"type": "integer", "minimum": 1, "default": 25},
+        "newton": {"enum": ["velocity", "fixed"], "default": "velocity", "description": "velocity: Newton until the velocity change is below newton_tol; fixed: exactly newton_iterations corrections per step (the same work in every step, for real-time use)."},
+        "newton_iterations": {"type": "integer", "minimum": 1, "default": 2},
+        "form": {
+          "enum": ["arnold_bruls", "negrut"],
+          "default": "arnold_bruls",
+          "description": "HHT form: arnold_bruls (equations at t_n+1, second order) or negrut (force-weighted, as legacy FreeDyn)."
+        }
+      }
+    }
+  }
+}
