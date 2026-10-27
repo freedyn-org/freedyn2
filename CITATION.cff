@@ -30,3 +30,31 @@ references:
       name: Springer
     year: 2021
     doi: "10.1007/978-3-030-47626-7_8"
+  - type: conference-paper
+    title: "FreeDyn: a multibody simulation research code"
+    authors:
+      - family-names: Nachbagauer
+        given-names: Karin
+      - family-names: Sherif
+        given-names: Karim
+      - family-names: Witteveen
+        given-names: Wolfgang
+    conference:
+      name: "11th World Congress on Computational Mechanics (WCCM XI), 5th European Conference on Computational Mechanics (ECCM V)"
+      city: Barcelona
+    year: 2014
+  - type: conference-paper
+    title: "FreeDyn: a software for advanced multibody simulation: applications in the field of vehicle dynamics"
+    authors:
+      - family-names: Oberpeilsteiner
+        given-names: Stefan
+      - family-names: Lauss
+        given-names: Thomas
+      - family-names: Eichmeir
+        given-names: Philipp
+      - family-names: Steiner
+        given-names: Wolfgang
+    conference:
+      name: "ECCOMAS Thematic Conference on Multibody Dynamics 2019"
+      city: Duisburg
+    year: 2019

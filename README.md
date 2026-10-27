@@ -429,13 +429,23 @@ affected models, not the architecture adapted. CI runs both levels when the repo
 ## Citing and acknowledgements
 
 To cite FreeDyn 2.0, use the metadata in `CITATION.cff` (GitHub: "Cite this repository").
-FreeDyn 2.0 succeeds the FreeDyn multibody code; its solver served as the reference for every
-step and is reproduced in the legacy profile:
+FreeDyn 2.0 succeeds FreeDyn, developed at the University of Applied Sciences Upper Austria,
+Campus Wels, by Wolfgang Steiner, Wolfgang Witteveen, Karin Nachbagauer, Karim Sherif, Thomas
+Lauss and Stefan Oberpeilsteiner, among others. Its solver served as the reference for every
+step and is reproduced in the legacy profile. Publications on FreeDyn:
 
 > Witteveen, W., Lauss, T., Oberpeilsteiner, S. (2021). FreeDyn: a free, flexible and state of
 > the art multibody simulation package for education, research and industrial applications.
 > In: *Nonlinear Structures & Systems, Volume 1*, Conference Proceedings of the Society for
 > Experimental Mechanics Series. Springer, Cham. https://doi.org/10.1007/978-3-030-47626-7_8
+>
+> Nachbagauer, K., Sherif, K., Witteveen, W. (2014). FreeDyn: a multibody simulation research
+> code. 11th World Congress on Computational Mechanics (WCCM XI) and 5th European Conference on
+> Computational Mechanics (ECCM V), Barcelona.
+>
+> Oberpeilsteiner, S., Lauss, T., Eichmeir, P., Steiner, W. (2019). FreeDyn: a software for
+> advanced multibody simulation: applications in the field of vehicle dynamics. ECCOMAS
+> Thematic Conference on Multibody Dynamics 2019, Duisburg.
 
 The methods and their sources are in [`docs/theory.md`](docs/theory.md).
 

@@ -5,8 +5,13 @@ the constraints and forces, how the derivatives are obtained, the time integrati
 linear algebra. It is written for a review of the algorithms; every section names the source
 file it describes, and the formulas use the symbols of the code. The software architecture
 (modules, file formats, viewer, assistant tools) is described in [Architecture](architecture.md)
-and is not repeated here. FreeDyn 2.0 succeeds the FreeDyn multibody code (Witteveen,
-Lauss, Oberpeilsteiner 2021), whose solver it reproduces in the legacy profile (7.2).
+and is not repeated here.
+
+FreeDyn 2.0 succeeds FreeDyn, developed at the University of Applied Sciences Upper Austria,
+Campus Wels, by Wolfgang Steiner, Wolfgang Witteveen, Karin Nachbagauer, Karim Sherif, Thomas
+Lauss and Stefan Oberpeilsteiner, among others. Its solver served as the reference for every
+step and is reproduced in the legacy profile (7.2). Publications on FreeDyn: Nachbagauer, Sherif,
+Witteveen (2014); Oberpeilsteiner et al. (2019); Witteveen, Lauss, Oberpeilsteiner (2021).
 
 ## 1. Notation
 
@@ -673,11 +678,11 @@ that states each.
   Programming Computation* 11, 1-36.
 - Arnold, M., Brüls, O. (2007). Convergence of the generalized-\(\alpha\) scheme for constrained
   mechanical systems. *Multibody System Dynamics* 18, 185-202.
-- ASAM e.V. *ASAM OpenCRG*: road surface description in curved regular grids. Standard,
-  https://www.asam.net/standards/detail/opencrg/.
 - Arnold, M., Brüls, O., Cardona, A. (2015). Error analysis of generalized-\(\alpha\) Lie group
   time integration methods for constrained mechanical systems. *Numerische Mathematik* 129,
   149-179.
+- ASAM e.V. *ASAM OpenCRG*: road surface description in curved regular grids. Standard,
+  https://www.asam.net/standards/detail/opencrg/.
 - Brüls, O., Cardona, A., Arnold, M. (2012). Lie group generalized-\(\alpha\) time integration of
   constrained flexible multibody systems. *Mechanism and Machine Theory* 48, 121-137.
 - Cardona, A., Géradin, M. (1989). Time integration of the equations of motion in mechanism
@@ -692,11 +697,17 @@ that states each.
 - Hilber, H. M., Hughes, T. J. R., Taylor, R. L. (1977). Improved numerical dissipation for
   time integration algorithms in structural dynamics. *Earthquake Engineering and Structural
   Dynamics* 5, 283-292.
+- Nachbagauer, K., Sherif, K., Witteveen, W. (2014). FreeDyn: a multibody simulation research
+  code. 11th World Congress on Computational Mechanics (WCCM XI) and 5th European Conference on
+  Computational Mechanics (ECCM V), Barcelona.
 - Negrut, D., Rampalli, R., Ottarsson, G., Sharf, A. (2007). On an implementation of the
   Hilber-Hughes-Taylor method in the context of index 3 differential-algebraic equations of
   multibody dynamics. *Journal of Computational and Nonlinear Dynamics* 2(1), 73-85.
 - Newmark, N. M. (1959). A method of computation for structural dynamics. *Journal of the
   Engineering Mechanics Division, ASCE* 85(EM3), 67-94.
+- Oberpeilsteiner, S., Lauss, T., Eichmeir, P., Steiner, W. (2019). FreeDyn: a software for
+  advanced multibody simulation: applications in the field of vehicle dynamics. ECCOMAS
+  Thematic Conference on Multibody Dynamics 2019, Duisburg.
 - Pacejka, H. B. (2006). *Tire and Vehicle Dynamics*, 2nd ed. Butterworth-Heinemann.
 - Shabana, A. A. (2005). *Dynamics of Multibody Systems*, 3rd ed. Cambridge University Press.
 - Witteveen, W., Lauss, T., Oberpeilsteiner, S. (2021). FreeDyn: a free, flexible and state of
