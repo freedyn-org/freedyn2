@@ -7,7 +7,8 @@ references. The comparison models in `examples/compare` and the tests reproduce 
   and HHT damps that oscillation, so a freely spinning rotor loses speed (h = 1e-3,
   alpha = -0.1, 1 s): Negrut form -18 % at 100 rad/s, -57 % at 300 rad/s; Arnold–Bruls with
   Euler parameters -0.02 % and -1 %, both -100 % at 1000 rad/s. Under a driving torque the
-  rotor saturates. The legacy `ModifyNewmark` (Newmark on the angular velocity) removes the loss
+  rotor saturates. The legacy `ModifyNewmark` (Newmark on the angular velocity; Sherif et al.,
+  Multibody System Dynamics 46, 2019) removes the loss
   up to omega h ~ 1 and is reproduced in the `legacy` profile. The Lie group body has no loss
   at all (0 up to 3000 rad/s at h = 1e-3, orientation error 2e-13 rad).
 - With Euler parameters, `alpha = 0` (trapezoidal rule) is weakly unstable: the hidden

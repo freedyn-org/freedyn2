@@ -58,3 +58,21 @@ references:
       name: "ECCOMAS Thematic Conference on Multibody Dynamics 2019"
       city: Duisburg
     year: 2019
+  - type: article
+    title: "A modified HHT method for the numerical simulation of rigid body rotations with Euler parameters"
+    authors:
+      - family-names: Sherif
+        given-names: Karim
+      - family-names: Nachbagauer
+        given-names: Karin
+      - family-names: Steiner
+        given-names: Wolfgang
+      - family-names: Lauss
+        given-names: Thomas
+    journal: "Multibody System Dynamics"
+    volume: 46
+    issue: 2
+    start: 181
+    end: 202
+    year: 2019
+    doi: "10.1007/s11044-019-09672-6"
