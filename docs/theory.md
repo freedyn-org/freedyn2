@@ -410,8 +410,9 @@ $$
 
 This is the formulation of the legacy FreeDyn solver (Witteveen, Lauss, Oberpeilsteiner 2021); with the legacy profile both programs
 take the same steps with the same Newton iterations and agree to round-off. The legacy
-"modified Newmark" option (Newmark on the global angular velocity of Euler-parameter bodies,
-with the chain-rule correction of the Jacobian) is available for that comparison only.
+"modified Newmark" option (Sherif, Nachbagauer, Steiner, Lauss 2019: Newmark on the global
+angular velocity of Euler-parameter bodies, with the chain-rule correction of the Jacobian)
+is available for that comparison only.
 
 ### 7.3 Arnold-Bruls form on the Lie group (default)
 
@@ -709,6 +710,9 @@ that states each.
   advanced multibody simulation: applications in the field of vehicle dynamics. ECCOMAS
   Thematic Conference on Multibody Dynamics 2019, Duisburg.
 - Pacejka, H. B. (2006). *Tire and Vehicle Dynamics*, 2nd ed. Butterworth-Heinemann.
+- Sherif, K., Nachbagauer, K., Steiner, W., Lauss, T. (2019). A modified HHT method for the
+  numerical simulation of rigid body rotations with Euler parameters. *Multibody System
+  Dynamics* 46(2), 181-202. https://doi.org/10.1007/s11044-019-09672-6
 - Shabana, A. A. (2005). *Dynamics of Multibody Systems*, 3rd ed. Cambridge University Press.
 - Witteveen, W., Lauss, T., Oberpeilsteiner, S. (2021). FreeDyn: a free, flexible and state of
   the art multibody simulation package for education, research and industrial applications.

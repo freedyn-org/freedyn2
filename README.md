@@ -446,6 +446,10 @@ step and is reproduced in the legacy profile. Publications on FreeDyn:
 > Oberpeilsteiner, S., Lauss, T., Eichmeir, P., Steiner, W. (2019). FreeDyn: a software for
 > advanced multibody simulation: applications in the field of vehicle dynamics. ECCOMAS
 > Thematic Conference on Multibody Dynamics 2019, Duisburg.
+>
+> Sherif, K., Nachbagauer, K., Steiner, W., Lauss, T. (2019). A modified HHT method for the
+> numerical simulation of rigid body rotations with Euler parameters. *Multibody System
+> Dynamics* 46(2), 181-202. https://doi.org/10.1007/s11044-019-09672-6
 
 The methods and their sources are in [`docs/theory.md`](docs/theory.md).
 
