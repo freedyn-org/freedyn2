@@ -27,6 +27,10 @@ theme:
 extra_css:
   - stylesheets/extra.css
 
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+
 hooks:
   - tools/docs_hooks.py   # key tables from schema/model.schema.json
 
@@ -67,5 +71,6 @@ nav:
   - Command line: cli.md
   - For developers:
       - Architecture: architecture.md
+      - Theory and algorithms: theory.md
       - Extensions: extensions.md
       - Numerical findings: findings.md
