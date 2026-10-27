@@ -26,7 +26,7 @@ Witteveen (2014); Oberpeilsteiner et al. (2019); Witteveen, Lauss, Oberpeilstein
 | \(\Phi(q, t)\) | holonomic constraints; \(B = \partial \Phi / \partial \delta\) their Jacobian (see 4.2) |
 | \(p\) | element parameters (numbers given by the model) |
 | \(\alpha, \beta, \gamma, h\) | HHT parameter, Newmark parameters, step size |
-| \([a\times]\) | skew-symmetric matrix of \(a\), \([a\times] b = a \times b\) |
+| \(\tilde a\) | skew-symmetric (tilde) matrix of \(a\), \(\tilde a\, b = a \times b\) |
 | \(A\) | rotation matrix of a body (body to global) |
 | \(\bar\omega\), \(\omega = A \bar\omega\) | angular velocity in body and in global components |
 
@@ -103,7 +103,7 @@ body-frame angular velocity). The group is the direct product of the translation
 rotations (not \(SE(3)\)):
 
 $$
-\dot R = v_{1:3}, \qquad \dot A = A\,[\bar\omega\times].
+\dot R = v_{1:3}, \qquad \dot A = A\,\tilde{\bar\omega}.
 $$
 
 Equations of motion (Newton and Euler):
@@ -204,7 +204,7 @@ quantity is \(\dot F = (\partial F/\partial\delta)\, v\).
 symbol \(A_k\) with the known derivative
 
 $$
-\frac{\partial A}{\partial \delta_{\phi,i}} = A\,[e_i \times], \qquad i = 1, 2, 3,
+\frac{\partial A}{\partial \delta_{\phi,i}} = A\,\tilde e_i, \qquad i = 1, 2, 3,
 $$
 
 so no derivative is ever taken through the quaternion-to-matrix map. Measures and the values of
@@ -224,8 +224,8 @@ the end. This keeps the generated code small; it does not change the values.
 \(T = \operatorname{diag}(I_3, T_{SO(3)}(\Delta_\phi))\) and
 
 $$
-T_{SO(3)}(\psi) = I - \frac{1 - \cos\varphi}{\varphi^2} [\psi\times]
-+ \frac{\varphi - \sin\varphi}{\varphi^3} [\psi\times]^2, \qquad \varphi = |\psi|,
+T_{SO(3)}(\psi) = I - \frac{1 - \cos\varphi}{\varphi^2} \tilde\psi
++ \frac{\varphi - \sin\varphi}{\varphi^3} \tilde\psi^2, \qquad \varphi = |\psi|,
 $$
 
 evaluated by its Taylor series below \(\varphi = 10^{-4}\) (exact to round-off).
@@ -570,7 +570,7 @@ $$
 
 so three evaluations separate \(M\), the velocity Jacobian \(C\) (damping, gyroscopic terms) and
 the stiffness \(K\) (including \(\partial (B^T\lambda)/\partial\delta\)). With
-\(\dot\delta = \Delta v + D\delta\), \(D = -[\bar\omega_\text{ref}\times]\) on the rotation dofs,
+\(\dot\delta = \Delta v + D\delta\), \(D = -\tilde{\bar\omega}_\text{ref}\) on the rotation dofs,
 
 $$
 M \Delta\dot v + C \Delta v + K \delta + B^T \Delta\lambda = 0, \qquad B\delta = 0 .
