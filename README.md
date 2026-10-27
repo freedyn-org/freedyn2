@@ -426,6 +426,19 @@ affected models, not the architecture adapted. CI runs both levels when the repo
 | `tests/python`, `tests/cpp` | pytest and ctest suites |
 | `docs/` | architecture and reading guide, numerical findings |
 
+## Citing and acknowledgements
+
+To cite FreeDyn 2.0, use the metadata in `CITATION.cff` (GitHub: "Cite this repository").
+FreeDyn 2.0 succeeds the FreeDyn multibody code; its solver served as the reference for every
+step and is reproduced in the legacy profile:
+
+> Witteveen, W., Lauss, T., Oberpeilsteiner, S. (2021). FreeDyn: a free, flexible and state of
+> the art multibody simulation package for education, research and industrial applications.
+> In: *Nonlinear Structures & Systems, Volume 1*, Conference Proceedings of the Society for
+> Experimental Mechanics Series. Springer, Cham. https://doi.org/10.1007/978-3-030-47626-7_8
+
+The methods and their sources are in [`docs/theory.md`](docs/theory.md).
+
 ## License
 
 Apache License 2.0 (`LICENSE`, `NOTICE`). Code that FreeDyn 2.0 generates from your model

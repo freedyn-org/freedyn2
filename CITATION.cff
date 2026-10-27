@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use FreeDyn 2.0, please cite it with these metadata."
+title: "FreeDyn 2.0: multibody dynamics with generated models"
+type: software
+authors:
+  - family-names: Oberpeilsteiner
+    given-names: Stefan
+  - name: "The FreeDyn 2.0 contributors"
+repository-code: "https://github.com/freedyn-org/freedyn2"
+url: "https://freedyn-org.github.io/freedyn2/"
+license: Apache-2.0
+keywords:
+  - multibody dynamics
+  - HHT
+  - Lie group time integration
+  - CasADi
+  - code generation
+references:
+  - type: conference-paper
+    title: "FreeDyn: a free, flexible and state of the art multibody simulation package for education, research and industrial applications"
+    authors:
+      - family-names: Witteveen
+        given-names: Wolfgang
+      - family-names: Lauss
+        given-names: Thomas
+      - family-names: Oberpeilsteiner
+        given-names: Stefan
+    collection-title: "Nonlinear Structures & Systems, Volume 1"
+    publisher:
+      name: Springer
+    year: 2021
+    doi: "10.1007/978-3-030-47626-7_8"
