@@ -19,14 +19,21 @@ if(Eigen3_VERSION VERSION_LESS 3.3)
 endif()
 
 # --- Code generation: element C code + registry + model files -------------------
-set(FD_GEN_DIR ${CMAKE_BINARY_DIR}/generated)
+set(FD_GEN_DIR ${PROJECT_BINARY_DIR}/generated)
 set(FD_EXAMPLE_NAMES free_body dzhanibekov pendulum double_pendulum
   oscillator torsion_pendulum spring_pendulum two_bodies constant_loads forced_oscillator input_oscillator
   bushing_mount winding_spring spline_slider driven_rotor)
 # Examples with expression forces also produce a model plugin (<name>_plugin.so, .dll on Windows).
 set(FD_PLUGIN_EXAMPLES forced_oscillator winding_spring spline_slider driven_rotor input_oscillator)
+# Included from another project (add_subdirectory, FetchContent): the libraries only, no example
+# models and no tests, unless asked for. All paths are relative to this project, not to the top.
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  set(FD_TOP_LEVEL ON)
+else()
+  set(FD_TOP_LEVEL OFF)
+endif()
 # The example model files and plugins are for the tests; a wheel build (pip install) skips them.
-option(FD_BUILD_EXAMPLES "generate the example model files and plugins (needed by the tests)" ON)
+option(FD_BUILD_EXAMPLES "generate the example model files and plugins (needed by the tests)" ${FD_TOP_LEVEL})
 if(NOT FD_BUILD_EXAMPLES)
   set(FD_EXAMPLE_NAMES)
   set(FD_PLUGIN_EXAMPLES)
@@ -34,11 +41,11 @@ endif()
 set(FD_EXAMPLES)
 set(FD_MODEL_FILES)
 foreach(n ${FD_EXAMPLE_NAMES})
-  list(APPEND FD_EXAMPLES ${CMAKE_SOURCE_DIR}/examples/${n}.yaml)
+  list(APPEND FD_EXAMPLES ${PROJECT_SOURCE_DIR}/examples/${n}.yaml)
   list(APPEND FD_MODEL_FILES ${FD_GEN_DIR}/${n}.fdm)
 endforeach()
-file(GLOB FD_GENERATOR_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/generator/fdgen/*.py)
-file(GLOB FD_EXAMPLE_DATA CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/examples/data/*)
+file(GLOB FD_GENERATOR_SOURCES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/generator/fdgen/*.py)
+file(GLOB FD_EXAMPLE_DATA CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/examples/data/*)
 # Must match fdgen.codegen.ELEMENT_BUILDERS (checked by tests/python/test_codegen.py).
 set(FD_ELEMENT_TYPES
   rigid_body rigid_body_euler
@@ -67,8 +74,8 @@ add_custom_command(
   # run from generator/ (python -m puts it on sys.path): PYTHONPATH stays as it is, which a pip
   # build environment (wheel) uses to provide casadi
   COMMAND ${Python3_EXECUTABLE} -m fdgen ${FD_EXAMPLES} -o ${FD_GEN_DIR}
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/generator
-  DEPENDS ${FD_GENERATOR_SOURCES} ${FD_EXAMPLES} ${FD_EXAMPLE_DATA} ${CMAKE_SOURCE_DIR}/schema/model.schema.json
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/generator
+  DEPENDS ${FD_GENERATOR_SOURCES} ${FD_EXAMPLES} ${FD_EXAMPLE_DATA} ${PROJECT_SOURCE_DIR}/schema/model.schema.json
   COMMENT "Generating element code and model files with CasADi"
   VERBATIM)
 
@@ -79,7 +86,7 @@ set_target_properties(fd_generated PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(fd_generated PRIVATE STATIC_LINKED)  # Windows: no dllexport from the executables
 
 # --- ASAM OpenCRG C library (vendored, Apache-2.0): reads and evaluates road files --------
-file(GLOB FD_OPENCRG_SOURCES ${CMAKE_SOURCE_DIR}/runtime/third_party/opencrg/src/*.c)
+file(GLOB FD_OPENCRG_SOURCES ${PROJECT_SOURCE_DIR}/runtime/third_party/opencrg/src/*.c)
 add_library(opencrg STATIC ${FD_OPENCRG_SOURCES})
 target_include_directories(opencrg PUBLIC runtime/third_party/opencrg/inc)
 set_target_properties(opencrg PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -133,7 +140,7 @@ function(fd_copy_runtime_dlls target)
   if(WIN32 AND NOT CMAKE_VERSION VERSION_LESS 3.21)
     add_custom_command(TARGET ${target} POST_BUILD
       COMMAND ${CMAKE_COMMAND} "-DDLLS=$<TARGET_RUNTIME_DLLS:${target}>" "-DDEST=$<TARGET_FILE_DIR:${target}>"
-              -P ${CMAKE_SOURCE_DIR}/cmake/copy_dlls.cmake)
+              -P ${PROJECT_SOURCE_DIR}/cmake/copy_dlls.cmake)
   endif()
 endfunction()
 
@@ -148,8 +155,10 @@ fd_copy_runtime_dlls(freedyn2_road)
 add_dependencies(freedyn2_road freedyn2_run)
 
 # --- Tests -----------------------------------------------------------------------
-include(CTest)
-if(BUILD_TESTING AND FD_BUILD_EXAMPLES)
+if(FD_TOP_LEVEL)
+  include(CTest)
+endif()
+if(FD_TOP_LEVEL AND BUILD_TESTING AND FD_BUILD_EXAMPLES)
   add_subdirectory(tests/cpp)
 endif()
 
