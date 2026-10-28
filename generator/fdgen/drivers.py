@@ -2,7 +2,7 @@
 
 import casadi as ca
 
-from .custom_element import CustomElement
+from .custom_element import CustomElement, PluginElement
 from .measures import POSITION_MEASURES
 
 
@@ -19,7 +19,7 @@ def ramp(t, Ta, A, f1, f1d, f1dd):
 def driver_elements(model):
     """[(driver name, element type, [bodies], p values, ElementFunctions)] of the model's drivers
     (prescribed motion): one constraint Phi = m(q) - f(t) per driver, m a position measure
-    (displacement, distance, angle), f an expression of t, parameters and splines. With
+    (displacement, distance, angle), f an expression of t, parameters, runtime inputs and splines. With
     ramp = Ta > 0, f is replaced for t < Ta by the legacy activation polynomial from the initial
     value of m (at rest), so a motion need not start at the initial configuration."""
     out = []
@@ -44,5 +44,6 @@ def driver_elements(model):
             consts = [cx.consts.add(v, k) for k, v in (("ramp", Ta), ("A", A), ("f1", f1), ("f1d", f1d), ("f1dd", f1dd))]
             f = ca.if_else(t < consts[0], ramp(t, *consts), f)
         tname = f"d_{model['model']}_{name}" + ("_euler" if cx.rep == "euler" else "")
-        out.append((name, tname, cx.bodies, cx.consts.values, cx.element(tname, Phi=m - f)))
+        out.append(PluginElement(name, tname, cx.bodies, cx.consts.values, cx.element(tname, Phi=m - f),
+                                 cx.consts.inputs))
     return out

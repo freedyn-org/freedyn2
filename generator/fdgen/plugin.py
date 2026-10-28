@@ -29,6 +29,7 @@ from pathlib import Path
 
 from . import extensions
 from .codegen import code_generator, write_element, write_registry
+from .custom_element import PluginElement
 from .drivers import driver_elements
 from .expression_forces import expression_elements
 
@@ -50,18 +51,21 @@ def extension_elements(model):
 
 
 def plugin_elements(model):
-    """[(name, element type, [bodies], p values, ElementFunctions)] of all plugin elements.
+    """[(name, element type, [bodies], p values, ElementFunctions)] of all plugin elements
+    (PluginElement: .inputs maps the runtime inputs an element uses to their offsets in p).
     Elements whose generated code is the same up to the type name (the same law on other
     bodies, other parameter values) share one element type: a model with many copies of a
     subsystem compiles each law once, and the runtime runs the same code for all of them."""
     out, types = [], {}
-    for name, tname, bodies, p, elem in expression_elements(model) + driver_elements(model) + extension_elements(model):
+    for pe in expression_elements(model) + driver_elements(model) + extension_elements(model):
+        name, tname, bodies, p, elem = pe
+        inputs = getattr(pe, "inputs", {})
         key = elem.__dict__.get("code_key")  # elements are kept between builds (custom_element)
         if key is None:
             key = hashlib.sha256(code_generator("x", elem, header=False).dump().replace(tname, "@").encode()).hexdigest()
             elem.code_key = key
         tname, elem = types.setdefault(key, (tname, elem))
-        out.append((name, tname, bodies, p, elem))
+        out.append(PluginElement(name, tname, bodies, p, elem, inputs))
     return out
 
 

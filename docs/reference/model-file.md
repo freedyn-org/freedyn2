@@ -38,7 +38,7 @@ solver: {type: HHT, end_time: 2.0, step: 0.001, output_step: 0.01}
   once get a name: [hardpoints and frames](hardpoints.md).
 - **The ground** is the fixed frame; it is named `ground` where a body is expected (`body2`
   of a joint or spring defaults to it).
-- **Names** of bodies, joints, forces, measures, parameters and splines are identifiers
+- **Names** of bodies, joints, forces, measures, parameters, inputs and splines are identifiers
   (letters, digits, `_`); they are the prefixes of the result channels (`rod.R_z`).
 
 ## Orientations
@@ -84,6 +84,35 @@ forces:
 !!! warning "`#` starts a comment"
     `stiffness: #k` is an empty value in YAML. Formulas start with `=`; the error message
     says so if you slip.
+
+## Runtime inputs
+
+`inputs` are named numbers that the program running the model may change **between two
+steps**: a rider's steering torque, a throttle position, a brake pressure, a set point coming
+from outside. They are used in force expressions and driver motions by name, like parameters;
+their value in the model file is the default.
+
+```yaml
+inputs: {T_steer: 0.0, p_brake: 0.0}
+forces:
+  rider_steering:
+    type: expression_torque
+    body1: front_frame
+    body2: rear_frame
+    axis: [-0.407, 0, 0.914]
+    frame: body
+    torque: T_steer - c_steer * steer_rate
+```
+
+- An input is **constant inside a step**, also inside its Newton iterations; the derivatives
+  of the laws are exact for every value. A step in an input is a step in the force, so the
+  response is first order in the step size around it.
+- The runtime sets them with `fd::System::set_input` (C++,
+  [architecture](../architecture.md#runtime-inputs)); `freedyn2 run` with `--input NAME=VALUE`
+  (a constant) or `--inputs FILE.csv` (over time, [command line](../cli.md#runtime-options)).
+- Inputs are not allowed in formulas: a formula is fixed when the model is read.
+- Names must differ from the parameters and measures. An input no law uses can be set, it has
+  no effect.
 
 ## Data files
 

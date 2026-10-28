@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <stdexcept>
 
 #include "test_support.hpp"
 
@@ -186,8 +187,62 @@ void test_forces() {
   }
 }
 
+// Runtime inputs (examples/input_oscillator.yaml): changed between steps with set_input.
+void test_inputs() {
+  const char* T = "inputs";
+  const fd::Model model = example("input_oscillator");
+  {
+    fd::System sys(model);
+    report(T, "two inputs declared", std::abs(sys.n_inputs() - 2.0), 0.0);
+    report(T, "unknown name: index -1", std::abs(sys.input_index("nope") + 1.0), 0.0);
+    bool threw = false;
+    try {
+      sys.set_input(7, 1.0);
+    } catch (const std::out_of_range&) {
+      threw = true;
+    }
+    report(T, "index out of range throws", threw ? 0.0 : 1.0, 0.0);
+  }
+  // Step of the force F from 0 to F1 at t1 (set for the steps that end after t1), and the driven
+  // cart following a ramp of z_set that starts at t2. Reference: the step response of
+  // m z'' + d z' + k z = F1 from rest at t1. An input is constant over a step, so the step
+  // response is off by O(h): halving h halves the error.
+  const double m = 2, k = 200, d = 4, F1 = 10, t1 = 0.5, t2 = 1.0, rate = 0.2;
+  const double wn = std::sqrt(k / m), zeta = d / (2 * std::sqrt(k * m)), wd = wn * std::sqrt(1 - zeta * zeta);
+  const double zs = F1 / k;
+  double z_before = 0, e_cart = 0;
+  auto step_error = [&](double h) {
+    fd::Model mh = model;
+    mh.solver.step = h;
+    double e_force = 0;
+    int iF = -1, iZ = -1;
+    simulate(mh, [&](double t, const Vec& y, fd::System& sys) {
+      if (iF < 0) iF = sys.input_index("F"), iZ = sys.input_index("z_set");
+      const int iz = sys.output_index("mass.R") + 2, izc = sys.output_index("cart.R") + 2;  // z components
+      if (t <= t1 + 1e-12) {
+        z_before = std::max(z_before, std::abs(y[iz]));
+      } else {
+        const double tau = t - t1;
+        const double ref = zs * (1 - std::exp(-zeta * wn * tau) * (std::cos(wd * tau) + zeta * wn / wd * std::sin(wd * tau)));
+        e_force = std::max(e_force, std::abs(y[iz] - ref) / zs);
+      }
+      // the driver holds the cart on z_set at every step end (the value set for that step)
+      e_cart = std::max(e_cart, std::abs(y[izc] - sys.input(iZ)));
+      if (t + h > t1 + 1e-12) sys.set_input(iF, F1);  // for the step that ends at t + h
+      sys.set_input(iZ, t + h > t2 ? rate * (t + h - t2) : 0.0);
+    });
+    return e_force;
+  };
+  const double e1 = step_error(1e-3), e2 = step_error(5e-4);
+  report(T, "no motion before the force step [m]", z_before, 1e-14);
+  report(T, "force step: |z - step response| / (F1 / k), h = 1 ms", e1, 5e-3);
+  report(T, "force step: error ratio h / (h/2) - 2 (first order)", std::abs(e1 / e2 - 2), 0.1);
+  report(T, "driver follows z_set [m]", e_cart, 1e-9);
+}
+
 }  // namespace
 
 void add_force_tests(Tests& tests) {
   tests["forces"] = test_forces;
+  tests["inputs"] = test_inputs;
 }

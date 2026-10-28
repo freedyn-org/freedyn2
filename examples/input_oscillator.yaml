@@ -1,0 +1,26 @@
+# Runtime inputs (inputs: name and default; fd::System::set_input changes them between steps):
+# a damped oscillator m z'' = -k z - d z' + F on a prismatic joint along z, the force F an
+# input, and a cart whose position along z follows the input z_set exactly (a driver).
+model: input_oscillator
+gravity: [0, 0, 0]
+parameters: {k: 200.0, d: 4.0}
+inputs: {F: 0.0, z_set: 0.0}
+bodies:
+  mass: {mass: 2.0, inertia: [1, 1, 1]}
+  cart: {mass: 1.0, inertia: [1, 1, 1], position: [1, 0, 0]}
+joints:
+  slider: {type: prismatic, body1: mass}
+  rail: {type: prismatic, body1: cart, location: [1, 0, 0]}
+measures:
+  z: {type: displacement, body1: mass, component: z}
+  vz: {type: velocity, body1: mass, component: z}
+  zc: {type: displacement, body1: cart, component: z}
+forces:
+  drive:
+    type: expression_force
+    body1: mass
+    direction: [0, 0, 1]
+    force: -k * z - d * vz + F
+drivers:
+  position: {measure: zc, motion: z_set}
+solver: {type: HHT, alpha: -0.1, end_time: 3.0, step: 1.0e-3, output_step: 1.0e-2}

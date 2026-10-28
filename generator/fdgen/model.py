@@ -236,13 +236,16 @@ def validate(model, base_dir=None):
     measures = {name: _measure(name, m, bodies) for name, m in section("measures")}
     sensors = [_sensor(name, sn, bodies) for name, sn in section("sensors")]
     parameters = dict(model.get("parameters") or {})
+    inputs = {name: float(v) for name, v in (model.get("inputs") or {}).items()}
     model_splines = {name: _spline(name, sp, base_dir) for name, sp in section("splines")}
     drivers = {name: _driver(name, d, measures) for name, d in section("drivers")}
-    clash = (set(parameters) & set(measures)) | ({"t", "pi"} & (set(parameters) | set(measures)))
+    names = [set(parameters), set(measures), set(inputs)]
+    clash = {n for i, a in enumerate(names) for b in names[i + 1:] for n in a & b}
+    clash |= {"t", "pi"} & set().union(*names)
     if clash:
         raise ModelError(f"names used twice or reserved (t, pi): {sorted(clash)}")
     return {"model": model["model"], "bodies": bodies, "joints": joints, "forces": forces,
-            "parameters": parameters, "measures": measures, "sensors": sensors, "splines": model_splines, "drivers": drivers,
+            "parameters": parameters, "inputs": inputs, "measures": measures, "sensors": sensors, "splines": model_splines, "drivers": drivers,
             "gravity": list(model.get("gravity", [0, 0, 0])), "solver": solver, "road": road,
             "ground_shapes": ground, "checks": _checks(model.get("checks"), base_dir),
             "parameter_refs": sorted(parameter_refs), "points": dict(model.get("points") or {}),
@@ -291,6 +294,9 @@ def write_fdm(model, path):
                   f"road_place {_fmt([*place, road.get('heading', 0.0)])}"]
         if "crg_friction" in road:
             lines.append(f"road_friction_crg {road['crg_friction']}")
+    # runtime inputs (fd::System::set_input): name and default; each element that uses one
+    # lists its offset in p ("inputs name:offset")
+    lines += [f"input {name} {float(v)!r}" for name, v in (model.get("inputs") or {}).items()]
     gravity = model.get("gravity", [0.0, 0.0, 0.0])
     nq = nv = nc = 0  # stored coordinates, velocity dofs, constraints
     layout = {}  # body -> (element type, coords, dofs)
@@ -337,7 +343,13 @@ def write_fdm(model, path):
     if custom:
         lib = plugin.generate_plugin(model, Path(path).parent, elements=custom)
         lines.insert(3, f"plugin {lib.name}")
-    in_plugin = {name: (tname, names, p) for name, tname, names, p, _ in custom}
+    in_plugin = {pe[0]: (pe[1], pe[2], pe[3]) for pe in custom}
+    input_slots = {pe[0]: getattr(pe, "inputs", {}) for pe in custom}
+
+    def input_lines(name):
+        slots = input_slots.get(name)
+        return ["inputs " + " ".join(f"{k}:{o}" for k, o in slots.items())] if slots else []
+
     for force in model.get("forces", []):
         if force["name"] in in_plugin:
             kind, names, p = in_plugin[force["name"]]
@@ -347,13 +359,14 @@ def write_fdm(model, path):
         # tires on the OpenCRG road: the runtime sets their road plane at this offset of p
         offset = forces.LOCAL_ROAD_OFFSET.get(kind.removesuffix("_euler"), extensions.road_offset(kind))
         extra = [f"road {offset}"] if offset is not None else []
+        extra += input_lines(force["name"])
         lines += connector(kind, force["name"], names, p, False, f"force {force['name']}", extra)
     for sensor in model.get("sensors", []):
         kind, names, p = forces.sensor_element(sensor, model["bodies"], gravity)
         lines += connector(kind + euler(names), sensor["name"], names, p, False, f"sensor {sensor['name']}")
     for name in model.get("drivers") or {}:  # prescribed motion: one constraint each
         tname, names, p = in_plugin[name]
-        lines += connector(tname, name, names, p, True, f"driver {name}")
+        lines += connector(tname, name, names, p, True, f"driver {name}", input_lines(name))
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 

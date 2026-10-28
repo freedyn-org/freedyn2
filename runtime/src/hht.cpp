@@ -303,13 +303,15 @@ StepResult HhtIntegrator::step() {
 }
 
 long LegacyTimeStepper::run(const std::function<void(double)>& on_output,
-                            const std::function<void(double, double, const StepResult&)>& on_attempt) {
+                            const std::function<void(double, double, const StepResult&)>& on_attempt,
+                            const std::function<void(double)>& before_step) {
   // Output times as in SIM_SimulationObject::setEndTime / computeNextStep.
   const double t_final = s_.end_time, dt_out = s_.output_step;
   double t_out = 0. + dt_out;
   if (t_out < s_.output_begin) t_out = s_.output_begin;
   if (std::abs(t_out - t_final) < s_.h_min) t_out = t_final;
 
+  if (before_step) before_step(0.0);
   hht_.initialize();
   on_output(0.0);
   // SOL_SimTimeManagerHHT: m_dH = hmax, m_dTheta = 1, m_dS = 0.9.
@@ -330,6 +332,7 @@ long LegacyTimeStepper::run(const std::function<void(double)>& on_output,
     t += h;
     const bool last_in_interval = t >= t_out;
 
+    if (before_step) before_step(t);
     const StepResult r = hht_.try_step(h, t);
     if (on_attempt) on_attempt(t, h, r);
     last_ok = r.status == StepStatus::ok;

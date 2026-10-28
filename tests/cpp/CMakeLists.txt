@@ -10,6 +10,12 @@ foreach(t pendulum double_pendulum newton_fixed)
   add_test(NAME joints.${t} COMMAND fd_tests ${t})
 endforeach()
 add_test(NAME forces.all COMMAND fd_tests forces)
+add_test(NAME forces.inputs COMMAND fd_tests inputs)
+
+# The command line runner with runtime inputs: constant and from a CSV file.
+add_test(NAME runner.inputs
+  COMMAND freedyn2_run ${FD_GEN_DIR}/input_oscillator.fdm -o ${CMAKE_CURRENT_BINARY_DIR}/input_oscillator.csv
+          --input F=1.5 --inputs ${CMAKE_SOURCE_DIR}/tests/cpp/data/input_oscillator_inputs.csv)
 
 # End-to-end: the command line runner on the shipped example.
 add_test(NAME runner.free_body

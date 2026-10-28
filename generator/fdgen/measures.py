@@ -36,6 +36,7 @@ class Consts:
     def __init__(self):
         self.syms, self.values = [], []
         self.updates = {}  # state symbol -> its new value after an accepted step (post)
+        self.inputs = {}  # runtime input name -> its offset in p (the runtime overwrites it)
 
     def add(self, value, name="c"):
         v = np.atleast_1d(np.asarray(value, dtype=float))
@@ -43,6 +44,11 @@ class Consts:
         self.syms.append(s)
         self.values += list(v)
         return s if v.size > 1 else s[0]
+
+    def add_input(self, value, name):
+        """Scalar runtime input: a parameter the runtime may change between steps."""
+        self.inputs[name] = len(self.values)
+        return self.add(value, name)
 
     def add_state(self, value, name="state"):
         """Scalar element state kept in p, updated by the post function."""

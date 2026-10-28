@@ -51,6 +51,12 @@
       "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
       "additionalProperties": {"type": "number"}
     },
+    "inputs": {
+      "type": "object",
+      "description": "Named runtime inputs with their default values, used in force expressions and driver motions like parameters. Unlike a parameter, the program that runs the model may change an input between two steps (fd::System::set_input; freedyn2_run --input, --inputs): a rider's steering torque, a throttle, a brake pressure. Inside a step an input is constant. Not allowed in formulas (they are evaluated when the model is generated).",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"type": "number"}
+    },
     "road": {
       "type": "object",
       "description": "Road surface of the tires: analytic (fdgen.tire: height = sum of harmonics + slope, friction mu0 with an optional patch) or an OpenCRG file (crg; evaluated by the runtime, fd::Road).",

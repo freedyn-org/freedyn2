@@ -42,6 +42,11 @@ void System::alloc(GenFunction& f, std::vector<std::vector<double>>& buf) {
 }
 
 System::System(const Model& model) : nq_(model.nq()), nv_(model.nv()), nc_(model.nc()) {
+  for (const InputSpec& in : model.inputs) {
+    input_names_.push_back(in.name);
+    input_values_.push_back(in.value);
+  }
+  input_slots_.resize(model.inputs.size());
   elems_.reserve(model.elements.size());
   for (const ElementSpec& s : model.elements) {
     const fd_element_type& t = find_element_type(s.type);
@@ -92,6 +97,12 @@ System::System(const Model& model) : nq_(model.nq()), nv_(model.nv()), nc_(model
     if (e.post) {
       check(s.p.size(), e.post->sparsity_out(0).nrow, "post function output (parameters)");
       e.post_buf.resize(e.post->sparsity_out(0).nnz());
+    }
+    for (const auto& [index, offset] : s.inputs) {
+      if (index < 0 || index >= n_inputs() || offset < 0 || offset >= static_cast<int>(s.p.size()))
+        throw std::runtime_error("element " + s.name + ": input slot outside the inputs or p");
+      input_slots_[index].push_back({static_cast<int>(elems_.size()) - 1, offset});
+      e.spec.p[offset] = input_values_[index];  // the declared default
     }
     if (s.road >= 0) {  // tire on the runtime road: the plane (x0, y0, h0, gx, gy, mu) in p
       if (model.road.crg.empty()) throw std::runtime_error("element " + s.name + ": no road_crg in the model");
@@ -181,6 +192,18 @@ void System::scales(std::vector<double>& s) {
     const Sparsity& sp = e.scale->sparsity_out(0);
     for (int k = 0; k < sp.nnz(); ++k) s[e.map[sp.row[k]]] = e.scale_buf[k];
   }
+}
+
+int System::input_index(const std::string& name) const {
+  for (int i = 0; i < n_inputs(); ++i)
+    if (input_names_[i] == name) return i;
+  return -1;
+}
+
+void System::set_input(int index, double value) {
+  if (index < 0 || index >= n_inputs()) throw std::out_of_range("input index " + std::to_string(index));
+  input_values_[index] = value;
+  for (const InputSlot& slot : input_slots_[index]) elems_[slot.elem].spec.p[slot.p] = value;
 }
 
 void System::post_step() {

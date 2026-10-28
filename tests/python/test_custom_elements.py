@@ -340,3 +340,56 @@ def test_elements_are_kept_for_other_parameter_values(tmp_path):
     assert 10.0 in a[3] and 20.0 in b[3] and 10.0 not in b[3]  # the values are in p
     (c,) = build(10.0, "-k * z * z")
     assert c[4] is not a[4] and len(custom_element.ELEMENT_CACHE) == 2
+
+
+def _input_model(**extra):
+    m = {"model": "inp", "solver": {"type": "HHT", "end_time": 0.1, "step": 1e-3},
+         "parameters": {"k": 10.0}, "inputs": {"F": 2.5, "x_set": 0.0, "unused": 1.0},
+         "bodies": {"b": {"mass": 1.0, "inertia": [1, 1, 1]},
+                    "c": {"mass": 1.0, "inertia": [1, 1, 1], "position": [1, 0, 0]}},
+         "measures": {"z": {"type": "displacement", "body1": "b", "component": "z"},
+                      "zc": {"type": "displacement", "body1": "c", "component": "z"}},
+         "forces": {"f": {"type": "expression_force", "body1": "b", "force": "-k * z + F", "direction": [0, 0, 1]}},
+         "drivers": {"d": {"measure": "zc", "motion": "x_set"}}}
+    m.update(extra)
+    return m
+
+
+def test_runtime_inputs_are_parameters_with_slots():
+    """An input enters p like a parameter, at its default value; the plugin element records its
+    offset, which the runtime overwrites (fd::System::set_input)."""
+    from fdgen.plugin import plugin_elements
+
+    elems = {pe[0]: pe for pe in plugin_elements(validate(_input_model()))}
+    f, d = elems["f"], elems["d"]
+    assert set(f.inputs) == {"F"} and set(d.inputs) == {"x_set"}
+    assert f[3][f.inputs["F"]] == 2.5 and d[3][d.inputs["x_set"]] == 0.0
+    # the generated law reads the input from p: Q_z = -k z + F at z = 0 is the value in p
+    p = list(f[3])
+    p[f.inputs["F"]] = 7.0
+    q = np.r_[0, 0, 0, 1, 0, 0, 0]
+    Q = f[4].res(q, np.zeros(6), np.zeros(6), np.zeros(0), p, [0, 0, 0, 1e-3], np.zeros(6), 0.0)
+    assert float(np.asarray(Q[1]).ravel()[2]) == pytest.approx(-7.0)  # h - Q: Q enters with a minus
+
+
+def test_runtime_inputs_in_the_model_file(tmp_path):
+    from fdgen.model import write_fdm
+
+    path = tmp_path / "inp.fdm"
+    write_fdm(validate(_input_model()), path)
+    lines = path.read_text().splitlines()
+    assert "input F 2.5" in lines and "input x_set 0.0" in lines and "input unused 1.0" in lines
+    assert any(ln.startswith("inputs F:") for ln in lines) and any(ln.startswith("inputs x_set:") for ln in lines)
+
+
+def test_runtime_input_names_must_be_unique_and_not_in_formulas():
+    with pytest.raises(ModelError, match="used twice"):
+        validate(_input_model(inputs={"k": 1.0}))
+    with pytest.raises(ModelError, match="used twice"):
+        validate(_input_model(inputs={"z": 1.0}))
+    with pytest.raises(ModelError, match="reserved"):
+        validate(_input_model(inputs={"t": 1.0}))
+    m = _input_model()
+    m["bodies"]["b"]["mass"] = "=F"  # formulas are evaluated at generation time: parameters only
+    with pytest.raises(Exception, match="F"):
+        validate(m)

@@ -21,10 +21,10 @@ endif()
 # --- Code generation: element C code + registry + model files -------------------
 set(FD_GEN_DIR ${CMAKE_BINARY_DIR}/generated)
 set(FD_EXAMPLE_NAMES free_body dzhanibekov pendulum double_pendulum
-  oscillator torsion_pendulum spring_pendulum two_bodies constant_loads forced_oscillator
+  oscillator torsion_pendulum spring_pendulum two_bodies constant_loads forced_oscillator input_oscillator
   bushing_mount winding_spring spline_slider driven_rotor)
 # Examples with expression forces also produce a model plugin (<name>_plugin.so, .dll on Windows).
-set(FD_PLUGIN_EXAMPLES forced_oscillator winding_spring spline_slider driven_rotor)
+set(FD_PLUGIN_EXAMPLES forced_oscillator winding_spring spline_slider driven_rotor input_oscillator)
 # The example model files and plugins are for the tests; a wheel build (pip install) skips them.
 option(FD_BUILD_EXAMPLES "generate the example model files and plugins (needed by the tests)" ON)
 if(NOT FD_BUILD_EXAMPLES)

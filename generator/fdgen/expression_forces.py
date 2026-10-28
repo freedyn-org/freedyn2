@@ -5,12 +5,13 @@
                      direction fixed in body1 (frame body)
   expression_torque  s about an axis (global or fixed in body1) on body1, -s on body2
 
-The law is an expression of t, model parameters, measures and splines (fdgen.expressions).
+The law is an expression of t, model parameters, runtime inputs, measures and splines
+(fdgen.expressions).
 """
 
 import casadi as ca
 
-from .custom_element import CustomElement
+from .custom_element import CustomElement, PluginElement
 from .geometry import local_axis, local_point
 
 EXPRESSION_TYPES = ("expression_force", "expression_torque")
@@ -63,5 +64,5 @@ def expression_elements(model):
         name = f"x_{model['model']}_{f['name']}" + ("_euler" if cx.rep == "euler" else "")
         vec_name = "force" if is_force else "torque"
         elem = cx.element(name, out={"value": s, vec_name: s * e}, Q=cx.c.generalized_force(loads))
-        out.append((f["name"], name, cx.bodies, cx.consts.values, elem))
+        out.append(PluginElement(f["name"], name, cx.bodies, cx.consts.values, elem, cx.consts.inputs))
     return out
