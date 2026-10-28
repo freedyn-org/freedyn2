@@ -70,6 +70,7 @@ nav:
   - Examples: examples.md
   - Command line: cli.md
   - For developers:
+      - How the solver works: how-it-works.md
       - Architecture: architecture.md
       - Theory and algorithms: theory.md
       - Extensions: extensions.md
