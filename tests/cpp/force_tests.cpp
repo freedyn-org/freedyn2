@@ -238,6 +238,18 @@ void test_inputs() {
   report(T, "force step: |z - step response| / (F1 / k), h = 1 ms", e1, 5e-3);
   report(T, "force step: error ratio h / (h/2) - 2 (first order)", std::abs(e1 / e2 - 2), 0.1);
   report(T, "driver follows z_set [m]", e_cart, 1e-9);
+
+  // Outputs (outputs: in the model): z_mm = 1000 z, force = -k z - d vz + F, read at run time.
+  double e_out = 0, e_law = 0;
+  simulate(model, [&](double t, const Vec& y, fd::System& sys) {
+    const int iz = sys.output_index("mass.R") + 2, iv = sys.output_index("mass.Rdot") + 2;
+    const int io = sys.output_index("z_mm.value"), il = sys.output_index("force.value");
+    e_out = std::max(e_out, std::abs(y[io] - 1000 * y[iz]));
+    e_law = std::max(e_law, std::abs(y[il] - (-k * y[iz] - d * y[iv] + sys.input(sys.input_index("F")))));
+    sys.set_input(sys.input_index("F"), t > 0.2 ? F1 : 0.0);
+  });
+  report(T, "output z_mm = 1000 z [mm]", e_out, 1e-12);
+  report(T, "output force = -k z - d vz + F [N]", e_law, 1e-11);
 }
 
 }  // namespace

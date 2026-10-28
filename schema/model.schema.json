@@ -51,6 +51,12 @@
       "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
       "additionalProperties": {"type": "number"}
     },
+    "outputs": {
+      "type": "object",
+      "description": "Named output channels: expressions of measures, parameters and inputs (like a force law), written as the channel <name>.value. Measures are not channels themselves; an output makes one (or any law of them) a channel, e.g. for a program that runs the model and reads its outputs. Each expression must use at least one measure.",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {"type": "string"}
+    },
     "inputs": {
       "type": "object",
       "description": "Named runtime inputs with their default values, used in force expressions and driver motions like parameters. Unlike a parameter, the program that runs the model may change an input between two steps (fd::System::set_input; freedyn2_run --input, --inputs): a rider's steering torque, a throttle, a brake pressure. Inside a step an input is constant. Not allowed in formulas (they are evaluated when the model is generated).",

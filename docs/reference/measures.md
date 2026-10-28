@@ -5,7 +5,8 @@
 A measure is a named scalar of the state – a distance, a displacement component, an angle, a
 velocity – used in [expression forces](forces.md#expression-force-and-torque) and drivers by its
 name. They are not result channels themselves; to plot one, write it as a
-[formula channel](../viewer.md#plots) in the viewer, or look at the force that uses it.
+[formula channel](../viewer.md#plots) in the viewer, look at the force that uses it, or make it
+an [output](#outputs).
 
 ```yaml
 measures:
@@ -63,6 +64,26 @@ forces:
 spline).
 
 <!-- keys: splines -->
+
+## Outputs
+
+An output is a named expression of measures, parameters and [runtime
+inputs](model-file.md#runtime-inputs), written as the result channel `<name>.value`. It acts on
+nothing. A program that runs the model and reads its channels (`fd::System::outputs`) gets
+derived quantities, a lean angle, an engine speed, a suspension travel, without knowing the
+model's geometry.
+
+```yaml
+measures:
+  lean: {type: direction, body1: frame, vector: [0, 0, 1], component: y}   # sin(lean)
+  w_crank: {type: angular_rate, body1: crank, body2: frame, orientation: [0.7071068, -0.7071068, 0, 0]}
+outputs:
+  lean_deg: asin(lean) * 180 / pi
+  rpm: w_crank * 30 / pi
+```
+
+Each output must use a measure; its name must differ from the bodies, joints, forces, sensors
+and drivers.
 
 ## Drivers
 

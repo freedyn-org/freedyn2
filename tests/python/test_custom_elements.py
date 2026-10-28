@@ -393,3 +393,21 @@ def test_runtime_input_names_must_be_unique_and_not_in_formulas():
     m["bodies"]["b"]["mass"] = "=F"  # formulas are evaluated at generation time: parameters only
     with pytest.raises(Exception, match="F"):
         validate(m)
+
+
+def test_outputs_are_channels_without_loads():
+    from fdgen.plugin import plugin_elements
+
+    m = _input_model(outputs={"z_mm": "z * 1000", "push": "F - k * z"})
+    elems = {pe[0]: pe for pe in plugin_elements(validate(m))}
+    o = elems["z_mm"]
+    q = np.r_[0, 0, 0.02, 1, 0, 0, 0]
+    f = o[4].out(q, np.zeros(6), np.zeros(6), o[3], 0.0)
+    assert float(f) == pytest.approx(20.0)
+    Q = o[4].res(q, np.zeros(6), np.zeros(6), np.zeros(0), o[3], [0, 0, 0, 1e-3], np.zeros(6), 0.0)
+    assert np.allclose(np.asarray(Q[1]).ravel(), 0.0)  # no load
+    assert set(elems["push"].inputs) == {"F"}
+    with pytest.raises(ValueError, match="no measure"):
+        plugin_elements(validate(_input_model(outputs={"const": "k * 2"})))
+    with pytest.raises(ModelError, match="already used"):
+        validate(_input_model(outputs={"f": "z"}))

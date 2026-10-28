@@ -1,7 +1,7 @@
 """Model plugin: the model-specific element types of a model, compiled into a shared library.
 
-Expression forces (fdgen.expression_forces) and drivers (fdgen.drivers) cannot be library
-element types: their laws are part of the model. The element types of extensions
+Expression forces (fdgen.expression_forces), drivers (fdgen.drivers) and outputs
+(fdgen.outputs) cannot be library element types: their laws are part of the model. The element types of extensions
 (fdgen.extensions) are not in the runtime either and are compiled here too. The generator builds one element type per
 force and driver, generates its C code with CasADi and compiles all of them into
 `<model>_plugin.so` next to the .fdm file, which the runtime loads at model load (registry
@@ -32,6 +32,7 @@ from .codegen import code_generator, write_element, write_registry
 from .custom_element import PluginElement
 from .drivers import driver_elements
 from .expression_forces import expression_elements
+from .outputs import output_elements
 
 
 def extension_elements(model):
@@ -57,7 +58,8 @@ def plugin_elements(model):
     bodies, other parameter values) share one element type: a model with many copies of a
     subsystem compiles each law once, and the runtime runs the same code for all of them."""
     out, types = [], {}
-    for pe in expression_elements(model) + driver_elements(model) + extension_elements(model):
+    for pe in (expression_elements(model) + driver_elements(model) + extension_elements(model)
+               + output_elements(model)):
         name, tname, bodies, p, elem = pe
         inputs = getattr(pe, "inputs", {})
         key = elem.__dict__.get("code_key")  # elements are kept between builds (custom_element)

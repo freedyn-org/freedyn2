@@ -239,13 +239,19 @@ def validate(model, base_dir=None):
     inputs = {name: float(v) for name, v in (model.get("inputs") or {}).items()}
     model_splines = {name: _spline(name, sp, base_dir) for name, sp in section("splines")}
     drivers = {name: _driver(name, d, measures) for name, d in section("drivers")}
+    outputs = {name: str(e) for name, e in section("outputs")}
+    taken = (set(bodies) | {j["name"] for j in joints} | {f["name"] for f in forces} | {sn["name"] for sn in sensors}
+             | set(drivers))
+    if set(outputs) & taken:
+        raise ModelError(f"outputs: names already used by bodies, joints, forces, sensors or drivers: "
+                         f"{sorted(set(outputs) & taken)}")
     names = [set(parameters), set(measures), set(inputs)]
     clash = {n for i, a in enumerate(names) for b in names[i + 1:] for n in a & b}
     clash |= {"t", "pi"} & set().union(*names)
     if clash:
         raise ModelError(f"names used twice or reserved (t, pi): {sorted(clash)}")
     return {"model": model["model"], "bodies": bodies, "joints": joints, "forces": forces,
-            "parameters": parameters, "inputs": inputs, "measures": measures, "sensors": sensors, "splines": model_splines, "drivers": drivers,
+            "parameters": parameters, "inputs": inputs, "measures": measures, "sensors": sensors, "splines": model_splines, "drivers": drivers, "outputs": outputs,
             "gravity": list(model.get("gravity", [0, 0, 0])), "solver": solver, "road": road,
             "ground_shapes": ground, "checks": _checks(model.get("checks"), base_dir),
             "parameter_refs": sorted(parameter_refs), "points": dict(model.get("points") or {}),
@@ -367,6 +373,9 @@ def write_fdm(model, path):
     for name in model.get("drivers") or {}:  # prescribed motion: one constraint each
         tname, names, p = in_plugin[name]
         lines += connector(tname, name, names, p, True, f"driver {name}", input_lines(name))
+    for name in model.get("outputs") or {}:  # output channels: no loads, no constraints
+        tname, names, p = in_plugin[name]
+        lines += connector(tname, name, names, p, False, f"output {name}", input_lines(name))
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 

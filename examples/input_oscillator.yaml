@@ -1,6 +1,7 @@
 # Runtime inputs (inputs: name and default; fd::System::set_input changes them between steps):
 # a damped oscillator m z'' = -k z - d z' + F on a prismatic joint along z, the force F an
-# input, and a cart whose position along z follows the input z_set exactly (a driver).
+# input, and a cart whose position along z follows the input z_set exactly (a driver). Two
+# outputs write measures and laws of them as channels.
 model: input_oscillator
 gravity: [0, 0, 0]
 parameters: {k: 200.0, d: 4.0}
@@ -24,3 +25,6 @@ forces:
 drivers:
   position: {measure: zc, motion: z_set}
 solver: {type: HHT, alpha: -0.1, end_time: 3.0, step: 1.0e-3, output_step: 1.0e-2}
+outputs:  # measures as channels (<name>.value)
+  z_mm: z * 1000
+  force: -k * z - d * vz + F
