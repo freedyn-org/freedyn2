@@ -73,7 +73,12 @@ but they must keep length 1 (theory 3.2, 3.3).
 ## Derivatives on the Lie group
 
 This is the part of the implementation that differs most from a textbook multibody code
-(theory 4.2, 7.1, 7.3).
+(theory 4.2, 7.1, 7.3). At its core it is calculus of variations: \(\delta\) below is a
+variation (a virtual displacement), and \(\partial F/\partial\delta\) is the first variation of
+\(F\), with the variation taken on the group, \(q \circ \exp(\varepsilon\delta)\), instead of
+\(q + \varepsilon\,\delta q\). The subsections show how this is implemented;
+[One variation for everything](#one-variation-for-everything) shows where the same \(\delta\)
+is used.
 
 ### The problem
 
@@ -195,6 +200,27 @@ For the legacy body the configuration changes additively (\(q = q_\text{pred} + 
 | \(\lvert\theta\rvert = 1\) kept by | constraint with multiplier | update by \(\exp\) |
 | configuration update | \(q + \Delta\) | \(q \circ \exp(\Delta)\) |
 | unknowns per body | 7 + 1 | 6 |
+
+### One variation for everything
+
+The same \(\delta\) carries four things that otherwise look unrelated:
+
+| where | variational reading |
+|---|---|
+| applied forces | \(Q\) from the virtual work \(Q \cdot \delta\) (written as virtual power \(Q \cdot v\) in the code, see [Forces by virtual power](#forces-by-virtual-power)) |
+| joint forces | \(\lambda^T \delta\Phi = \lambda^T B \delta\) gives \(B^T\lambda\), hence \(B = \partial\Phi/\partial\delta\) |
+| iteration matrix | the first variation of the discrete residual; \(T\) is the variation of the exponential map |
+| time derivatives | the actual motion is the variation \(\delta = v\,dt\), hence \(\dot F = (\partial F/\partial\delta)\, v\) |
+
+The difference to the legacy body lies in the **admissible variations**. With Euler parameters
+the four numbers are varied freely; this includes variations that change the length of the
+quaternion, and the normalization constraint with its multiplier filters them out again. On
+the Lie group these variations do not exist.
+
+The equations of motion of the Lie group body are not derived variationally in the code:
+\(M\) and \(h\) are written directly as the Newton-Euler equations (`fdgen/rigid_body.py`).
+Hamilton's principle with these variations gives the same Euler equations. For vector-space
+elements the generator does derive the Lagrange equations from \(T\) and \(V\).
 
 ## Joints from primitives
 
