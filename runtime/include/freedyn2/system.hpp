@@ -63,6 +63,16 @@ class System {
   // Overwrite qd of those elements by the modified formulas at the current q, qdd.
   void apply_modified_newmark(const HhtCoef& c);
 
+  // Runtime inputs (Model::inputs): parameters of the elements that use them, changed between
+  // two steps (constant inside a step, also inside its Newton iterations). An input no element
+  // uses can be set but has no effect.
+  int n_inputs() const { return static_cast<int>(input_names_.size()); }
+  const std::vector<std::string>& input_names() const { return input_names_; }
+  // Index of the input, -1 if the model has no input of that name.
+  int input_index(const std::string& name) const;
+  void set_input(int index, double value);
+  double input(int index) const { return input_values_.at(index); }
+
   // Output channels of all elements (generated out functions).
   const std::vector<std::string>& output_names() const { return out_names_; }
   void outputs(std::vector<double>& y);
@@ -120,6 +130,12 @@ class System {
   };
   std::unique_ptr<Road> road_;
   std::vector<RoadUser> road_users_;
+  struct InputSlot {
+    int elem, p;  // element, offset in its p
+  };
+  std::vector<std::string> input_names_;
+  std::vector<double> input_values_;
+  std::vector<std::vector<InputSlot>> input_slots_;  // per input
 };
 
 }  // namespace fd

@@ -92,8 +92,11 @@ class LegacyTimeStepper {
   // Integrate to end_time, calling on_output(t) at t = 0 and at every output time and
   // on_attempt(t, h, result) after every step attempt (accepted or rejected).
   // Returns the number of accepted steps; throws if the step size gets too small.
+  // before_step(t) is called with t = 0 before the initial state is solved and with the end
+  // time of every step attempt before it (runtime inputs: System::set_input).
   long run(const std::function<void(double)>& on_output,
-           const std::function<void(double, double, const StepResult&)>& on_attempt = nullptr);
+           const std::function<void(double, double, const StepResult&)>& on_attempt = nullptr,
+           const std::function<void(double)>& before_step = nullptr);
   long rejected_steps() const { return rejected_; }
 
  private:

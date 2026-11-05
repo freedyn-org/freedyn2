@@ -345,6 +345,32 @@ different steps (2 of 88 in common for the car). On the target, pin the thread t
 own and run it at high priority. Not deterministic: result output (CSV formatting) at output
 steps, the legacy modified Newmark option (allocates).
 
+## Runtime inputs
+
+A program that runs a model in a loop with the outside world (a simulator, a hardware-in-the-
+loop rig) changes the model's [inputs](reference/model-file.md#runtime-inputs) between steps:
+
+```cpp
+fd::Model model = fd::load_model("bike.fdm");
+fd::System sys(model);
+fd::HhtIntegrator hht(sys, model.solver, "klu");
+const int steer = sys.input_index("T_steer");   // -1: the model has no such input
+hht.initialize();
+for (;;) {
+  sys.set_input(steer, read_rider_torque());     // held over the next step
+  hht.step();
+  sys.outputs(y);                                // channels by name: sys.output_index("...")
+}
+```
+
+The generator gives an input a slot in the parameters p of every element whose law uses it
+(`inputs name:offset` in the model file) and writes its default (`input name value`).
+`set_input` writes the value into those slots; the generated functions read p on every call,
+so the next residual and iteration matrix see it. Nothing is rebuilt and nothing is
+allocated: setting an input costs a few stores, and the real-time properties above hold.
+The slots survive the element state update of `post_step`, which passes untouched entries
+of p through.
+
 ## Viewer
 
 The viewer is a page in the browser, served by `freedyn2 view` on localhost. Python prepares

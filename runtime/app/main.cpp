@@ -37,8 +37,68 @@ void usage() {
                "                    [--fixed-step]      (constant step size --step, no step size control)\n"
                "                    [--newton-fixed N]  (exactly N Newton corrections per step, fixed pivots: real-time)\n"
                "                    [--timing]          (fixed step: distribution of the wall-clock time per step)\n"
-               "                    [--timing-log FILE] (fixed step: time, Newton iterations, new pivot orders per step)\n";
+               "                    [--timing-log FILE] (fixed step: time, Newton iterations, new pivot orders per step)\n"
+               "                    [--input NAME=VALUE] (runtime input, constant; repeatable)\n"
+               "                    [--inputs FILE.csv]  (runtime inputs over time: header t,NAME,...; linear\n"
+               "                                         between the rows, held before the first and after the last)\n";
 }
+
+// Runtime inputs over time from a CSV file (header t,name,...): linear between the rows.
+struct InputSeries {
+  std::vector<int> index;  // input index of each column after t
+  std::vector<double> t;
+  std::vector<std::vector<double>> values;  // per row
+
+  void load(const std::string& path, const fd::System& sys) {
+    std::ifstream in(path);
+    if (!in) throw std::runtime_error("cannot open " + path);
+    std::string line;
+    auto split = [](const std::string& l) {
+      std::vector<std::string> cells;
+      std::string cell;
+      for (char c : l) {
+        if (c == ',') cells.push_back(cell), cell.clear();
+        else if (c != '\r' && c != ' ') cell += c;
+      }
+      cells.push_back(cell);
+      return cells;
+    };
+    if (!std::getline(in, line)) throw std::runtime_error(path + ": empty");
+    const auto header = split(line);
+    if (header.empty() || header[0] != "t") throw std::runtime_error(path + ": the first column must be t");
+    for (size_t k = 1; k < header.size(); ++k) {
+      const int i = sys.input_index(header[k]);
+      if (i < 0) throw std::runtime_error(path + ": the model has no input '" + header[k] + "'");
+      index.push_back(i);
+    }
+    while (std::getline(in, line)) {
+      if (line.find_first_not_of(" \r") == std::string::npos) continue;
+      const auto cells = split(line);
+      if (cells.size() != header.size()) throw std::runtime_error(path + ": row with a wrong number of cells");
+      t.push_back(std::stod(cells[0]));
+      if (t.size() > 1 && t.back() <= t[t.size() - 2]) throw std::runtime_error(path + ": t must increase");
+      std::vector<double> row;
+      for (size_t k = 1; k < cells.size(); ++k) row.push_back(std::stod(cells[k]));
+      values.push_back(row);
+    }
+    if (t.empty()) throw std::runtime_error(path + ": no rows");
+  }
+
+  void apply(double time, fd::System& sys) const {
+    if (t.empty()) return;
+    const size_t hi = std::upper_bound(t.begin(), t.end(), time) - t.begin();
+    for (size_t k = 0; k < index.size(); ++k) {
+      double v;
+      if (hi == 0) v = values.front()[k];
+      else if (hi == t.size()) v = values.back()[k];
+      else {
+        const double w = (time - t[hi - 1]) / (t[hi] - t[hi - 1]);
+        v = values[hi - 1][k] + w * (values[hi][k] - values[hi - 1][k]);
+      }
+      sys.set_input(index[k], v);
+    }
+  }
+};
 
 void write_row(std::ofstream& out, double t, const std::vector<double>& y) {
   char buf[32];
@@ -120,6 +180,8 @@ int main(int argc, char** argv) {
     std::string out_path = model.name + ".csv", linear_solver = fd::default_linear_solver(), step_log_path,
                 timing_log_path;
     bool timing = false;
+    std::vector<std::pair<std::string, double>> constant_inputs;
+    std::string inputs_path;
     for (int i = 2; i < argc; ++i) {
       auto next = [&]() -> const char* {
         if (i + 1 >= argc) throw std::runtime_error(std::string("missing value for ") + argv[i]);
@@ -139,6 +201,13 @@ int main(int argc, char** argv) {
         model.solver.newton_iterations = std::stoi(next());
         model.solver.adaptive = false;
       }
+      else if (!std::strcmp(argv[i], "--input")) {
+        const std::string a = next();
+        const auto eq = a.find('=');
+        if (eq == std::string::npos) throw std::runtime_error("--input expects NAME=VALUE, got " + a);
+        constant_inputs.emplace_back(a.substr(0, eq), std::stod(a.substr(eq + 1)));
+      }
+      else if (!std::strcmp(argv[i], "--inputs")) inputs_path = next();
       else if (!std::strcmp(argv[i], "--timing")) timing = true;
       else if (!std::strcmp(argv[i], "--timing-log")) timing = true, timing_log_path = next();
       else {
@@ -148,6 +217,16 @@ int main(int argc, char** argv) {
     }
     const fd::SolverSettings& s = model.solver;
     fd::System sys(model);
+    for (const auto& [name, value] : constant_inputs) {
+      const int i = sys.input_index(name);
+      if (i < 0) throw std::runtime_error("the model has no input '" + name + "'");
+      sys.set_input(i, value);
+    }
+    InputSeries series;
+    if (!inputs_path.empty()) series.load(inputs_path, sys);
+    // Inputs at the end time of a step: the integrator evaluates the forces there, as it does
+    // for expressions of t.
+    auto before_step = [&](double t_new) { series.apply(t_new, sys); };
     fd::HhtIntegrator hht(sys, s, linear_solver);
 
     std::ofstream out(out_path);
@@ -177,19 +256,21 @@ int main(int argc, char** argv) {
       std::function<void(double, double, const fd::StepResult&)> log_attempt;
       if (!step_log_path.empty())
         log_attempt = [&](double t, double h, const fd::StepResult& r) { step_log.push_back({t, h, r}); };
-      n_steps = stepper.run(write_output, log_attempt);
+      n_steps = stepper.run(write_output, log_attempt, before_step);
       rejected = stepper.rejected_steps();
     } else {
       n_steps = std::lround(s.end_time / s.step);
       const long out_every = std::max(1L, std::lround(s.output_step / s.step));
       std::vector<double> step_us(timing ? n_steps : 0), step_cpu_us(timing ? n_steps : 0);
       std::vector<int> step_newton(timing ? n_steps : 0), step_pivots(timing ? n_steps : 0);
+      before_step(0.0);
       hht.initialize();
       write_output(0.0);
       double max_correction = 0.0;  // newton fixed: how far from converged the worst step ended
       for (long n = 1; n <= n_steps; ++n) {
         const long pivots0 = hht.full_factorizations();
         const double cpu0 = timing ? thread_cpu_us() : 0.0;
+        before_step(n * s.step);
         const auto t0 = std::chrono::steady_clock::now();
         max_correction = std::max(max_correction, hht.step().correction);
         if (timing) {

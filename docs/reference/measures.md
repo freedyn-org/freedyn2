@@ -5,7 +5,8 @@
 A measure is a named scalar of the state – a distance, a displacement component, an angle, a
 velocity – used in [expression forces](forces.md#expression-force-and-torque) and drivers by its
 name. They are not result channels themselves; to plot one, write it as a
-[formula channel](../viewer.md#plots) in the viewer, or look at the force that uses it.
+[formula channel](../viewer.md#plots) in the viewer, look at the force that uses it, or make it
+an [output](#outputs).
 
 ```yaml
 measures:
@@ -34,7 +35,8 @@ Force laws, driver motions and formulas share one small language (it is parsed, 
 executed):
 
 - numbers, `+ - * / ^` (or `**`), unary minus, parentheses;
-- names: `t` (time), `pi`, the parameters, the measures (not in formulas), the splines as
+- names: `t` (time), `pi`, the parameters, the [runtime inputs](model-file.md#runtime-inputs)
+  and the measures (both not in formulas), the splines as
   functions: `damper_curve(v)`;
 - functions: `sin cos tan asin acos atan atan2 sinh cosh tanh exp log sqrt abs sign min max`;
 - `step(x, x0, y0, x1, y1)`: smooth step from y0 (x ≤ x0) to y1 (x ≥ x1) – a 9th order polynomial;
@@ -63,10 +65,31 @@ spline).
 
 <!-- keys: splines -->
 
+## Outputs
+
+An output is a named expression of measures, parameters and [runtime
+inputs](model-file.md#runtime-inputs), written as the result channel `<name>.value`. It acts on
+nothing. A program that runs the model and reads its channels (`fd::System::outputs`) gets
+derived quantities, a lean angle, an engine speed, a suspension travel, without knowing the
+model's geometry.
+
+```yaml
+measures:
+  lean: {type: direction, body1: frame, vector: [0, 0, 1], component: y}   # sin(lean)
+  w_crank: {type: angular_rate, body1: crank, body2: frame, orientation: [0.7071068, -0.7071068, 0, 0]}
+outputs:
+  lean_deg: asin(lean) * 180 / pi
+  rpm: w_crank * 30 / pi
+```
+
+Each output must use a measure; its name must differ from the bodies, joints, forces, sensors
+and drivers.
+
 ## Drivers
 
 A driver prescribes a measure – a displacement, distance or angle – as a function of time: a
-constraint m(q) − f(t) = 0. The reaction is a result channel (`<driver>.lambda`).
+constraint m(q) − f(t) = 0. With a [runtime input](model-file.md#runtime-inputs) in f the motion
+is set from outside while the model runs (`motion: x_set`). The reaction is a result channel (`<driver>.lambda`).
 
 ```yaml
 measures:

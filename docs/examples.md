@@ -76,5 +76,6 @@ torsion spring: the flywheel oscillates about the rotor's motion.
 ## More
 
 `freedyn2 examples` lists the others: oscillators, a torsion pendulum, a bushing mount, a
-spline spring, two free bodies under internal forces, a winding spring. In the repository:
+spline spring, two free bodies under internal forces, a winding spring, an oscillator and a
+driven cart moved by runtime inputs (`input_oscillator`). In the repository:
 `examples/scaling/` (the legacy comparison car), `examples/compare/` (legacy `.fds` models).

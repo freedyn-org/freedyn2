@@ -33,9 +33,12 @@ section:
 | `--newton-fixed N` | [real-time mode](reference/solver.md#real-time-mode): exactly N Newton corrections per step |
 | `--linear-solver klu\|sparselu\|dense` | the linear solver (default KLU) |
 | `--step-log FILE`, `--timing`, `--timing-log FILE` | diagnosis: step sizes and Newton iterations per step; the distribution of the time per step; times per step |
+| `--input NAME=VALUE` | a [runtime input](reference/model-file.md#runtime-inputs) held constant (repeatable) |
+| `--inputs FILE.csv` | runtime inputs over time: header `t,NAME,...`, linear between the rows, held before the first and after the last; a step uses the value at its end time |
 
 ```sh
 freedyn2 run model.yaml -- --end-time 2 --step 1e-4
+freedyn2 run examples/input_oscillator.yaml -- --input F=1.5 --inputs ramp.csv
 ```
 
 ## Environment

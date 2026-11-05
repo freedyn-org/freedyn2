@@ -2,6 +2,7 @@
 // Model description read from the generator's .fdm file (or built in code).
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "fd_registry.h"
@@ -46,6 +47,15 @@ struct ElementSpec {
   // Tires on the runtime road (*_local types): offset of the local road plane (x0, y0, h0, gx,
   // gy, mu) in p, set from Model::road at the position of the element's first body; -1: none.
   int road = -1;
+  // Runtime inputs this element uses: (index into Model::inputs, offset in p).
+  std::vector<std::pair<int, int>> inputs;
+};
+
+// Runtime input of the model (fd::System::set_input): a parameter of the elements that use it
+// which the program running the model may change between two steps.
+struct InputSpec {
+  std::string name;
+  double value = 0.0;  // default
 };
 
 // Road surface of the *_local tire elements (fd::Road): OpenCRG height file, its placement in
@@ -62,6 +72,7 @@ struct Model {
   std::vector<ElementSpec> elements;
   std::vector<std::string> plugins;  // model plugins loaded for this model (expression forces)
   RoadSpec road;                     // road.crg empty: no runtime road
+  std::vector<InputSpec> inputs;     // runtime inputs, in model order
   int nq() const;  // stored coordinates
   int nv() const;  // velocity dofs
   int nc() const;

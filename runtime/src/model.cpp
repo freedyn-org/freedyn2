@@ -80,6 +80,12 @@ Model load_model(const std::string& path) {
       std::string lib = relative_to(rest_of_line(ss));
       load_plugin(lib);
       m.plugins.push_back(lib);
+    } else if (key == "input") {
+      InputSpec in;
+      if (!(ss >> in.name >> in.value)) fail("input needs a name and a default value");
+      for (const auto& other : m.inputs)
+        if (other.name == in.name) fail("input '" + in.name + "' declared twice");
+      m.inputs.push_back(in);
     } else if (key == "road_crg") {
       m.road.crg = relative_to(rest_of_line(ss));
     } else if (key == "road_friction_crg") {
@@ -133,6 +139,18 @@ Model load_model(const std::string& path) {
       cur->u = read_all<double>(ss);
     } else if (cur && key == "road") {
       ss >> cur->road;
+    } else if (cur && key == "inputs") {  // name:offset ...
+      std::string slot;
+      while (ss >> slot) {
+        const auto colon = slot.rfind(':');
+        if (colon == std::string::npos) fail("inputs: expected name:offset, got '" + slot + "'");
+        const std::string name = slot.substr(0, colon);
+        int index = -1;
+        for (size_t i = 0; i < m.inputs.size(); ++i)
+          if (m.inputs[i].name == name) index = static_cast<int>(i);
+        if (index < 0) fail("element " + cur->name + ": input '" + name + "' not declared");
+        cur->inputs.emplace_back(index, std::stoi(slot.substr(colon + 1)));
+      }
     } else if (cur && key == "jacobian") {
       ss >> cur->jacobian;
       if (cur->jacobian != "full" && cur->jacobian != "no_qvv") fail("jacobian must be full or no_qvv");

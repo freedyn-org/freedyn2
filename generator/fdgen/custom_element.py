@@ -29,18 +29,29 @@ ELEMENT_CACHE = OrderedDict()  # key of the expressions -> ElementFunctions (lea
 MAX_CACHED_ELEMENTS = 512
 
 
+class PluginElement(tuple):
+    """(name, element type, [bodies], p values, ElementFunctions) of one plugin element, with
+    .inputs: runtime input name -> offset in p (empty for elements without inputs)."""
+
+    def __new__(cls, name, tname, bodies, p, elem, inputs=None):
+        self = super().__new__(cls, (name, tname, bodies, p, elem))
+        self.inputs = dict(inputs or {})
+        return self
+
+
 class CustomElement:
     """Symbols of one model-specific element: connected bodies, parameters p, measures, splines."""
 
     def __init__(self, model, owner, texts, bodies, allow_measures=True):
         params, measures = model.get("parameters", {}), model.get("measures", {})
+        inputs = model.get("inputs") or {}
         model_splines = model.get("splines", {})
         used = set().union(*[names_in(x) for x in texts])
         calls = set().union(*[calls_in(x) for x in texts])
         unknown_calls = calls - set(model_splines) - set(BUILTIN_FUNCTIONS)
         if unknown_calls:
             raise ValueError(f"{owner}: unknown functions {sorted(unknown_calls)} in {texts}")
-        allowed = set(params) | {"t", "pi"} | (set(measures) if allow_measures else set())
+        allowed = set(params) | set(inputs) | {"t", "pi"} | (set(measures) if allow_measures else set())
         if used - allowed:
             raise ValueError(f"{owner}: unknown names {sorted(used - allowed)} in {texts}")
         self.measure_names = sorted(used & set(measures))
@@ -63,6 +74,8 @@ class CustomElement:
         self.symbols = {"t": c.t}
         for name in sorted(used & set(params)):
             self.symbols[name] = self.consts.add(params[name], name)
+        for name in sorted(used & set(inputs)):  # runtime inputs: parameters the runtime overwrites
+            self.symbols[name] = self.consts.add_input(inputs[name], name)
         # Measures enter the laws as intermediate symbols (chain rule in the derivatives).
         self.intermediates = []
         for name in self.measure_names:
