@@ -9,8 +9,9 @@
 freedyn2: multibody dynamics with CasADi-generated models (offline HHT and real-time export)
 
 Models are described declaratively in YAML (or imported from legacy FreeDyn `.fds` files). A
-Python generator (`generator/fdgen`) builds the Lagrange formulation in CasADi, derives all
-equations and Jacobians symbolically and emits plain C. A slim C++ runtime (`runtime/`)
+Python generator (`generator/fdgen`) builds the constrained equations of motion (index-3 DAE
+with Lagrange multipliers) element by element in CasADi, derives all Jacobians and iteration
+matrices symbolically and emits plain C. A slim C++ runtime (`runtime/`)
 assembles the generated element functions via precomputed scatter maps and integrates with HHT.
 The generated C needs no CasADi library.
 
