@@ -7,7 +7,6 @@ the viewer's tuned values (fdgen.view.server.apply_overrides).
 """
 
 import copy
-import re
 import tempfile
 from pathlib import Path
 
@@ -385,16 +384,7 @@ def example_path(name):
 
 
 def version():
-    """The version: of the repository's pyproject.toml when run from the sources, else of the
-    installed package."""
-    project = resources.REPOSITORY / "pyproject.toml"
-    if (resources.REPOSITORY / "generator" / "fdgen").is_dir() and project.is_file():
-        m = re.search(r'^version\s*=\s*"([^"]+)"', project.read_text(encoding="utf-8"), re.M)
-        if m:
-            return m.group(1)
-    try:
-        from importlib.metadata import version as installed
+    """The version (fdgen.__version__: pyproject.toml from the sources, else the installed package)."""
+    from fdgen import __version__
 
-        return installed("freedyn2")
-    except Exception:  # noqa: BLE001  (not installed, no metadata)
-        return "unknown"
+    return __version__
