@@ -15,7 +15,7 @@ time, compiled into a model plugin), drivers (prescribed motion), splines from d
 a steady motion and eigenvalues (stability analysis), extensions.
 
 **User documentation:** https://freedyn-org.github.io/freedyn2/ (getting started, a tutorial,
-the viewer, the model reference, working with an assistant, coming from Adams; sources in
+the viewer, the model reference, working with an assistant, coming from FreeDyn or Adams; sources in
 [`docs/`](docs/index.md), `mkdocs serve` with `requirements-docs.txt`). `freedyn2 examples` lists
 the example models and copies one.
 
@@ -25,24 +25,32 @@ including on the legacy kernel), [`legacy/README.md`](legacy/README.md) (legacy 
 
 ## Install
 
-Wheels for Windows (x64) and Linux (x86_64) contain everything: the Python package, the
-compiled runtime (`freedyn2_run`, `freedyn2_road`) and its KLU libraries. One wheel per
-platform serves Python 3.10 and newer.
+Windows: the installer `FreeDyn2-setup.exe` (coming with the first release, from
+[GitHub Releases](https://github.com/freedyn-org/freedyn2/releases/latest/download/FreeDyn2-setup.exe)):
+per user, no administrator rights, its own private Python, next to a legacy FreeDyn; the app
+window, the command line, a C compiler (Zig).
+
+Python (Windows x64, Linux x86_64, Python 3.10 and newer; one wheel per platform with the
+compiled runtime and its KLU libraries):
 
 ```sh
-uv tool install freedyn2          # with uv (https://docs.astral.sh/uv/): also installs a Python if needed
-pip install freedyn2              # or with pip, into the current environment
-freedyn2 run model.yaml           # the command line: run, view, check, examples, mcp, compare
+uv tool install "freedyn2[gui,compiler]"   # with uv (https://docs.astral.sh/uv/): also installs a Python if needed
+pip install "freedyn2[gui,compiler]"       # or with pip, into the current environment
+freedyn2 run model.yaml                    # the command line: run, view, gui, check, examples, mcp, compare, doctor
 ```
 
-For assistants, without installing first (the MCP client starts it): `uvx freedyn2 mcp`, e.g.
-`claude mcp add freedyn2 -- uvx freedyn2 mcp`. Until the first release on PyPI, the wheels are
-the artifacts of the `Wheels` workflow (`pip install freedyn2-*.whl`).
+Extras: `gui` (pywebview: `freedyn2 gui` in a window of its own), `compiler` (ziglang: a C
+compiler found automatically). Until the first release on PyPI, the wheels are the artifacts
+of the `Wheels` workflow (`pip install freedyn2-*.whl`). For assistants, without installing
+first: `uvx freedyn2 mcp`, e.g. `claude mcp add freedyn2 -- uvx freedyn2 mcp`;
+`freedyn2 setup-mcp` registers an installed FreeDyn with Claude Desktop or Claude Code.
 
-Models with expression forces or drivers are compiled into a model plugin: they need a C
-compiler (Linux: gcc or clang; Windows: Visual Studio Build Tools in a developer prompt, or
-MinGW-w64 gcc on the PATH). Library elements (bodies, joints, springs, bushings, tires, ...) need
-none.
+Models with expression forces or drivers are compiled into a model plugin and need a C
+compiler: Zig from the installer or the `compiler` extra, gcc or clang, or on Windows the
+Visual Studio Build Tools (found without a developer prompt) or MinGW-w64 gcc;
+`freedyn2 config compiler zig|msvc|auto|<path>` (`CC` overrides). Library elements (bodies,
+joints, springs, bushings, tires, ...) need none. Details, updating and uninstalling:
+[`docs/getting-started.md`](docs/getting-started.md).
 
 ## Build and test
 

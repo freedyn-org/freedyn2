@@ -66,6 +66,7 @@ nav:
       - Solver and real time: reference/solver.md
       - Checks and references: reference/checks.md
       - Result channels: reference/results.md
+  - Coming from FreeDyn: from-freedyn.md
   - Coming from Adams: from-adams.md
   - Examples: examples.md
   - Command line: cli.md
