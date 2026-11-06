@@ -5,6 +5,16 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Added
+
+- `freedyn2 import-onshape <assembly address>` (prototype): an Onshape assembly as a model file,
+  read with the Onshape REST API and API keys (`ONSHAPE_ACCESS_KEY`, `ONSHAPE_SECRET_KEY`).
+  Parts connected by Fastened mates or mate groups become one body with the added-up mass
+  properties from Onshape; fixed parts become the ground; revolute, slider, cylindrical, ball,
+  planar, parallel and pin slot mates become joints; other mates are listed, not imported. An
+  STL file per part for the viewer, and the Onshape reference of every part in
+  `<model>.onshape.json`. See docs/from-onshape.md.
+
 ## [0.1.0rc3] - 2026-11-06
 
 Release candidate with the model editor in the viewer and a much smaller Windows installer

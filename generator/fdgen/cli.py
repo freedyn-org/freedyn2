@@ -11,6 +11,7 @@
   freedyn2 setup-mcp [--client claude-desktop|claude-code|all] [--remove] [--dry-run]  (fdgen.mcp_setup)
   freedyn2 config [key [value]] | freedyn2 doctor     (fdgen.doctor)
   freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]   (fdgen.convert)
+  freedyn2 import-onshape <assembly URL> [-o model.yaml] [--no-meshes] [--force]  (fdgen.onshape)
 
 `run` imports the model, writes the runtime model file (.fdm) and, for models with expression
 forces or drivers, compiles the model plugin; then it runs the runtime `freedyn2_run`. Building
@@ -182,6 +183,16 @@ def convert(args):
     return 0
 
 
+def import_onshape(args):
+    from .onshape import import_onshape as read
+
+    out, warnings = read(args.url, args.output, meshes=not args.no_meshes, force=args.force)
+    for w in warnings:
+        print(f"warning: {w}", file=sys.stderr)
+    print(f"wrote {out}")
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] == "compare":
@@ -249,6 +260,12 @@ def main(argv=None):
     cv.add_argument("--profile", choices=("v2", "legacy"), default="v2",
                     help="solver settings and bodies of freedyn2 run --profile (default v2)")
     cv.add_argument("--force", action="store_true", help="overwrite an existing YAML file")
+    io = sub.add_parser("import-onshape", help="write an Onshape assembly as a YAML model file (API keys: "
+                        "ONSHAPE_ACCESS_KEY, ONSHAPE_SECRET_KEY)")
+    io.add_argument("url", help="the assembly's address in the browser (https://cad.onshape.com/documents/...)")
+    io.add_argument("-o", "--output", help="YAML file or directory (default: <assembly name>.yaml here)")
+    io.add_argument("--no-meshes", action="store_true", help="no STL files of the parts for the viewer")
+    io.add_argument("--force", action="store_true", help="overwrite an existing YAML file")
     k = argv.index("--") if "--" in argv else len(argv)
     args = ap.parse_args(argv[:k])
     args.options = argv[k + 1:]
@@ -273,7 +290,8 @@ def main(argv=None):
             from .update import main as update_check
 
             return update_check()
-        return {"view": view, "check": check, "examples": examples, "convert": convert}.get(args.command, run)(args)
+        return {"view": view, "check": check, "examples": examples, "convert": convert,
+                "import-onshape": import_onshape}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)
         return 1
