@@ -50,7 +50,7 @@ def track():
 
 def main(path=ROOT / "examples" / "data" / "test_track.crg"):
     u, z, bank = track()
-    write_crg(path, DU, V, z, bank=bank, fmt="KRBI", comment="FreeDyn 2.0 test track (make_test_track.py)")
+    write_crg(path, DU, V, z, bank=bank, fmt="KRBI", comment="FreeDyn 2 test track (make_test_track.py)")
     print(f"wrote {path} ({Path(path).stat().st_size / 1e3:.0f} kB, {len(u)} x {len(V)} points)")
 
 

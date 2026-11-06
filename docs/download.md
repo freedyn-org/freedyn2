@@ -2,7 +2,7 @@
 
 ## Windows
 
-The installer contains everything: FreeDyn 2.0, its own Python, and optionally a C compiler for
+The installer contains everything: FreeDyn 2, its own Python, and optionally a C compiler for
 models with expression forces or drivers. It installs per user, without administrator rights,
 and runs alongside legacy FreeDyn.
 
@@ -44,4 +44,4 @@ or signed by hand. Each signing request is approved by a person.
 Changes to the main branch go through pull requests with a review. Team members use
 multi-factor authentication for GitHub and SignPath.
 
-FreeDyn 2.0 sends no data to anyone except as described in the [privacy policy](privacy.md).
+FreeDyn 2 sends no data to anyone except as described in the [privacy policy](privacy.md).

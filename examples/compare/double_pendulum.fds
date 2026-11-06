@@ -1,5 +1,5 @@
 Header freeDynHeader
-% FreeDyn 2.0: double compound pendulum (two rods, 1 m), revolute joints about global y, released horizontally
+% FreeDyn 2: double compound pendulum (two rods, 1 m), revolute joints about global y, released horizontally
 EndHeader
 %
 %---------------- Rigid Bodies ------------------------

@@ -1,4 +1,4 @@
-; FreeDyn 2.0 installer for Windows x64 (Inno Setup 6.3 or newer).
+; FreeDyn 2 installer for Windows x64 (Inno Setup 6.3 or newer).
 ;
 ; Built by installer/windows/build.py from the Windows wheel, which first stages the files
 ; (StageDir: core, compiler, examples) and then runs
@@ -30,7 +30,7 @@
   #define RepoDir "..\.."
 #endif
 
-#define AppName "FreeDyn 2.0"
+#define AppName "FreeDyn 2"
 #define AppURL "https://github.com/freedyn-org/freedyn2"
 #define DocsURL "https://freedyn-org.github.io/freedyn2/"
 #define GuiExe "{app}\bin\freedyn2-gui.exe"
@@ -41,12 +41,12 @@
 AppId={{D4AF9686-2D82-4C9F-9F17-CFE1861260DA}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppVerName={#AppName} {#AppVersion}
-AppPublisher=The FreeDyn 2.0 contributors
+AppVerName={#AppName} (version {#AppVersion})
+AppPublisher=The FreeDyn 2 contributors
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
-AppCopyright=Copyright 2026 The FreeDyn 2.0 contributors (Apache-2.0)
+AppCopyright=Copyright 2026 The FreeDyn 2 contributors (Apache-2.0)
 VersionInfoVersion={#AppVersionNumeric}
 VersionInfoProductName={#AppName}
 VersionInfoDescription={#AppName} Setup
@@ -91,15 +91,15 @@ Name: "compact"; Description: "Compact installation (no C compiler, no examples)
 Name: "custom"; Description: "Custom installation"; Flags: iscustom
 
 [Components]
-Name: "core"; Description: "FreeDyn 2.0 (solver, app, viewer, MCP server, Python runtime)"; Types: full compact custom; Flags: fixed
+Name: "core"; Description: "FreeDyn 2 (solver, app, viewer, MCP server, Python runtime)"; Types: full compact custom; Flags: fixed
 Name: "compiler"; Description: "C compiler for model plugins (Zig): models with expression forces or drivers"; Types: full
 Name: "examples"; Description: "Example models"; Types: full
 
 [Tasks]
 Name: "path"; Description: "Add the freedyn2 command to the PATH"; GroupDescription: "Command line:"
-Name: "assocfds"; Description: "Open FreeDyn model files (.fds) with FreeDyn 2.0"; GroupDescription: "File types:"; Flags: unchecked
-Name: "openyaml"; Description: "Add ""Open with FreeDyn 2.0"" to .yaml files"; GroupDescription: "File types:"; Flags: unchecked
-Name: "claudedesktop"; Description: "Register the FreeDyn 2.0 MCP server with Claude Desktop"; GroupDescription: "Assistants:"; Flags: unchecked
+Name: "assocfds"; Description: "Open FreeDyn model files (.fds) with FreeDyn 2"; GroupDescription: "File types:"; Flags: unchecked
+Name: "openyaml"; Description: "Add ""Open with FreeDyn 2"" to .yaml files"; GroupDescription: "File types:"; Flags: unchecked
+Name: "claudedesktop"; Description: "Register the FreeDyn 2 MCP server with Claude Desktop"; GroupDescription: "Assistants:"; Flags: unchecked
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [InstallDelete]
@@ -120,22 +120,22 @@ Source: "{#RepoDir}\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Compone
 Source: "{#RepoDir}\NOTICE"; DestDir: "{app}"; DestName: "NOTICE.txt"; Components: core; Flags: ignoreversion
 
 [Icons]
-; Start menu folder "FreeDyn 2.0" (no uninstall entry: Settings > Apps uninstalls)
+; Start menu folder "FreeDyn 2" (no uninstall entry: Settings > Apps uninstalls)
 #ifdef HaveIcon
-Name: "{group}\FreeDyn 2.0"; Filename: "{#GuiExe}"; IconFilename: "{app}\freedyn2.ico"; Comment: "Multibody dynamics: open, run and view models"
-Name: "{group}\FreeDyn 2.0 Command Prompt"; Filename: "{cmd}"; Parameters: "/k """"{app}\bin\freedyn2-prompt.cmd"" --home"""; IconFilename: "{app}\freedyn2.ico"; Comment: "A command prompt with the freedyn2 command"
-Name: "{autodesktop}\FreeDyn 2.0"; Filename: "{#GuiExe}"; IconFilename: "{app}\freedyn2.ico"; Tasks: desktopicon
+Name: "{group}\FreeDyn 2"; Filename: "{#GuiExe}"; IconFilename: "{app}\freedyn2.ico"; Comment: "Multibody dynamics: open, run and view models"
+Name: "{group}\FreeDyn 2 Command Prompt"; Filename: "{cmd}"; Parameters: "/k """"{app}\bin\freedyn2-prompt.cmd"" --home"""; IconFilename: "{app}\freedyn2.ico"; Comment: "A command prompt with the freedyn2 command"
+Name: "{autodesktop}\FreeDyn 2"; Filename: "{#GuiExe}"; IconFilename: "{app}\freedyn2.ico"; Tasks: desktopicon
 #else
-Name: "{group}\FreeDyn 2.0"; Filename: "{#GuiExe}"; Comment: "Multibody dynamics: open, run and view models"
-Name: "{group}\FreeDyn 2.0 Command Prompt"; Filename: "{cmd}"; Parameters: "/k """"{app}\bin\freedyn2-prompt.cmd"" --home"""; Comment: "A command prompt with the freedyn2 command"
-Name: "{autodesktop}\FreeDyn 2.0"; Filename: "{#GuiExe}"; Tasks: desktopicon
+Name: "{group}\FreeDyn 2"; Filename: "{#GuiExe}"; Comment: "Multibody dynamics: open, run and view models"
+Name: "{group}\FreeDyn 2 Command Prompt"; Filename: "{cmd}"; Parameters: "/k """"{app}\bin\freedyn2-prompt.cmd"" --home"""; Comment: "A command prompt with the freedyn2 command"
+Name: "{autodesktop}\FreeDyn 2"; Filename: "{#GuiExe}"; Tasks: desktopicon
 #endif
-Name: "{group}\FreeDyn 2.0 Documentation"; Filename: "{#DocsURL}"
-Name: "{group}\FreeDyn 2.0 Examples"; Filename: "{app}\examples"; Components: examples
+Name: "{group}\FreeDyn 2 Documentation"; Filename: "{#DocsURL}"
+Name: "{group}\FreeDyn 2 Examples"; Filename: "{app}\examples"; Components: examples
 
 [Registry]
 ; HKA: HKCU\Software\Classes for a per-user installation, HKLM for all users.
-; .fds (task assocfds): FreeDyn 2.0 as the default program and in "Open with"
+; .fds (task assocfds): FreeDyn 2 as the default program and in "Open with"
 Root: HKA; Subkey: "Software\Classes\FreeDyn2.fds"; ValueType: string; ValueName: ""; ValueData: "FreeDyn model"; Flags: uninsdeletekey; Tasks: assocfds
 #ifdef HaveIcon
 Root: HKA; Subkey: "Software\Classes\FreeDyn2.fds\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\freedyn2.ico"; Tasks: assocfds
@@ -143,10 +143,10 @@ Root: HKA; Subkey: "Software\Classes\FreeDyn2.fds\DefaultIcon"; ValueType: strin
 Root: HKA; Subkey: "Software\Classes\FreeDyn2.fds\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{#GuiExe}"" ""%1"""; Tasks: assocfds
 Root: HKA; Subkey: "Software\Classes\.fds\OpenWithProgids"; ValueType: string; ValueName: "FreeDyn2.fds"; ValueData: ""; Flags: uninsdeletevalue; Tasks: assocfds
 Root: HKA; Subkey: "Software\Classes\.fds"; ValueType: string; ValueName: ""; ValueData: "FreeDyn2.fds"; Flags: uninsdeletevalue; Tasks: assocfds
-; .yaml, .yml (task openyaml): a context menu entry "Open with FreeDyn 2.0", the default program unchanged
-Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.yaml\shell\FreeDyn2"; ValueType: string; ValueName: ""; ValueData: "Open with FreeDyn 2.0"; Flags: uninsdeletekey; Tasks: openyaml
+; .yaml, .yml (task openyaml): a context menu entry "Open with FreeDyn 2", the default program unchanged
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.yaml\shell\FreeDyn2"; ValueType: string; ValueName: ""; ValueData: "Open with FreeDyn 2"; Flags: uninsdeletekey; Tasks: openyaml
 Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.yaml\shell\FreeDyn2\command"; ValueType: string; ValueName: ""; ValueData: """{#GuiExe}"" ""%1"""; Tasks: openyaml
-Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.yml\shell\FreeDyn2"; ValueType: string; ValueName: ""; ValueData: "Open with FreeDyn 2.0"; Flags: uninsdeletekey; Tasks: openyaml
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.yml\shell\FreeDyn2"; ValueType: string; ValueName: ""; ValueData: "Open with FreeDyn 2"; Flags: uninsdeletekey; Tasks: openyaml
 Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.yml\shell\FreeDyn2\command"; ValueType: string; ValueName: ""; ValueData: """{#GuiExe}"" ""%1"""; Tasks: openyaml
 #ifdef HaveIcon
 Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.yaml\shell\FreeDyn2"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\freedyn2.ico"; Tasks: openyaml
@@ -155,8 +155,8 @@ Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.yml\shell\FreeDyn2"
 
 [Run]
 ; Claude Desktop keeps its configuration per user: run as the user who started Setup
-Filename: "{#CliExe}"; Parameters: "setup-mcp --client claude-desktop"; StatusMsg: "Registering FreeDyn 2.0 with Claude Desktop..."; Flags: runhidden waituntilterminated runasoriginaluser; Tasks: claudedesktop
-Filename: "{#GuiExe}"; Description: "Start FreeDyn 2.0"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "{#CliExe}"; Parameters: "setup-mcp --client claude-desktop"; StatusMsg: "Registering FreeDyn 2 with Claude Desktop..."; Flags: runhidden waituntilterminated runasoriginaluser; Tasks: claudedesktop
+Filename: "{#GuiExe}"; Description: "Start FreeDyn 2"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [UninstallRun]
 Filename: "{#CliExe}"; Parameters: "setup-mcp --client claude-desktop --remove"; Flags: runhidden waituntilterminated; Tasks: claudedesktop; RunOnceId: "RemoveClaudeDesktop"

@@ -60,7 +60,7 @@ def wait_ready(a, vid, timeout=60):
 
 def test_start_page_in_browser_mode(app):
     code, page = request(app.url())
-    assert code == 200 and b"FreeDyn 2.0" in page and b"/app/start.js" in page
+    assert code == 200 and b"FreeDyn 2" in page and b"/app/start.js" in page
     assert request(app.url() + "app/start.js")[0] == 200
     with NO_PROXY.open(app.url() + "app/freedyn2.png") as r:
         assert r.headers["Content-Type"] == "image/png" and r.read()[:4] == b"\x89PNG"
@@ -82,7 +82,7 @@ def test_open_an_example_and_its_viewer(app, tmp_path):
     state = wait_ready(app, 1)
     assert state["status"] == "ready" and state["model_file"] == str(folder / "double_pendulum.yaml")
     code, page = request(app.url(1))
-    assert b'<script src="/app/shell.js"></script>' in page and b"double_pendulum.yaml - FreeDyn 2.0" in page
+    assert b'<script src="/app/shell.js"></script>' in page and b"double_pendulum.yaml - FreeDyn 2" in page
     assert b"viewer.js" in page  # the viewer's own page
     code, scene = request(app.url(1) + "api/scene")
     assert code == 200 and len(scene["bodies"]) == 2
@@ -308,7 +308,7 @@ def test_cli_update_check(monkeypatch, capsys):
 
     monkeypatch.setattr(update, "fetch", lambda timeout=None: {"latest": "99.0", "url": update.RELEASE_PAGE})
     assert cli.main(["update-check"]) == 0
-    assert "FreeDyn 2.0 99.0 is available" in capsys.readouterr().out
+    assert "FreeDyn 2 version 99.0 is available" in capsys.readouterr().out
     monkeypatch.setattr(update, "fetch", lambda timeout=None: {"latest": "0.0.1", "url": update.RELEASE_PAGE})
     assert cli.main(["update-check"]) == 0
     assert "is up to date" in capsys.readouterr().out

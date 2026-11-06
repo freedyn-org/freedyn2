@@ -7,7 +7,7 @@ PROFILES = ("legacy", "v2")
 
 
 def settings(sim, solver):
-    """FreeDyn 2.0 solver settings of the legacy algorithm (profile legacy)."""
+    """FreeDyn 2 solver settings of the legacy algorithm (profile legacy)."""
     if numbers(sim, "SimulationTimeBegin", 1, [0.0])[0] != 0.0:
         raise ModelError("SimulationTimeBegin must be 0")
     for key in ("InitialPositionFromFile", "InitialVelocityFromFile"):

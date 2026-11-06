@@ -4,7 +4,7 @@
 solver: {type: HHT, alpha: -0.1, end_time: 10.0, step: 0.001, output_step: 0.01}
 ```
 
-FreeDyn 2.0 integrates with the **HHT-α method** (Hilber–Hughes–Taylor) on the Lie group of
+FreeDyn 2 integrates with the **HHT-α method** (Hilber–Hughes–Taylor) on the Lie group of
 the bodies, at a fixed step, solving the nonlinear equations of each step with Newton's
 method and a sparse LU (KLU). The equations and their Jacobians are exact (generated).
 

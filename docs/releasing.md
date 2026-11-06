@@ -1,6 +1,6 @@
 # Releasing
 
-How a version of FreeDyn 2.0 gets to its users, and what a maintainer sets up for it. Everything
+How a version of FreeDyn 2 gets to its users, and what a maintainer sets up for it. Everything
 runs in the workflow `Wheels` (`.github/workflows/wheels.yml`) when a version tag `vX.Y.Z` is
 pushed:
 
@@ -62,7 +62,7 @@ computers block unsigned programs. A signature names the publisher; SmartScreen'
 with downloads of signed files.
 
 The workflow signs with **SignPath** when the secret `SIGNPATH_API_TOKEN` exists, and only for
-version tags: first FreeDyn 2.0's own programs that go into the installer (`freedyn2.exe`,
+version tags: first FreeDyn 2's own programs that go into the installer (`freedyn2.exe`,
 `freedyn2-gui.exe`, `freedyn2_run.exe`, `freedyn2_road.exe`), then the installer. Without the
 token these steps are skipped and the installer is unsigned. The Inno Setup uninstaller
 (`unins000.exe`) remains unsigned in this setup.
@@ -70,8 +70,8 @@ token these steps are skipped and the installer is unsigned. The Inno Setup unin
 **SignPath Foundation** ([signpath.org](https://signpath.org)) signs open-source projects free of
 charge with its own certificate; the publisher shown is then "SignPath Foundation", and the
 signature attests that the file was built from the project's repository. Requirements (check
-the current conditions on [signpath.org](https://signpath.org) before applying), which FreeDyn
-2.0 meets as set up here:
+the current conditions on [signpath.org](https://signpath.org) before applying), which FreeDyn 2
+meets as set up here:
 
 - an OSI-approved license (Apache-2.0), no proprietary components;
 - a public repository, the software actively maintained and already released or about to be;
@@ -154,7 +154,7 @@ The documentation link of the installer's Start menu points to
 
     ```sh
     git checkout main && git pull
-    git tag -a v0.2.0 -m "FreeDyn 2.0 0.2.0"
+    git tag -a v0.2.0 -m "FreeDyn 2 version 0.2.0"
     git push origin v0.2.0
     ```
 
@@ -170,8 +170,8 @@ The documentation link of the installer's Start menu points to
       downloads the new installer (stable releases only);
     - on a Windows computer: download, check the hash (`Get-FileHash FreeDyn2-setup.exe`
       against `SHA256SUMS`), right click, Properties, Digital Signatures (if signed), install
-      over the previous version, start "FreeDyn 2.0" from the Start menu, `freedyn2 doctor` in
-      the "FreeDyn 2.0 Command Prompt";
+      over the previous version, start "FreeDyn 2" from the Start menu, `freedyn2 doctor` in
+      the "FreeDyn 2 Command Prompt";
     - later: the winget pull request is merged (`winget show FreeDynOrg.FreeDyn2`).
 
 If a job fails after PyPI accepted the upload: a version on PyPI cannot be replaced. Fix the
@@ -195,7 +195,7 @@ Setup 6 installed: `python installer/windows/build.py all --wheel-dir wheelhouse
 
 `installer/windows/freedyn2.iss` (Inno Setup): per user by default
 (`%LOCALAPPDATA%\Programs\FreeDyn2`) or for all users (`C:\Program Files\FreeDyn2`), components
-core, C compiler, examples; tasks PATH, `.fds` association, "Open with FreeDyn 2.0" for `.yaml`,
+core, C compiler, examples; tasks PATH, `.fds` association, "Open with FreeDyn 2" for `.yaml`,
 Claude Desktop registration (`freedyn2 setup-mcp --client claude-desktop`, undone at uninstall),
 desktop icon. A new version installs over the old one. Uninstalling keeps the user data in
 `%APPDATA%\freedyn2` and `%LOCALAPPDATA%\freedyn2`. Silent:

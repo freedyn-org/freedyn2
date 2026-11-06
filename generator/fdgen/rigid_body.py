@@ -1,6 +1,6 @@
 """Rigid body element types.
 
-- rigid_body (FreeDyn 2.0 default): Lie group R^3 x SO(3). Configuration q = [R (3); theta (4)]
+- rigid_body (FreeDyn 2 default): Lie group R^3 x SO(3). Configuration q = [R (3); theta (4)]
   with theta a unit quaternion (Euler parameters) used only to store the rotation, velocity
   v = [Rdot (3, global); omega_bar (3, body frame)]. Updated by the exponential map; no
   normalization constraint.

@@ -28,10 +28,10 @@ freedyn2 compare model.fds ... --legacy <FreeDyn>
 | `setup-mcp` | register the MCP server with Claude Desktop and Claude Code ([below](#setup-mcp)) |
 | `config` | show or set the user configuration, e.g. `freedyn2 config compiler zig` ([below](#config)) |
 | `doctor` | what this installation finds: runtime, compiler, directories, MCP registration ([below](#doctor)) |
-| `compare` | legacy FreeDyn against FreeDyn 2.0 on `.fds` models (needs the legacy program) |
+| `compare` | legacy FreeDyn against FreeDyn 2 on `.fds` models (needs the legacy program) |
 
 `.fds` models of the legacy FreeDyn are read by `run`, `view` and `check`; `--profile legacy`
-runs them with the legacy algorithms (for comparisons), the default `v2` with FreeDyn 2.0's.
+runs them with the legacy algorithms (for comparisons), the default `v2` with FreeDyn 2's.
 
 ## convert
 

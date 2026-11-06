@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes of FreeDyn 2.0. Versions follow [semantic versioning](https://semver.org);
+All notable changes of FreeDyn 2. Versions follow [semantic versioning](https://semver.org);
 the section of a version becomes the text of its GitHub Release (docs/releasing.md).
 
 ## [Unreleased]

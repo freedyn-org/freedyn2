@@ -1,6 +1,6 @@
-# FreeDyn 2.0 architecture and reading guide
+# FreeDyn 2 architecture and reading guide
 
-FreeDyn 2.0 splits multibody simulation into two programs with one narrow interface between
+FreeDyn 2 splits multibody simulation into two programs with one narrow interface between
 them:
 
 - the **generator** (Python, `generator/fdgen`) knows the physics: it derives every equation

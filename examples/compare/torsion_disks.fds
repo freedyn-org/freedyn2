@@ -1,5 +1,5 @@
 Header freeDynHeader
-% FreeDyn 2.0: two disks on revolute joints (axis z) with torsion torques from legacy Measure Rotational (Angle over several revolutions, AngleVel, LocalAngleVel); linear in the joint angles
+% FreeDyn 2: two disks on revolute joints (axis z) with torsion torques from legacy Measure Rotational (Angle over several revolutions, AngleVel, LocalAngleVel); linear in the joint angles
 EndHeader
 %
 %---------------- Rigid Bodies ------------------------

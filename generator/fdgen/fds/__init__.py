@@ -1,4 +1,4 @@
-"""Importer for the legacy FreeDyn model format (.fds), for the subset FreeDyn 2.0 supports.
+"""Importer for the legacy FreeDyn model format (.fds), for the subset FreeDyn 2 supports.
 
 Modules: blocks (block parser, values), bodies (bodies, joints), loads (measures, expressions,
 forces, splines, drivers), solver (simulation / solver blocks, profiles).
@@ -25,7 +25,7 @@ silently simulated with parts missing. Conventions follow the legacy kernel
   PointOfApplication_Body2, e from ForceDirectionType SpaceFixed / BodyFixed (ForceDirection,
   global at t = 0) or In-line-of-sight: body-body from point 1 to point 2
   (MBS_3DUnitVector_BodyBody), but body-ground from the ground point to the body point
-  (MBS_3DUnitVector_GroundBody), so the expression is negated for FreeDyn 2.0's line_of_sight
+  (MBS_3DUnitVector_GroundBody), so the expression is negated for FreeDyn 2's line_of_sight
   (always from point 1 to point 2). GenericTorque: Axis, AxisType.
 - Measure Translational (MeasureMode disp / vel, MeasureCoordinate X / Y / Z / XYZ) with the
   legacy definitions (MBS_RefFrameMeasureRiBo_*, MBS_RiBoRiBoMeasure_*); see _measure.
@@ -48,7 +48,7 @@ Profiles (how the model is solved; the model itself is the same):
 - "legacy": the legacy algorithm (Euler-parameter bodies, Negrut HHT form, legacy Newton rule,
   step size and output time control, Jacobian and ModifyNewmark options). Used to compare with
   legacy FreeDyn to round-off.
-- "v2": FreeDyn 2.0 defaults (Lie group bodies, Arnold-Bruls HHT form, velocity-level Newton
+- "v2": FreeDyn 2 defaults (Lie group bodies, Arnold-Bruls HHT form, velocity-level Newton
   criterion, full iteration matrix); the step size control keeps the model's GlobalErrorTolerance and
   SolverMaxTimeStep. Compared with legacy FreeDyn on the level of the physics, against an
   independent reference.

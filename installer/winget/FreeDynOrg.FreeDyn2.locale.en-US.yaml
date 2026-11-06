@@ -3,17 +3,17 @@
 PackageIdentifier: FreeDynOrg.FreeDyn2
 PackageVersion: "{{VERSION}}"
 PackageLocale: en-US
-Publisher: The FreeDyn 2.0 contributors
+Publisher: The FreeDyn 2 contributors
 PublisherUrl: https://github.com/freedyn-org
 PublisherSupportUrl: https://github.com/freedyn-org/freedyn2/issues
-PackageName: FreeDyn 2.0
+PackageName: FreeDyn 2
 PackageUrl: https://github.com/freedyn-org/freedyn2
 License: Apache-2.0
 LicenseUrl: https://github.com/freedyn-org/freedyn2/blob/main/LICENSE
-Copyright: Copyright 2026 The FreeDyn 2.0 contributors
+Copyright: Copyright 2026 The FreeDyn 2 contributors
 ShortDescription: Multibody dynamics with generated code; real-time solver, viewer, MCP server
 Description: |-
-  FreeDyn 2.0 simulates multibody systems (bodies, joints, forces, tires and roads) described in
+  FreeDyn 2 simulates multibody systems (bodies, joints, forces, tires and roads) described in
   YAML model files or legacy FreeDyn .fds files. The installer contains its own Python, the app
   window, the 3D viewer, an MCP server for assistants and, optionally, a C compiler (Zig) for
   model plugins.

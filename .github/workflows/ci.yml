@@ -79,7 +79,7 @@ jobs:
           python -m fdgen.cli run examples/compare/pendulum.fds -o pendulum.csv
           python -m fdgen.cli run examples/driven_rotor.yaml -o driven_rotor.csv -- --linear-solver klu
 
-  # FreeDyn 2.0 against the legacy kernel (freedyn-org/me, private). Needs a repository
+  # FreeDyn 2 against the legacy kernel (freedyn-org/me, private). Needs a repository
   # secret FREEDYN_ME_TOKEN with read access to freedyn-org/me; skipped without it.
   legacy-compare:
     runs-on: ubuntu-24.04
@@ -108,7 +108,7 @@ jobs:
           sudo apt-get install -y libeigen3-dev libsuitesparse-dev
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt mkl-devel
-      - name: Build FreeDyn 2.0
+      - name: Build FreeDyn 2
         if: env.HAS_TOKEN == 'true'
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE="$(which python)"

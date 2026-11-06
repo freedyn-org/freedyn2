@@ -1,4 +1,4 @@
-// The app shell around a viewer page served by the FreeDyn 2.0 app (fdgen.app.server): a small
+// The app shell around a viewer page served by the FreeDyn 2 app (fdgen.app.server): a small
 // notice when a new release is available and the errors of the app. The viewer is unchanged.
 (function () {
   "use strict";
@@ -42,7 +42,7 @@
       } else if (status.errors.length < errorsSeen) errorsSeen = status.errors.length;
       else if (!visible() && status.update && status.update.newer && hidden !== status.update.latest) {
         const u = status.update;
-        show(`FreeDyn 2.0 ${esc(u.latest)} is available · <a href="${esc(u.url || status.releases)}" target="_blank" rel="noopener" style="color:var(--accent)">release page</a>`, false);
+        show(`FreeDyn 2 version ${esc(u.latest)} is available · <a href="${esc(u.url || status.releases)}" target="_blank" rel="noopener" style="color:var(--accent)">release page</a>`, false);
       }
     } catch (e) { /* the app ended */ }
     setTimeout(poll, 15000);

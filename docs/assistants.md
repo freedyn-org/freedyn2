@@ -1,6 +1,6 @@
 # Working with an assistant
 
-FreeDyn 2.0 comes with an [MCP](https://modelcontextprotocol.io) server: through it an AI
+FreeDyn 2 comes with an [MCP](https://modelcontextprotocol.io) server: through it an AI
 assistant – Claude Code, Claude Desktop or any other MCP client – reads the conventions,
 writes model files, validates, simulates, reads and compares results, runs variant studies,
 opens the viewer for you and reads the notes you leave there. You check and decide.

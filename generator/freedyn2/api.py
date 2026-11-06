@@ -160,7 +160,7 @@ class Model:
 
 def load(path, profile="v2", params=None):
     """The model of a .yaml or legacy .fds file, validated (ModelError if not). profile: for
-    .fds models, FreeDyn 2.0 methods (v2) or the legacy algorithm (legacy). params: values to
+    .fds models, FreeDyn 2 methods (v2) or the legacy algorithm (legacy). params: values to
     set (Model.with_parameters)."""
     if isinstance(path, Model):
         m = path

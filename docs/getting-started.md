@@ -2,7 +2,7 @@
 
 ## Install
 
-FreeDyn 2.0 runs on Windows (x64) and Linux (x86_64). It comes in two forms: a Windows
+FreeDyn 2 runs on Windows (x64) and Linux (x86_64). It comes in two forms: a Windows
 installer that sets up a program, and a Python package for use from Python.
 
 ### Which way suits me?
@@ -17,7 +17,7 @@ side; each has its own Python.
 
 !!! note "Before the first release"
     The installer comes with the first release; until then there is no download. Until
-    FreeDyn 2.0 is on PyPI, take the wheel for your platform from the artifacts of the *Wheels*
+    FreeDyn 2 is on PyPI, take the wheel for your platform from the artifacts of the *Wheels*
     workflow on GitHub and install it with `pip install "freedyn2-0.1.0-py3-none-<platform>.whl[gui,compiler]"`.
 
 === "Windows installer"
@@ -35,14 +35,14 @@ side; each has its own Python.
     | C compiler (Zig) | on | for models with expression forces or drivers (see below) |
     | examples | on | the example models |
     | add to PATH | on | `freedyn2` in every command prompt |
-    | associate `.fds` | off | double click opens a legacy model in FreeDyn 2.0 |
-    | "Open with FreeDyn 2.0" for `.yaml` | off | in the context menu of model files |
+    | associate `.fds` | off | double click opens a legacy model in FreeDyn 2 |
+    | "Open with FreeDyn 2" for `.yaml` | off | in the context menu of model files |
     | register with Claude Desktop | off | the [MCP server](assistants.md) for Claude Desktop |
     | desktop icon | off | |
 
-    The start menu then has **FreeDyn 2.0** (the app window: open a model, recent models,
-    examples, the documentation), **FreeDyn 2.0 Command Prompt** (a prompt with `freedyn2` on
-    the PATH) and **FreeDyn 2.0 Documentation**.
+    The start menu then has **FreeDyn 2** (the app window: open a model, recent models,
+    examples, the documentation), **FreeDyn 2 Command Prompt** (a prompt with `freedyn2` on
+    the PATH) and **FreeDyn 2 Documentation**.
 
     For rollouts: `FreeDyn2-setup.exe /VERYSILENT /CURRENTUSER` installs without questions.
 
@@ -106,7 +106,7 @@ that off).
 
 | | update | uninstall |
 |---|---|---|
-| Windows installer | download the new `FreeDyn2-setup.exe` and run it over the old installation | Windows Settings > Apps > FreeDyn 2.0 |
+| Windows installer | download the new `FreeDyn2-setup.exe` and run it over the old installation | Windows Settings > Apps > FreeDyn 2 |
 | uv | `uv tool upgrade freedyn2` | `uv tool uninstall freedyn2` |
 | pip | `pip install -U freedyn2` | `pip uninstall freedyn2` |
 
@@ -168,13 +168,13 @@ old one. That loop, *edit, save, look*, is the whole idea; the [viewer page](vie
 everything else it can do.
 
 `freedyn2 gui pendulum.yaml` shows the same in a window of its own (with the `gui` extra or
-the Windows installer; the start menu entry **FreeDyn 2.0** opens it with a start page).
+the Windows installer; the start menu entry **FreeDyn 2** opens it with a start page).
 
 ![The pendulum in the viewer](img/pendulum.png)
 
 ## Next
 
-- [Coming from FreeDyn](from-freedyn.md): your `.fds` models in FreeDyn 2.0.
+- [Coming from FreeDyn](from-freedyn.md): your `.fds` models in FreeDyn 2.
 - The [tutorial](tutorial.md) tunes a quarter car with sliders, compares runs and studies
   variants.
 - [Working with an assistant](assistants.md) connects Claude (or another MCP client) so it

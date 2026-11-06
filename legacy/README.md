@@ -1,7 +1,7 @@
 # Legacy FreeDyn on Linux (reference for comparisons)
 
 `build_legacy.py` builds the command-line solver `FreeDyn` of the legacy kernel
-(`freedyn-org/me`) with GCC on Linux, so every FreeDyn 2.0 result can be compared with it
+(`freedyn-org/me`) with GCC on Linux, so every FreeDyn 2 result can be compared with it
 on the same machine. The legacy repository is never modified:
 
 1. its sources are copied to `<outdir>/src`,

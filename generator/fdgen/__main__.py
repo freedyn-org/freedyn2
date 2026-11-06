@@ -10,12 +10,12 @@ from .model import ModelError, load_yaml, validate, write_fdm
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="fdgen", description="FreeDyn 2.0 model generator")
+    ap = argparse.ArgumentParser(prog="fdgen", description="FreeDyn 2 model generator")
     ap.add_argument("models", nargs="*", help="model files (.yaml or legacy FreeDyn .fds)")
     ap.add_argument("-o", "--outdir", required=True)
     ap.add_argument("--models-only", action="store_true", help="skip element C code generation")
     ap.add_argument("--profile", choices=("legacy", "v2"), default="legacy",
-                    help="how .fds models are solved: legacy algorithm (default) or FreeDyn 2.0 defaults")
+                    help="how .fds models are solved: legacy algorithm (default) or FreeDyn 2 defaults")
     args = ap.parse_args(argv)
 
     out = Path(args.outdir)

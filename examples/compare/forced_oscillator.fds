@@ -1,5 +1,5 @@
 Header freeDynHeader
-% FreeDyn 2.0: forced damped oscillator (same model as examples/forced_oscillator.yaml): GenericForce with measures and parameters
+% FreeDyn 2: forced damped oscillator (same model as examples/forced_oscillator.yaml): GenericForce with measures and parameters
 EndHeader
 %
 %---------------- Rigid Bodies ------------------------
