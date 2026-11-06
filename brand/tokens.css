@@ -27,6 +27,9 @@
   --fd-fg-soft: var(--fd-rule);
   --fd-fg-muted: var(--fd-graphite);
   --fd-line: var(--fd-ink);
+  --fd-line-soft: var(--fd-soft);   /* hairlines in dense UI (inputs, grids, panel borders) */
+  --fd-surface: #DFDFDB;            /* hover, inputs, the 3D scene: 6% ink on paper */
+  --fd-fg-slash: var(--fd-graphite); /* the slash of the word mark (theme.*.slash) */
   --fd-accent: var(--fd-ink);       /* the cursor is ink on paper */
   --fd-on-accent: var(--fd-paper);
 }
@@ -38,6 +41,9 @@
     --fd-fg-soft: var(--fd-soft);
     --fd-fg-muted: var(--fd-muted);
     --fd-line: var(--fd-rule);
+    --fd-line-soft: var(--fd-rule);
+    --fd-surface: #19191A;          /* 6% paper on ink */
+    --fd-fg-slash: var(--fd-slash);
     --fd-accent: var(--fd-cursor);
     --fd-on-accent: var(--fd-ink);
   }
@@ -52,3 +58,6 @@
   vertical-align: -0.1em;
   background: var(--fd-accent);
 }
+
+/* The claim's period: "ai-first multibody dynamics<span class="fd-period">.</span>" */
+.fd-period { color: var(--fd-accent); }

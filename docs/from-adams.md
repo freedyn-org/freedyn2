@@ -1,13 +1,13 @@
 # Coming from Adams
 
-If you model in MSC Adams, most of FreeDyn 2 will be familiar – the same rigid bodies,
+If you model in MSC Adams, most of freedyn2 will be familiar – the same rigid bodies,
 joints, forces and HHT integration. What is different is *how* a model is made and looked
 at: a text file instead of a database, written by you or an assistant; a viewer that
 re-simulates on every save; variant studies from a slider.
 
 ## Concepts side by side
 
-| Adams | FreeDyn 2 |
+| Adams | freedyn2 |
 |---|---|
 | Part, Ground | [`bodies`](reference/bodies.md), `ground` |
 | Marker, hardpoint, construction frame | none needed: points and frames are given **globally at t = 0** where they are used; shared ones are named [`points` and `frames`](reference/hardpoints.md) (`{mirror: ...}` for left / right, `{in: part, local: ...}` for part coordinates) |
@@ -44,7 +44,7 @@ re-simulates on every save; variant studies from a slider.
 - **Inertia as principal moments.** Give the principal moments and turn the body frame to the
   principal axes (eigen-decomposition of the Adams inertia tensor).
 
-## Not (yet) in FreeDyn 2
+## Not (yet) in freedyn2
 
 Flexible bodies, contacts (other than tires), couplers and gears, universal and
 constant-velocity joints, friction in joints, static and kinematic analyses (start from rest

@@ -1,13 +1,13 @@
 # Theory and algorithms
 
-This page states the mathematics of FreeDyn 2 as it is implemented: the equations of motion,
+This page states the mathematics of freedyn2 as it is implemented: the equations of motion,
 the constraints and forces, how the derivatives are obtained, the time integration and the
 linear algebra. It is written for a review of the algorithms; every section names the source
 file it describes, and the formulas use the symbols of the code. The software architecture
 (modules, file formats, viewer, assistant tools) is described in [Architecture](architecture.md)
 and is not repeated here.
 
-FreeDyn 2 succeeds FreeDyn, developed at the University of Applied Sciences Upper Austria,
+freedyn2 succeeds FreeDyn, developed at the University of Applied Sciences Upper Austria,
 Campus Wels, by Wolfgang Steiner, Wolfgang Witteveen, Karin Nachbagauer, Karim Sherif, Thomas
 Lauss and Stefan Oberpeilsteiner, among others. Its solver served as the reference for every
 step and is reproduced in the legacy profile (7.2). Publications on FreeDyn: Nachbagauer, Sherif,

@@ -1,9 +1,9 @@
-"""Physical comparison: FreeDyn 2 with its own defaults and legacy FreeDyn, each against an
+"""Physical comparison: freedyn2 with its own defaults and legacy FreeDyn, each against an
 independent reference (legacy/references: RK4 on Euler's equations for free bodies, on the
 minimal-coordinate equations of motion for revolute joint chains).
 
-FreeDyn 2 may use other methods than the legacy kernel (Arnold-Bruls instead of the Negrut
-HHT form); both must solve the same physics, and FreeDyn 2 must be at least as accurate.
+freedyn2 may use other methods than the legacy kernel (Arnold-Bruls instead of the Negrut
+HHT form); both must solve the same physics, and freedyn2 must be at least as accurate.
 Skipped without the legacy build (FREEDYN_LEGACY_BIN) and freedyn2_run (FREEDYN2_RUN).
 """
 
@@ -23,7 +23,7 @@ LEGACY = Path(os.environ.get("FREEDYN_LEGACY_BIN", ROOT / "build/legacy/build/Fr
 V2 = Path(os.environ.get("FREEDYN2_RUN", ROOT / "build/freedyn2_run"))
 MODELS = sorted((ROOT / "examples" / "compare").glob("*.fds"))
 
-# Relative omega error bound for FreeDyn 2 (about 5x its measured discretization error, second
+# Relative omega error bound for freedyn2 (about 5x its measured discretization error, second
 # order) and a sanity bound for legacy FreeDyn, whose Negrut form is first order with alpha < 0
 # (measured omega 2.4e-3 ... 1.3e-1, A up to 0.34 for step_control: alpha = -0.2, 40 rad of
 # fast rotation): both solve the same problem.

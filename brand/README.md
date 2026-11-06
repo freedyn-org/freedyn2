@@ -58,6 +58,11 @@ Rules:
 | soft | `#B5B5B0` | body text on ink |
 | cursor | `#C8F031` | cursor, the claim's period, live state. Nothing else. |
 
+Two theme tokens serve dense UI (the app and the viewer) and are no new colors of the brand:
+`line-soft` (hairlines of inputs, panels and plot grids: soft on paper, rule on ink, where a full
+ink line would be too heavy) and `surface` (hover, inputs, the 3D scene: 6% of the text color
+over the ground, `#DFDFDB` on paper, `#19191A` on ink).
+
 The cursor color is the only accent. It marks the cursor and "live" (connected, running), and
 is never used for large areas besides the favicon and avatar. Functional status colors in the
 viewer (ok, pending, failed) stay functional and are not part of the brand.

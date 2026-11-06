@@ -1,4 +1,4 @@
-"""An example extension of FreeDyn 2: a force type `aero_drag`, air drag at a point of a body,
+"""An example extension of freedyn2: a force type `aero_drag`, air drag at a point of a body,
 
   F = -c |v - w| (v - w)        v: velocity of the point, w: wind (global), c = rho cw A / 2
 

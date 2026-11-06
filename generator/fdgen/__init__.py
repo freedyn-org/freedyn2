@@ -1,4 +1,4 @@
-"""fdgen: FreeDyn 2 model generator (YAML -> CasADi -> C)."""
+"""fdgen: freedyn2 model generator (YAML -> CasADi -> C)."""
 
 
 def _version():

@@ -1,4 +1,4 @@
-"""Is there a newer FreeDyn 2? A notice only: nothing is downloaded or installed.
+"""Is there a newer freedyn2? A notice only: nothing is downloaded or installed.
 
   check()                 the latest release on GitHub, at most once a day (force=True: now)
   check_in_background(f)  the same in a thread; f(result) when a newer release is there
@@ -169,12 +169,12 @@ def main():
     """freedyn2 update-check: ask GitHub now and print the answer; 0, or 1 if it failed."""
     r = check(force=True)
     if r is None:
-        print(f"FreeDyn 2 version {__version__}: no answer from GitHub ({last_error}; {RELEASES_API})")
+        print(f"freedyn2 {__version__}: no answer from GitHub ({last_error}; {RELEASES_API})")
         return 1
     if r["newer"]:
-        print(f"FreeDyn 2 version {r['latest']} is available (this is {r['current']}): {r['url']}")
+        print(f"freedyn2 {r['latest']} is available (this is {r['current']}): {r['url']}")
     else:
-        print(f"FreeDyn 2 version {r['current']} is up to date (latest release {r['latest']})")
+        print(f"freedyn2 {r['current']} is up to date (latest release {r['latest']})")
     if not enabled():
         print("(the automatic check of the app is off: update_check = false or FREEDYN2_NO_UPDATE_CHECK)")
     return 0

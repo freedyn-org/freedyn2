@@ -2,7 +2,7 @@
 
 The running app writes data_dir()/instance.json: {port, token, pid}. A new start reads it and
 POSTs the models to http://127.0.0.1:<port>/api/app/handoff with the token (header
-X-FreeDyn2-Token); if that works, the new start is done (the running app opens a window per
+X-freedyn2-Token); if that works, the new start is done (the running app opens a window per
 model, or the start page). If there is no file, or nobody answers, the new start runs the app.
 """
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from .. import userdirs
 
-HEADER = "X-FreeDyn2-Token"
+HEADER = "X-freedyn2-Token"
 log = logging.getLogger("freedyn2.app")
 
 

@@ -227,5 +227,5 @@ def time_motion(block, body_ids, measures, parameters, splines, used_splines):
 
 
 def short_names(table, prefix):
-    """Legacy labels (without the prefix) -> FreeDyn 2 names."""
+    """Legacy labels (without the prefix) -> freedyn2 names."""
     return {k[len(prefix):]: k for k in table}

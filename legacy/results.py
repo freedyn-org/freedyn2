@@ -83,7 +83,7 @@ def rotation_matrix(t):
 
 
 def read_v2_results(csv_path, bodies):
-    """FreeDyn 2 CSV results in the layout of read_rigid_body_results, for the named bodies."""
+    """freedyn2 CSV results in the layout of read_rigid_body_results, for the named bodies."""
     rows = list(csv.DictReader(open(csv_path)))
     col = lambda b, k, sfx: np.array([[float(r[f"{b}.{k}{s}"]) for s in sfx] for r in rows])
     xyz = ("_x", "_y", "_z")

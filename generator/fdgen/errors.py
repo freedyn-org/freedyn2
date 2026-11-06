@@ -1,4 +1,4 @@
-"""Errors of FreeDyn 2 (also raised by the Python API, freedyn2)."""
+"""Errors of freedyn2 (also raised by the Python API, freedyn2)."""
 
 
 class FreeDynError(Exception):

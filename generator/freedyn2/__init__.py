@@ -1,4 +1,4 @@
-"""FreeDyn 2 from Python: load, run, check and sweep models; results as numpy arrays.
+"""freedyn2 from Python: load, run, check and sweep models; results as numpy arrays.
 
     import freedyn2
     m = freedyn2.load("model.yaml")                       # Model; m.parameters, m.bodies, ...

@@ -1,12 +1,12 @@
-"""Scaling of legacy FreeDyn and FreeDyn 2 with the model size: N cars in one model.
+"""Scaling of legacy FreeDyn and freedyn2 with the model size: N cars in one model.
 
   python examples/scaling/scaling.py --legacy build/legacy/build/FreeDyn [--cars 1 2 4 8]
          [--end-time 5] [--markdown scaling.md]
 
 Each model holds N independent copies of the car of make_car.py (13 bodies, 60 constraint
 equations, 16 expression forces and torques per car). Both programs run the same .fds as given,
-single-threaded; reported are the wall-clock times (legacy: one program run; FreeDyn 2:
-cold build and simulation), the FreeDyn 2 time per step, and the largest deviation between
+single-threaded; reported are the wall-clock times (legacy: one program run; freedyn2:
+cold build and simulation), the freedyn2 time per step, and the largest deviation between
 the two results (position / rotation / velocity, as in freedyn2 compare), which shows that
 both compute the same motion.
 """

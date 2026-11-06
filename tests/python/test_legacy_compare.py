@@ -1,6 +1,6 @@
-"""FreeDyn 2 against the legacy FreeDyn kernel on the same .fds models.
+"""freedyn2 against the legacy FreeDyn kernel on the same .fds models.
 
-Needs the Linux build of the legacy solver (legacy/build_legacy.py) and the FreeDyn 2
+Needs the Linux build of the legacy solver (legacy/build_legacy.py) and the freedyn2
 runner; skipped otherwise. Paths: FREEDYN_LEGACY_BIN, FREEDYN2_RUN.
 """
 
@@ -21,7 +21,7 @@ MODELS = sorted((ROOT / "examples" / "compare").glob("*.fds"))
 
 # Results are printed with 13 significant digits by the legacy kernel; agreement is at that
 # level unless the model amplifies round-off. Each tolerance is the round-off floor measured by
-# running FreeDyn 2 against itself with another LU factorization (sparse vs dense):
+# running freedyn2 against itself with another LU factorization (sparse vs dense):
 # - dzhanibekov: differences of ~1e-13 grow by e^(lambda t) whenever the body passes the
 #   unstable axis (self-comparison 6.6e-7 after 20 s),
 # - step_control: ~40 rad of fast rotation, round-off accumulates (self-comparison 2.7e-11),
@@ -33,9 +33,9 @@ MODELS = sorted((ROOT / "examples" / "compare").glob("*.fds"))
 # - spline_spring: the same for a stiff nonlinear spring law from an Akima spline (2.8e-9;
 #   each term alone at round-off).
 # - driven_base, driven_rotor: the legacy activation polynomial uses numerical time derivatives
-#   of the motion (FL_FunctionExpression), FreeDyn 2 exact ones (7e-10, 3e-10).
+#   of the motion (FL_FunctionExpression), freedyn2 exact ones (7e-10, 3e-10).
 # - fast_rotor (300 rad/s): the round-off of the linear solver is amplified to 2e-11 over 1 s
-#   (FreeDyn 2 against itself: KLU vs dense 2.1e-11, SparseLU vs dense 1.7e-11).
+#   (freedyn2 against itself: KLU vs dense 2.1e-11, SparseLU vs dense 1.7e-11).
 TOL = {"dzhanibekov": 1e-5, "fast_rotor": 5e-11, "step_control": 1e-10, "double_pendulum": 1e-8, "spring_chain": 1e-6,
        "spline_spring": 1e-7, "driven_base": 1e-8, "driven_rotor": 1e-8}
 
