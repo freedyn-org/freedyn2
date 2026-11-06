@@ -118,3 +118,29 @@
 
 /* labels of the navigation: lower case is the brand; the content keeps its case */
 .md-nav__title { font-family: var(--fd-font-mono); font-weight: 500; }
+
+/* sidebar: every page sits in a section. The section label is a path in mono (slash, lower
+   case, muted), its pages are indented behind a hairline, sections are parted by space. */
+@media screen and (min-width: 76.25em) {
+  .md-nav--primary > .md-nav__list > .md-nav__item--section { margin: 1.4em 0 0; }
+  .md-nav--primary > .md-nav__list > .md-nav__item--section:first-child { margin-top: 0.4em; }
+  .md-nav--primary .md-nav__item--section > .md-nav__link {
+    font-family: var(--fd-font-mono); font-weight: 500; font-size: 0.62rem;
+    text-transform: lowercase; letter-spacing: 0; color: var(--md-default-fg-color--lighter);
+    margin-bottom: 0.3em; justify-content: flex-start; gap: 0;
+  }
+  .md-nav--primary .md-nav__item--section > .md-nav__link::before {
+    content: "/"; color: var(--md-default-fg-color--lighter); margin-right: 0.1em;
+  }
+  .md-nav--primary .md-nav__item--section > .md-nav {
+    margin-left: 0.15em; padding-left: 0.6em;
+    border-left: var(--fd-hairline) solid var(--md-default-fg-color--lightest);
+  }
+  .md-nav--primary .md-nav__item--section > .md-nav .md-nav__link { margin-top: 0.4em; }
+  /* the current page: the cursor marker on the hairline */
+  .md-nav--primary .md-nav__item--section > .md-nav .md-nav__link--active {
+    font-weight: 600; color: var(--md-default-fg-color);
+    border-left: 2px solid var(--md-accent-fg-color);
+    margin-left: calc(-0.6em - 1.5px); padding-left: calc(0.6em - 0.5px);
+  }
+}
