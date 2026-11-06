@@ -74,6 +74,9 @@ Compression=lzma2/max
 SolidCompression=yes
 LZMAUseSeparateProcess=yes
 WizardStyle=modern
+; brand images, made by tools/make_app_icon.py from brand/logo (100, 150, 200 % display scaling)
+WizardImageFile=wizard\wizard-large-100.bmp,wizard\wizard-large-150.bmp,wizard\wizard-large-200.bmp
+WizardSmallImageFile=wizard\wizard-small-100.bmp,wizard\wizard-small-150.bmp,wizard\wizard-small-200.bmp
 UninstallDisplayName={#AppName}
 #ifdef HaveIcon
 SetupIconFile={#StageDir}\core\freedyn2.ico

@@ -209,7 +209,7 @@ def test_server_api_and_reload(tmp_path):
         csv_text = get(base + "api/results.csv").decode()
         assert csv_text.startswith("t,rod.R_x")
         assert b"Three.js Authors" in get(base + "vendor/three.module.min.js")[:200]
-        assert b"freedyn2 Viewer" in get(base)
+        assert b"freedyn2 viewer" in get(base)
         with pytest.raises(urllib.error.HTTPError):
             get(base + "../../model.py")
         time.sleep(0.05)
@@ -238,6 +238,7 @@ def test_export_is_one_file(tmp_path):
     html = page.read_text()
     assert "window.FD_STATIC" in html and "importmap" in html
     assert 'src="./' not in html and "vendor/" not in html.split("window.FD_STATIC")[0]
+    assert "./brand/" not in html and html.count("data:font/woff2;base64,") == 4  # brand inlined: offline
     data = json.loads(html.split("window.FD_STATIC = ", 1)[1].split(";</script>", 1)[0].replace("<\\/", "</"))
     assert data["scene"]["model"] == "p" and data["csv"].startswith("t,rod.R_x")
 

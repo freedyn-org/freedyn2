@@ -31,6 +31,7 @@ each value of one tuned number (root locus), likewise about the state of the cur
 import base64
 import json
 import mimetypes
+import re
 import shutil
 import subprocess
 import tempfile
@@ -580,6 +581,24 @@ def serve(view, port=8765, open_browser=True):
     return 0
 
 
+def _inline_brand(html):
+    """The page's brand files (web/brand: tokens, fonts, favicon, logos) inlined, for one file
+    that works offline: the four woff2 fonts as data URIs (about 120 kB)."""
+    brand = WEB / "brand"
+
+    def uri(name, mime):
+        return f"data:{mime};base64," + base64.b64encode((brand / name).read_bytes()).decode()
+
+    fonts = re.sub(r"url\((fonts/[\w.-]+\.woff2)\)", lambda m: f"url({uri(m.group(1), 'font/woff2')})",
+                   (brand / "fonts.css").read_text(encoding="utf-8"))
+    css = (brand / "tokens.css").read_text(encoding="utf-8") + "\n" + fonts
+    start, end = html.index("<!-- brand"), html.index("<!-- /brand -->") + len("<!-- /brand -->")
+    html = html[:start] + "<style>\n" + css + "</style>" + html[end:]
+    for name in ("favicon.svg", "lockup-small-light.svg", "lockup-small-dark.svg"):
+        html = html.replace(f'"./brand/{name}"', f'"{uri(name, "image/svg+xml")}"')
+    return html
+
+
 def export(view, path):
     """One HTML file with the viewer, three.js, the scene, the results and the meshes."""
     view.rebuild()
@@ -603,6 +622,6 @@ def export(view, path):
             "const v = document.createElement('script'); v.type = 'module'; v.src = map['./viewer.js'];"
             "document.body.appendChild(v);})();</script>")
     start, end = html.index("<!-- modules -->"), html.index("<!-- /modules -->") + len("<!-- /modules -->")
-    Path(path).write_text(html[:start] + boot + html[end:], encoding="utf-8")
+    Path(path).write_text(_inline_brand(html[:start] + boot + html[end:]), encoding="utf-8")
     shutil.rmtree(view.workdir, ignore_errors=True)
     return Path(path)

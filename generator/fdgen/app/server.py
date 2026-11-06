@@ -1,7 +1,8 @@
 """The server of the app: the start page, and a viewer per opened model in one process.
 
   /                     the start page (web/start.html)
-  /app/...              its files (web/), the icon
+  /app/...              its files (web/), the icon; /app/brand/...: the brand assets of the
+                        viewer (fdgen/view/web/brand: tokens, fonts, logos)
   /api/app/...          the start page's API (below)
   /m/<id>/...           the viewer of opened model <id>: fdgen.view.server, unchanged, under
                         this prefix (its page uses relative URLs); the page gets the app shell
@@ -298,11 +299,10 @@ _VIEW = re.compile(r"^/m/(\d+)(/.*)?$")
 def _handler(app):
     class Handler(view_server.ViewHandler):
         def _page(self):
-            """The viewer's page with the app shell: title, icon, shell.js."""
+            """The viewer's page with the app shell: title, shell.js."""
             html = (view_server.WEB / "index.html").read_text(encoding="utf-8")
             name = self._entry["path"].name if self._entry else "freedyn2"
-            html = html.replace("<title>freedyn2 Viewer</title>", f"<title>{_esc(name)} - {TITLE}</title>", 1)
-            html = html.replace('<link rel="icon" href="data:,">', '<link rel="icon" href="/app/freedyn2.png">', 1)
+            html = html.replace("<title>freedyn2 viewer</title>", f"<title>{_esc(name)} - {TITLE}</title>", 1)
             html = html.replace("</body>", '<script src="/app/shell.js"></script>\n</body>', 1)
             self._send(html.encode("utf-8"), "text/html; charset=utf-8")
 
@@ -340,6 +340,10 @@ def _handler(app):
                 return self._file(WEB / "start.html")
             if url == "/app/freedyn2.png":
                 return self._file(ICON)
+            if url.startswith("/app/brand/"):
+                brand = view_server.WEB / "brand"
+                path = (brand / url[len("/app/brand/"):]).resolve()
+                return self._file(path) if brand in path.parents else self._send(b"not found", "text/plain", 404)
             if url.startswith("/app/"):
                 path = (WEB / url[len("/app/"):]).resolve()
                 return self._file(path) if WEB in path.parents else self._send(b"not found", "text/plain", 404)

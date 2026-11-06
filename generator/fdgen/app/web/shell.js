@@ -4,7 +4,7 @@
   "use strict";
   const box = document.createElement("div");
   box.id = "fd-app-notice";
-  box.style.cssText = "display:none;gap:8px;align-items:center;padding:1px 4px 1px 10px;border-radius:12px;font-size:12px;" +
+  box.style.cssText = "display:none;gap:8px;align-items:center;padding:1px 4px 1px 10px;border-radius:0;font-size:12px;" +
     "border:1px solid var(--accent);color:var(--text);white-space:nowrap;overflow:hidden;flex:0 1 auto;min-width:0";
   const header = document.querySelector("header"), file = document.getElementById("status");
   if (header && file) header.insertBefore(box, file);  // in the header, before the file name

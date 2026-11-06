@@ -4,90 +4,98 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>freedyn2</title>
-<link rel="icon" href="/app/freedyn2.png">
+<link rel="icon" href="/app/brand/favicon.svg" type="image/svg+xml">
+<!-- the brand (brand/README.md): tokens and fonts, copies in fdgen/view/web/brand -->
+<link rel="stylesheet" href="/app/brand/tokens.css">
+<link rel="stylesheet" href="/app/brand/fonts.css">
 <style>
-/* the colours and type of the viewer (fdgen/view/web/index.html) */
 :root {
-  --bg: #f4f5f7; --panel: #ffffff; --text: #1d2330; --muted: #677085; --line: #dde1e8;
-  --accent: #2f6fdf; --error-bg: #fff1f0; --error: #b42318; --scene: #e9edf3;
-  --ok: #2b8a3e; --pending: #e67700;
+  --bg: var(--fd-bg); --text: var(--fd-fg); --muted: var(--fd-fg-muted); --line: var(--fd-line-soft);
+  --surface: var(--fd-surface); --accent: var(--fd-fg); --on-accent: var(--fd-bg);  /* interactive state: ink/paper; the cursor colour only for cursor, claim period, live */
+  /* functional, not brand: errors and warnings */
+  --error-bg: #fff1f0; --error: #b42318; --pending: #e67700;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14171d; --panel: #1c2028; --text: #e4e8ef; --muted: #8d96a8; --line: #2c323d;
-    --accent: #6d9cff; --error-bg: #3a1714; --error: #ff8a80; --scene: #1a1e25;
-  }
+  :root { --error-bg: #3a1714; --error: #ff8a80; }
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text);
-  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-header { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--panel);
-  border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
-header img { width: 22px; height: 22px; }
-header h1 { font-size: 14px; margin: 0; font-weight: 600; }
+  font: var(--fd-size-sm)/1.5 var(--fd-font-mono); }
+.prose, .hint, .empty, .banner, footer, .item .sub { font-family: var(--fd-font-sans); }
+header { display: flex; align-items: center; gap: 16px; padding: 10px 14px 10px 6px; background: var(--bg);
+  border-bottom: var(--fd-hairline) solid var(--line); position: sticky; top: 0; z-index: 2; }
+header h1 { margin: 0; line-height: 0; }
+header h1 img { height: 34px; width: auto; display: block; }
+header .claim { color: var(--muted); }
+header .claim b { font-weight: normal; color: var(--fd-accent); }
 header .version { color: var(--muted); }
-header nav { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-a, .link { color: var(--accent); text-decoration: none; cursor: pointer; }
-a:hover, .link:hover { text-decoration: underline; }
-button, select, input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
-  border-radius: 5px; padding: 3px 8px; }
+header nav { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+a, .link { color: var(--text); text-decoration: underline; text-decoration-color: var(--line);
+  text-underline-offset: 3px; cursor: pointer; }
+a:hover, .link:hover { text-decoration-color: var(--text); }
+button, select, input { font: inherit; color: var(--text); background: var(--bg); border: var(--fd-hairline) solid var(--line);
+  border-radius: 0; padding: 3px 9px; }
 button { cursor: pointer; }
-button:hover { border-color: var(--muted); }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 5px 14px; }
+button:hover { border-color: var(--text); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; padding: 5px 14px; }
 button.primary:hover { filter: brightness(1.08); }
-input[type=text] { min-width: 0; flex: 1; padding: 4px 8px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+input[type=text] { min-width: 0; flex: 1; padding: 4px 8px; background: var(--surface); border-color: var(--surface); font-size: 12px; }
+input[type=text]:focus { outline: none; border-color: var(--text); }
 .banner { display: flex; align-items: center; gap: 10px; margin: 12px auto 0; width: min(1092px, calc(100% - 28px)); padding: 7px 12px;
-  border: 1px solid var(--accent); border-radius: 8px; color: var(--text);
-  background: color-mix(in srgb, var(--accent) 9%, var(--panel)); }
-.banner .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+  border: var(--fd-hairline) solid var(--accent); color: var(--text); background: var(--bg); }
+.banner .dot { width: 0.52em; height: 0.86em; background: var(--fd-accent); flex: none; }  /* the brand cursor: live */
 .banner .x, .errors .x { margin-left: auto; border: 0; background: none; color: var(--muted); font-size: 15px; padding: 0 4px; }
-.errors { margin: 12px auto 0; width: min(1092px, calc(100% - 28px)); padding: 8px 12px; border-radius: 8px; background: var(--error-bg);
+.errors { margin: 12px auto 0; width: min(1092px, calc(100% - 28px)); padding: 8px 12px; background: var(--error-bg);
   color: var(--error); display: flex; gap: 10px; align-items: flex-start; }
-.errors pre { margin: 0; white-space: pre-wrap; font: 12px/1.45 ui-monospace, Consolas, monospace; flex: 1; }
+.errors pre { margin: 0; white-space: pre-wrap; font: 12px/1.45 var(--fd-font-mono); flex: 1; }
 main { max-width: 1120px; margin: 0 auto; padding: 14px 14px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
 .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
-section h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 8px;
+section { background: var(--bg); border: var(--fd-hairline) solid var(--line); padding: 12px 14px; min-width: 0; }
+section h2 { font-size: var(--fd-size-xs); color: var(--muted); margin: 0 0 8px;
   font-weight: 600; display: flex; align-items: center; gap: 8px; }
-section h2 .right { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: normal; }
+section h2::before { content: "/"; color: var(--fd-fg-slash); font-weight: normal; margin-right: -4px; }
+section h2 .right { margin-left: auto; font-weight: normal; }
 .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
 .row.nowrap { flex-wrap: nowrap; }
 .muted { color: var(--muted); }
-.small { font-size: 11px; }
+.small { font-size: var(--fd-size-xs); }
 .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
 .warn { color: var(--pending); }
-.drop { margin-top: 8px; border: 1.5px dashed var(--line); border-radius: 8px; padding: 14px; text-align: center; color: var(--muted); }
-.drop.over { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.drop { margin-top: 8px; border: var(--fd-hairline) dashed var(--line); padding: 14px; text-align: center; color: var(--muted); }
+.drop.over { border-color: var(--text); color: var(--text); background: var(--surface); }
 .list { display: flex; flex-direction: column; }
-.item { display: flex; align-items: center; gap: 10px; padding: 5px 6px; border-radius: 5px; cursor: pointer; min-width: 0; }
-.item:hover { background: var(--bg); }
+.item { display: flex; align-items: center; gap: 10px; padding: 5px 6px; cursor: pointer; min-width: 0; }
+.item:hover { background: var(--surface); }
 .item .main { min-width: 0; flex: 1; }
 .item .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item .sub { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.item .when { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.item .when { color: var(--muted); font-size: var(--fd-size-xs); white-space: nowrap; }
 .item.missing { opacity: 0.5; cursor: default; }
 .item .del { border: 0; background: none; color: var(--muted); padding: 0 4px; font-size: 14px; visibility: hidden; }
 .item:hover .del { visibility: visible; }
-.item .kind { flex: none; font: 600 10px/1 ui-monospace, Consolas, monospace; color: var(--muted); border: 1px solid var(--line);
-  border-radius: 3px; padding: 3px 4px; width: 38px; text-align: center; }
+.item .kind { flex: none; font: 10px/1 var(--fd-font-mono); color: var(--muted); border: var(--fd-hairline) solid var(--line);
+  padding: 3px 4px; width: 38px; text-align: center; }
 #examples { max-height: 430px; overflow: auto; }
-#filter { width: 100%; margin-bottom: 6px; font-family: inherit; }
-.docs a { display: block; padding: 3px 0; }
+#filter { width: 100%; margin-bottom: 6px; }
+.docs a { display: block; padding: 3px 0; width: fit-content; }
 .empty { color: var(--muted); padding: 6px; }
-.busy { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line);
-  border-radius: 14px; padding: 5px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
-footer { max-width: 1120px; margin: 0 auto; padding: 0 14px 18px; color: var(--muted); font-size: 11px; }
+.busy { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--bg); border: var(--fd-hairline) solid var(--text);
+  padding: 5px 14px; }
+footer { max-width: 1120px; margin: 0 auto; padding: 0 14px 18px; color: var(--muted); font-size: var(--fd-size-xs); }
+@media (max-width: 620px) { header .claim { display: none; } }
 </style>
 </head>
 <body>
 <header>
-  <img src="/app/freedyn2.png" alt="">
-  <h1>freedyn2</h1><span class="version" id="version"></span>
+  <h1><picture><source srcset="/app/brand/lockup-small-dark.svg" media="(prefers-color-scheme: dark)">
+    <img src="/app/brand/lockup-small-light.svg" alt="freedyn2" width="140" height="34"></picture></h1>
+  <span class="claim">ai-first multibody dynamics<b>.</b></span>
+  <span class="version" id="version"></span>
   <nav>
-    <a id="docs-link" href="https://freedyn-org.github.io/freedyn2/" target="_blank" rel="noopener">Documentation</a>
-    <button id="quit" hidden title="end the app (the open viewers too)">Quit</button>
+    <a id="docs-link" href="https://freedyn-org.github.io/freedyn2/" target="_blank" rel="noopener">documentation</a>
+    <button id="quit" hidden title="end the app (the open viewers too)">quit</button>
   </nav>
 </header>
 <div class="banner" id="update" hidden><span class="dot"></span><span id="update-text"></span>
@@ -97,35 +105,35 @@ footer { max-width: 1120px; margin: 0 auto; padding: 0 14px 18px; color: var(--m
 <main>
   <div class="col">
     <section id="open">
-      <h2>Open a model</h2>
+      <h2>open a model</h2>
       <div class="row" id="open-native" hidden>
-        <button class="primary" id="browse">Open model file…</button>
+        <button class="primary" id="browse">open model file…</button>
         <span class="muted">.yaml or legacy .fds</span>
       </div>
       <div id="open-browser" hidden>
         <div class="row nowrap"><input type="text" id="path" spellcheck="false" placeholder="path of a model file, e.g. C:\models\car.yaml">
-          <button class="primary" id="open-path">Open</button></div>
+          <button class="primary" id="open-path">open</button></div>
         <div class="drop" id="drop">drop a model file here, or <label class="link">choose one<input type="file" id="upload" accept=".yaml,.yml,.fds" hidden></label>
-          <div class="small">(a copy is opened; files it reads – meshes, roads – must be given by path)</div></div>
+          <div class="small prose">(a copy is opened; files it reads – meshes, roads – must be given by path)</div></div>
       </div>
       <div class="hint warn" id="no-runtime" hidden>freedyn2_run was not found: models are shown at t = 0, without simulation.</div>
     </section>
     <section>
-      <h2>Recent models <span class="right"><span class="link small" id="recent-clear" hidden>clear</span></span></h2>
+      <h2>recent models <span class="right"><span class="link small" id="recent-clear" hidden>clear</span></span></h2>
       <div class="list" id="recent"><div class="empty">loading…</div></div>
     </section>
     <section class="docs">
-      <h2>Documentation</h2>
+      <h2>documentation</h2>
       <div id="doc-links"></div>
     </section>
   </div>
   <div class="col">
     <section>
-      <h2>Examples</h2>
+      <h2>examples</h2>
       <div class="row nowrap"><span class="muted" style="white-space: nowrap">copy to</span>
-        <input type="text" id="folder" spellcheck="false"><button id="folder-browse" hidden>Choose…</button></div>
+        <input type="text" id="folder" spellcheck="false"><button id="folder-browse" hidden>choose…</button></div>
       <div class="hint">An example is copied there (with the files it reads) and opened; your copy is yours to change.</div>
-      <div class="row"><input type="text" id="filter" placeholder="filter" spellcheck="false" style="font-family: inherit"></div>
+      <div class="row"><input type="text" id="filter" placeholder="filter" spellcheck="false"></div>
       <div class="list" id="examples"><div class="empty">loading…</div></div>
     </section>
   </div>

@@ -40,7 +40,7 @@ function ago(t) {
   if (s < 86400 * 14) return `${Math.round(s / 86400)} days ago`;
   return new Date(t * 1000).toLocaleDateString();
 }
-const kind = (name) => (/\.fds$/i.test(name) ? "FDS" : "YAML");
+const kind = (name) => (/\.fds$/i.test(name) ? "fds" : "yaml");
 
 async function loadRecent() {
   const items = await get("/api/app/recent");
@@ -83,9 +83,9 @@ function drawExamples() {
   }
 }
 
-const DOC_PAGES = [["Getting started", "getting-started/"], ["Tutorial – tuning a quarter car", "tutorial/"],
-  ["The viewer", "viewer/"], ["The model file", "reference/model-file/"], ["Examples", "examples/"],
-  ["Working with an assistant", "assistants/"], ["Command line", "cli/"]];
+const DOC_PAGES = [["getting started", "getting-started/"], ["tutorial – tuning a quarter car", "tutorial/"],
+  ["the viewer", "viewer/"], ["the model file", "reference/model-file/"], ["examples", "examples/"],
+  ["working with an assistant", "assistants/"], ["command line", "cli/"]];
 
 function drawStatus(s) {
   const first = status === null;
@@ -142,7 +142,8 @@ $("open-path").addEventListener("click", () => openPath($("path").value.trim().r
 $("path").addEventListener("keydown", (e) => { if (e.key === "Enter") $("open-path").click(); });
 $("quit").addEventListener("click", async () => {
   try { await post("/api/app/quit"); } catch (e) { /* gone */ }
-  document.body.innerHTML = '<header><h1>freedyn2</h1></header><main><section>The app has ended; this tab can be closed.</section></main>';
+  document.body.innerHTML = '<header><span>freedyn2</span></header>' +  // (the server is gone: no logo file)
+    '<main><section class="prose">The app has ended; this tab can be closed.</section></main>';
 });
 
 async function upload(file) {
