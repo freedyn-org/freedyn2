@@ -5,6 +5,23 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+## [0.1.0rc2] - 2026-11-06
+
+Release candidate in the brand (brand/README.md). Not signed: Windows SmartScreen warns on the
+first start; check the download against SHA256SUMS.
+
+### Changed
+
+- The name is `freedyn2` everywhere; the installer is `freedyn2-setup.exe`, the winget
+  identifier `freedyn-org.freedyn2`.
+- App, viewer, installer and documentation in the brand: word mark, icon, colours, fonts
+  (JetBrains Mono, Inter in the docs), the claim "ai-first multibody dynamics.".
+- The viewer shows whether an assistant is connected (agent status).
+
+### Fixed
+
+- Windows: the viewer served its fonts with a wrong content type.
+
 ## [0.1.0rc1] - 2026-11-06
 
 Release candidate: a test of the release process (PyPI, GitHub Release, Windows installer).
