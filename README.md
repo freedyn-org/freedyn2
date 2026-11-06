@@ -1,4 +1,11 @@
-# freedyn2
+<!-- absolute image URLs: the README is also the PyPI description (pyproject.toml) -->
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/freedyn-org/freedyn2/main/brand/logo/lockup-claim-dark.svg">
+    <img src="https://raw.githubusercontent.com/freedyn-org/freedyn2/main/brand/logo/lockup-claim-light.svg" width="460" alt="freedyn2 – ai-first multibody dynamics.">
+  </picture>
+</h1>
+
 freedyn2: multibody dynamics with CasADi-generated models (offline HHT and real-time export)
 
 Models are described declaratively in YAML (or imported from legacy FreeDyn `.fds` files). A

@@ -45,3 +45,24 @@ def test_key_tables_come_from_the_schema():
     for name in markers:
         table = hooks().table(name, schema)
         assert table.startswith("| key |") and table.count("\n") > 2, name
+
+
+def test_the_docs_theme_takes_its_colors_from_the_brand():
+    """brand/tokens.css is the one source of the colors: the site serves it from brand/ (the hook),
+    the docs' own CSS has no color values, and tokens.css agrees with tokens.json."""
+    import json
+
+    config = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    served = [f"brand/{name}" for name in hooks().BRAND_FILES]
+    assert "brand/tokens.css" in served
+    for name in served:
+        assert (ROOT / name).is_file(), name
+    for ref in re.findall(r"\bbrand/[\w./-]+", config + (DOCS / "index.md").read_text(encoding="utf-8")):
+        assert ref.split("#")[0] in served, ref
+    for css in (DOCS / "stylesheets").glob("*.css"):
+        text = re.sub(r"/\*.*?\*/", "", css.read_text(encoding="utf-8"), flags=re.S)
+        assert not re.search(r"#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?)\(", text), css.name
+    tokens = json.loads((ROOT / "brand" / "tokens.json").read_text(encoding="utf-8"))
+    css = (ROOT / "brand" / "tokens.css").read_text(encoding="utf-8")
+    for name, value in tokens["color"].items():
+        assert re.search(rf"--fd-{name}:\s*{value};", css, re.I), name

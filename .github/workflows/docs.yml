@@ -9,7 +9,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths: [docs/**, mkdocs.yml, tools/docs_*.py, examples/**, schema/**, generator/fdgen/view/**, .github/workflows/docs.yml]
+    paths: [docs/**, brand/**, mkdocs.yml, tools/docs_*.py, examples/**, schema/**, generator/fdgen/view/**, .github/workflows/docs.yml]
   workflow_dispatch:
 
 concurrency:
