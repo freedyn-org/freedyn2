@@ -207,7 +207,10 @@
         "orientation": {"$ref": "#/$defs/orientation", "description": "Principal axes as Euler parameters [theta0, theta1, theta2, theta3], theta0 scalar part. Normalized by the generator. Default [1,0,0,0]."},
         "velocity": {"$ref": "#/$defs/vec3", "description": "Global velocity of the center of mass. Default [0,0,0]."},
         "angular_velocity": {"$ref": "#/$defs/vec3", "description": "Angular velocity in GLOBAL components. Default [0,0,0]."},
-        "shapes": {"$ref": "#/$defs/shapes"}
+        "shapes": {"$ref": "#/$defs/shapes"},
+        "element": {"enum": ["rigid_body", "rigid_body_euler"], "default": "rigid_body", "description": "Body formulation: rigid_body (Lie group) or rigid_body_euler (Euler parameters with a normalization constraint, as legacy FreeDyn; models converted with freedyn2 convert --profile legacy). All bodies of a model use the same one."},
+        "jacobian": {"enum": ["full", "no_qvv"], "default": "full", "description": "Iteration matrix: full, or without the velocity derivatives of the inertia forces (legacy RegardVelocityInertiaForcesInsideJacobian = no; rigid_body_euler)."},
+        "newmark": {"enum": ["standard", "modified"], "default": "standard", "description": "rigid_body_euler: the legacy ModifyNewmark option (modified)."}
       }
     },
     "shapes": {
@@ -296,7 +299,10 @@
         "vector": {"$ref": "#/$defs/vec3", "description": "direction: a global vector."},
         "frame": {"type": "string", "description": "displacement / velocity: 'global' (default) or a body whose frame gives the components."},
         "orientation": {"$ref": "#/$defs/orientation", "description": "angle: frame (axis z), global at t = 0."},
-        "offset": {"oneOf": [{"enum": ["none", "initial"]}, {"type": "number"}], "description": "initial: subtract the initial value (displacement, distance, angle); a number: subtract it. Default none."}
+        "offset": {"oneOf": [{"enum": ["none", "initial"]}, {"type": "number"}], "description": "initial: subtract the initial value (displacement, distance, angle); a number: subtract it. Default none."},
+        "plane": {"type": "array", "items": {"$ref": "#/$defs/vec3"}, "minItems": 2, "maxItems": 2, "description": "angle / angular_rate, with vector: the vectors b, c (on body2 or the ground, global at t = 0) of the plane the angle of vector (on body1) is measured in, atan2(a.c, a.b), instead of orientation (legacy Measure Rotational MeasurePlaneVec1 / 2)."},
+        "normalize": {"type": "boolean", "default": true, "description": "angle / angular_rate with vector and plane: normalize the three vectors (false: as given, as legacy Angle and body-body AngleVel measures)."},
+        "form": {"enum": ["legacy"], "description": "angular_rate: legacy gives the numerator x ydot - y xdot of the rate only (legacy AngleVel measures). Default the exact rate."}
       }
     },
     "joint": {
@@ -332,13 +338,20 @@
         "output_step": {"type": "number", "exclusiveMinimum": 0, "description": "Must be an integer multiple of step. Default: step."},
         "newton_tol": {"type": "number", "exclusiveMinimum": 0, "default": 1e-10},
         "max_newton": {"type": "integer", "minimum": 1, "default": 25},
-        "newton": {"enum": ["velocity", "fixed"], "default": "velocity", "description": "velocity: Newton until the velocity change is below newton_tol; fixed: exactly newton_iterations corrections per step (the same work in every step, for real-time use)."},
+        "newton": {"enum": ["velocity", "fixed", "legacy"], "default": "velocity", "description": "velocity: Newton until the velocity change is below newton_tol; fixed: exactly newton_iterations corrections per step (the same work in every step, for real-time use); legacy: the rule of legacy FreeDyn (Negrut Eq. 40; models converted with --profile legacy)."},
         "newton_iterations": {"type": "integer", "minimum": 1, "default": 2},
         "form": {
           "enum": ["arnold_bruls", "negrut"],
           "default": "arnold_bruls",
           "description": "HHT form: arnold_bruls (equations at t_n+1, second order) or negrut (force-weighted, as legacy FreeDyn)."
-        }
+        },
+        "adaptive": {"type": "boolean", "default": false, "description": "Step size control of legacy FreeDyn (models converted from .fds): step is then the largest step (SolverMaxTimeStep), eps the error tolerance; output_step need not be a multiple of step."},
+        "eps": {"type": "number", "exclusiveMinimum": 0, "default": 1e-6, "description": "adaptive: tolerance of the local error (GlobalErrorTolerance)."},
+        "h_min": {"type": "number", "exclusiveMinimum": 0, "default": 1e-14, "description": "adaptive: smallest step; the run stops below it (SolverMinTimeStep)."},
+        "error_norm": {"enum": ["mixed", "legacy"], "default": "mixed", "description": "adaptive: weights of the error norm, mixed (absolute and relative tolerance) or legacy (as legacy FreeDyn)."},
+        "exact_output": {"type": "boolean", "default": true, "description": "adaptive: steps end exactly at the output times (isExactOutputTimeEnforced)."},
+        "output_begin": {"type": "number", "minimum": 0, "default": 0, "description": "adaptive: the first output after t = 0 is at this time or later (OutputTimeBegin)."},
+        "vproj_tol": {"type": "number", "exclusiveMinimum": 0, "default": 1e-12, "description": "The initial velocities are projected onto the constraints when they violate them by more than this (legacy FreeDyn: 1e-5)."}
       }
     }
   }
