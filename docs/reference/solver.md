@@ -36,6 +36,17 @@ pivot order: every step costs the same, for hardware-in-the-loop and driving sim
 1 ms the Newton error is far below the discretization error (10⁷ times at 2 iterations).
 Median cost per step at two iterations: a car with simple tires 164 µs (one core).
 
+## Models converted from FreeDyn
+
+A model converted from a legacy `.fds` ([`freedyn2 convert`](../cli.md#convert)) keeps the step
+size control of legacy FreeDyn: `adaptive: true`, the error tolerance `eps`
+(`GlobalErrorTolerance`), `step` as the largest step (`SolverMaxTimeStep`; `output_step` need
+not be a multiple of it), `h_min`. Converted with `--profile legacy` it also has `form: negrut`,
+`newton: legacy`, `error_norm: legacy`, `vproj_tol` and Euler-parameter bodies
+(`element: rigid_body_euler`), and runs as legacy FreeDyn does. For a fixed step, remove
+`adaptive` and `eps` and choose `step`; `--fixed-step` on the command line does the same for
+one run.
+
 ## Linear solvers and the command line
 
 `freedyn2_run` takes `--linear-solver klu|sparselu|dense`, `--step-log FILE` and

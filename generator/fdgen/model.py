@@ -67,7 +67,9 @@ def _solver(s):
     if s.get("newton") == "fixed":
         s.setdefault("newton_iterations", 2)
     ratio = s["output_step"] / s["step"]
-    if abs(ratio - round(ratio)) > 1e-9 * ratio:
+    # with the step size control (adaptive, .fds models) step is the largest step and the steps end
+    # at the output times (exact_output), as in the importer of .fds files
+    if not s.get("adaptive") and abs(ratio - round(ratio)) > 1e-9 * ratio:
         raise ModelError("solver.output_step must be an integer multiple of solver.step")
     return s
 

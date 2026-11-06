@@ -12,7 +12,7 @@ run your existing `.fds` models in FreeDyn 2.0.
 | model files in `.fds` | YAML model files ([the model file](reference/model-file.md)); `.fds` files keep working |
 | result files next to the model | one CSV file per run, one column per [channel](reference/results.md) |
 | | the app window and the [viewer](viewer.md): 3D view, plots, checks, tuning, runs side by side |
-| | the [command line](cli.md): `freedyn2 run`, `view`, `check` |
+| | the [command line](cli.md): `freedyn2 run`, `view`, `check`, `convert` |
 | | an [assistant](assistants.md) can build, run and examine models |
 | Euler-parameter bodies, the Negrut form of HHT | Lie group bodies, the Arnold–Brüls form of HHT; the legacy algorithms on request (`--profile legacy`) |
 
@@ -81,10 +81,28 @@ channels are `crank.R_x`, `crank.omega_z` and so on.
 
 ## Moving a model to YAML
 
-There is no converter from `.fds` to YAML yet. A model is moved by writing its YAML file:
-by hand, following the [model file reference](reference/model-file.md), or with an
-[assistant](assistants.md), which can read the `.fds` text, write the YAML and run both to
-compare. The concepts map directly:
+`freedyn2 convert` writes an `.fds` model as a YAML model file:
+
+```sh
+freedyn2 convert crank.fds                     # crank.yaml, FreeDyn 2.0 methods (profile v2)
+freedyn2 convert crank.fds -o crank_legacy.yaml --profile legacy
+```
+
+The YAML file is the model the importer reads from the `.fds`, in the order of the `.fds`,
+with comments naming the blocks (`BodyID`, `ConstraintID`, …). It carries the solver settings
+of the profile – the step size control of legacy FreeDyn (`adaptive`, `eps`, `step` as the
+largest step) and, with `--profile legacy`, the Euler-parameter bodies, the Negrut form of HHT
+and the legacy Newton rule – so `freedyn2 run crank.yaml` gives the results of
+`freedyn2 run crank.fds` with that profile (bitwise or to round-off; checked for every
+comparison model). Spline data files stay where they are, referenced relative to the YAML
+file. Joints, named by their `ConstraintID` in an `.fds`, get names that are identifiers
+(`joint_1`), and so do their channels. Details: [command line](cli.md#convert); from Python
+`freedyn2.convert` and `Model.to_yaml` ([Python API](python-api.md)).
+
+From there the model is a YAML file like any other: add shapes for the viewer, replace
+expression forces by library forces, give points names, set `solver` to a fixed step
+(remove `adaptive` and `eps`, choose `step`) for real-time use. For reference, how the
+concepts map:
 
 | `.fds` | YAML |
 |---|---|
@@ -96,15 +114,17 @@ compare. The concepts map directly:
 | `Force GenericForce` / `GenericTorque` with `ForceExpression` | [`expression_force`](reference/forces.md#expression-force-and-torque), `expression_torque` |
 | `DataObject Parameter` | [`parameters`](reference/model-file.md#parameters-and-formulas), usable as `=formulas` in any field |
 | `DataObject Spline_1D` | [`splines`](reference/measures.md#splines) |
-| `Simulation Dynamic`, `Solver HHT` | [`solver`](reference/solver.md) (fixed step) |
+| `Simulation Dynamic`, `Solver HHT` | [`solver`](reference/solver.md): `end_time`, `output_step`, `alpha`; the step size control as `adaptive`, `eps` (`GlobalErrorTolerance`), `step` (`SolverMaxTimeStep`), `h_min` |
+| `RegardVelocityInertiaForcesInsideJacobian`, `ModifyNewmark` | `jacobian`, `newmark` of the bodies (`--profile legacy`) |
 
 What YAML adds: library forces (spring-damper, torsion spring, bushing) that need no C
 compiler, tires and roads, shapes for the viewer, named points and frames, references in a
 `checks` section, sensors and runtime inputs.
 
-Run the YAML model and the `.fds` and compare the channels of the two CSV files (in a script
-or a spreadsheet), or let the assistant compare them. A `checks` section in the YAML with
-values from the `.fds` run keeps the comparison with every later change.
+After changing the YAML, run it and the `.fds` and compare the channels of the two CSV files
+(in a script or a spreadsheet), or let an [assistant](assistants.md) compare them. A `checks`
+section in the YAML with values from the `.fds` run keeps the comparison with every later
+change.
 
 ## Differences in results
 

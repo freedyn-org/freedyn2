@@ -8,6 +8,7 @@
   freedyn2 compare model.fds ... --legacy <FreeDyn>     (legacy/benchmark.py, see there)
   freedyn2 setup-mcp [--client claude-desktop|claude-code|all] [--remove] [--dry-run]  (fdgen.mcp_setup)
   freedyn2 config [key [value]] | freedyn2 doctor     (fdgen.doctor)
+  freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]   (fdgen.convert)
 
 `run` imports the model, writes the runtime model file (.fdm) and, for models with expression
 forces or drivers, compiles the model plugin; then it runs the runtime `freedyn2_run`. Building
@@ -171,6 +172,14 @@ def examples(args):
     return 0
 
 
+def convert(args):
+    from .convert import convert as convert_fds
+
+    out = convert_fds(args.model, args.output, args.profile, args.force)
+    print(f"wrote {out} (profile {args.profile})")
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] == "compare":
@@ -224,6 +233,12 @@ def main(argv=None):
     g.add_argument("value", nargs="?")
     g.add_argument("--unset", action="store_true", help="remove the key")
     sub.add_parser("doctor", help="what this installation finds: runtime, compiler, directories, MCP")
+    cv = sub.add_parser("convert", help="write a legacy .fds model as a YAML model file")
+    cv.add_argument("model", help="the .fds file")
+    cv.add_argument("-o", "--output", help="YAML file or directory (default: <model>.yaml next to the .fds)")
+    cv.add_argument("--profile", choices=("v2", "legacy"), default="v2",
+                    help="solver settings and bodies of freedyn2 run --profile (default v2)")
+    cv.add_argument("--force", action="store_true", help="overwrite an existing YAML file")
     k = argv.index("--") if "--" in argv else len(argv)
     args = ap.parse_args(argv[:k])
     args.options = argv[k + 1:]
@@ -240,7 +255,7 @@ def main(argv=None):
             from . import doctor
 
             return doctor.doctor() if args.command == "doctor" else doctor.config(args.key, args.value, args.unset)
-        return {"view": view, "check": check, "examples": examples}.get(args.command, run)(args)
+        return {"view": view, "check": check, "examples": examples, "convert": convert}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)
         return 1

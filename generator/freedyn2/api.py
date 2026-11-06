@@ -138,6 +138,13 @@ class Model:
         write_fdm(self.data, fdm)
         return fdm
 
+    def to_yaml(self, path=None, force=False):
+        """Write this .fds model as a YAML model file with the solver settings of its profile
+        (freedyn2.convert); its path."""
+        if not self.is_fds:
+            raise ModelError(f"{self.path.name} is a YAML model already")
+        return convert(self.path, path, self.profile, force)
+
     def run(self, **kwargs):
         """run(self, ...): see freedyn2.run."""
         return run(self, **kwargs)
@@ -363,6 +370,16 @@ def sweep(model, parameter, values, jobs=None, end_time=None, step=None, output_
         fdm = next(iter(sorted(Path(r).parent.glob("*.fdm"))), None)
         results.append(Result(Model(model.path, model.profile, {**model.overrides, path: v}), r, fdm, tmp=tmp))
     return results
+
+
+def convert(path, output=None, profile="v2", force=False):
+    """Write a legacy .fds model as a YAML model file, as `freedyn2 convert` (fdgen.convert):
+    output (default: next to the .fds, .yaml; a directory: <name>.yaml in it), profile: the
+    solver settings and bodies of that profile, so the YAML runs as the .fds with it; force:
+    overwrite. The path of the YAML file; ModelError if a part of the model cannot be written."""
+    from fdgen.convert import convert as convert_fds
+
+    return convert_fds(path.path if isinstance(path, Model) else path, output, profile, force)
 
 
 def examples():

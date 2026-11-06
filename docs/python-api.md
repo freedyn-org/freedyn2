@@ -29,6 +29,7 @@ r.csv_path, r.log, r.simulation_seconds
 | `run(model, end_time=, step=, output_step=, params=, inputs=, options=, workdir=, profile=, runtime=)` | build and simulate a `Model` or a path; a `Result` |
 | `check(model, results=None, run=False, **run_kwargs)` | the [checks](reference/checks.md) of the model, and of its results (a `Result`, a CSV path, or `run=True`); a `Report` |
 | `sweep(model, parameter, values, jobs=None, **run_kwargs)` | one value over several, simulated in parallel; a list of `Result` |
+| `convert(path, output=None, profile="v2", force=False)` | write a legacy `.fds` model as a YAML model file, as [`freedyn2 convert`](cli.md#convert); its path |
 | `examples()`, `example_path(name)` | the example models: `{name: path}`; the path of one (`"quarter_car"`, `"compare/pendulum.fds"`) |
 | `__version__` | the version |
 
@@ -43,6 +44,15 @@ r.csv_path, r.log, r.simulation_seconds
   temporary directory that is removed with its `Result`.
 - `runtime`: the `freedyn2_run` to use; by default found as by the command line (the
   installed one, `FREEDYN2_RUN`, `build/freedyn2_run`, the PATH).
+
+`Model.to_yaml(path=None, force=False)` writes a `.fds` model (loaded with its `profile`) as
+a YAML file, as `convert`:
+
+```python
+m = freedyn2.load("crank.fds", profile="legacy")
+y = m.to_yaml("crank.yaml")                     # runs as crank.fds with --profile legacy
+r = freedyn2.run(y)
+```
 
 `Result.check()` checks the run, `Result.eigenvalues(time=None)` linearizes the model about
 the output at `time` (the first by default, Lie group bodies), as the viewer's eigenmodes.
