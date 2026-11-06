@@ -570,6 +570,9 @@ function viewImage() {
 const panels = new Panels({
   static: !!STATIC, area, state, viewImage, showMode, stopMode, select, setTime, render,
   model: () => model, results: () => results,
+  fileDirty: () => !!(editor && editor.editable && editor.dirty),
+  saveFile: () => editor && editor.save(),
+  discardFile: () => editor && editor.discard(),
 });
 
 const storeKey = () => `fdview.plots.${model ? model.model : ""}`;
@@ -1116,6 +1119,7 @@ async function openEditor({ element = null, toggle = false } = {}) {
         onSelect: (name) => { if (name && findElement(name)) select(name, "editor"); else if (!name && state.selection) select(null, "editor"); },
         findings: () => (model && model.checks && model.checks.findings) || [],
         model: () => ({ channels: results ? results.names : [] }),
+        onDirty: () => panels.renderState(),
       }, schema);
       await ed.load(false);
       $("ed-name").textContent = ed.name;

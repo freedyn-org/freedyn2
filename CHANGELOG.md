@@ -25,6 +25,10 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Fixed
 
+- Viewer: unsaved changes in the editor showed *up to date* in the header. The header now
+  shows *model file not saved* with *Save & compute* and *discard*, and the results fade as for
+  tuned values not computed. The compute state in the header is no longer cut off when the path of
+  the model is long.
 - Windows installer: an upgrade from 0.1.0rc1 or rc2 removes the old start menu folder
   *FreeDyn 2* (with the shortcuts rc2 had put into it) and the old desktop icon; the entries are
   then only in the folder *freedyn2*.
