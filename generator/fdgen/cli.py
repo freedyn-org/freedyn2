@@ -180,6 +180,9 @@ def main(argv=None):
             return 2
         return benchmark.main(argv[1:])
     ap = argparse.ArgumentParser(prog="freedyn2", description="FreeDyn 2.0: build and simulate a model")
+    from . import __version__
+
+    ap.add_argument("--version", action="version", version=f"freedyn2 {__version__}")
     sub = ap.add_subparsers(dest="command", required=True)
     r = sub.add_parser("run", help="import, build and simulate a model (.yaml or .fds)")
     r.add_argument("model")
