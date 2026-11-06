@@ -2,7 +2,7 @@
 # Template (installer/winget/render.py fills {{...}}). One Inno Setup installer for both scopes:
 # per user by default, for all users with /ALLUSERS (it then asks for elevation itself).
 # ProductCode: the AppId of installer/windows/freedyn2.iss with Inno's suffix _is1.
-PackageIdentifier: FreeDynOrg.FreeDyn2
+PackageIdentifier: freedyn-org.freedyn2
 PackageVersion: "{{VERSION}}"
 MinimumOSVersion: 10.0.17763.0
 InstallerType: inno
@@ -21,13 +21,13 @@ Commands:
 Installers:
   - Architecture: x64
     Scope: user
-    InstallerUrl: https://github.com/freedyn-org/freedyn2/releases/download/v{{VERSION}}/FreeDyn2-{{VERSION}}-setup.exe
+    InstallerUrl: https://github.com/freedyn-org/freedyn2/releases/download/v{{VERSION}}/freedyn2-{{VERSION}}-setup.exe
     InstallerSha256: "{{SHA256}}"
     InstallerSwitches:
       Custom: /CURRENTUSER
   - Architecture: x64
     Scope: machine
-    InstallerUrl: https://github.com/freedyn-org/freedyn2/releases/download/v{{VERSION}}/FreeDyn2-{{VERSION}}-setup.exe
+    InstallerUrl: https://github.com/freedyn-org/freedyn2/releases/download/v{{VERSION}}/freedyn2-{{VERSION}}-setup.exe
     InstallerSha256: "{{SHA256}}"
     ElevationRequirement: elevatesSelf
     InstallerSwitches:

@@ -1,6 +1,6 @@
 # Writing an extension
 
-An extension adds to FreeDyn 2 without changing it: **new force types** (with their own
+An extension adds to freedyn2 without changing it: **new force types** (with their own
 keys in the model file), or new variants of existing ones (another tire model), and text for
 the assistant. It is a Python package next to FreeDyn; FreeDyn finds it at start and uses it
 for every model: in `freedyn2 run` and `check`, the viewer, the assistant's tools and the
@@ -97,7 +97,7 @@ element_types = {
 
 `force_element_type(name, n_bodies, n_p, law, rep)` builds the element: `n_bodies` 1 (the
 element acts between body1 and the ground) or 2 (between body1 and body2, `c.bodies[1]`),
-`n_p` parameters. `rep` is the body type, `"lie"` (FreeDyn 2) or `"euler"` (legacy `.fds`
+`n_p` parameters. `rep` is the body type, `"lie"` (freedyn2) or `"euler"` (legacy `.fds`
 models); FreeDyn asks for the one it needs. The element is generated and compiled once per
 process and model plugin, cached on disk (`FREEDYN2_PLUGIN_CACHE`); a C compiler is needed, as
 for expression forces.
@@ -213,5 +213,5 @@ example, becomes the extension's tire model while all other tires stay built-in 
 markers and force arrows; checks of the extension's own.
 
 **Stability of the interface.** The hooks above, `fdgen.forces.force_element_type`, the body
-kinematics of step 1 and `fdgen.geometry` are the interface. FreeDyn 2 is at 0.x: it may
+kinematics of step 1 and `fdgen.geometry` are the interface. freedyn2 is at 0.x: it may
 still change; an extension's tests show when it does.

@@ -198,7 +198,7 @@ def model(cars=1, end_time=5.0):
         ("SolverMinTimeStep", "1.0e-14"), ("SolverMaxTimeStep", "1.0e-03"), ("ModifyNewmark", "no"),
         ("MaxNumOfTimeStepsUsingSameFactorizedJacobian", "0"), ("UsePardisoScalingAndMatching", "no"),
         ("DebugLevel", "0"), ("DebugTimeBegin", "0.0"), ("DebugTimeEnd", repr(end_time))], "EndSolver")
-    header = (f"Header freeDynHeader\n% FreeDyn 2: {cars} fictitious car(s) on a chassis dynamometer "
+    header = (f"Header freeDynHeader\n% freedyn2: {cars} fictitious car(s) on a chassis dynamometer "
               f"(examples/scaling/make_car.py)\nEndHeader")
     return header + "\n%\n" + "\n%\n".join(f.blocks) + "\n"
 

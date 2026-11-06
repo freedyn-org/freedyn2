@@ -1,17 +1,17 @@
-FreeDyn 2 for Windows: licenses
-===============================
+freedyn2 for Windows: licenses
+==============================
 
-FreeDyn 2
----------
+freedyn2
+--------
 
-Copyright 2026 The FreeDyn 2 contributors. Licensed under the Apache License, Version 2.0
+Copyright 2026 The freedyn2 contributors. Licensed under the Apache License, Version 2.0
 (LICENSE.txt in the installation directory, https://www.apache.org/licenses/LICENSE-2.0). See
 NOTICE.txt.
 
-Code that FreeDyn 2 generates from your models (C sources and compiled model plugins) belongs to
+Code that freedyn2 generates from your models (C sources and compiled model plugins) belongs to
 you and is not subject to this license.
 
-This installer contains FreeDyn 2 together with a private Python and the components below. Each
+This installer contains freedyn2 together with a private Python and the components below. Each
 keeps its own license; the license texts are installed with them (paths relative to the
 installation directory). licenses\python-packages.txt lists every bundled Python package with its
 version and license, generated from the packages' metadata when the installer was built.
@@ -24,8 +24,8 @@ Python runtime
   libraries under their own permissive licenses (OpenSSL: Apache-2.0, zlib, libffi: MIT, SQLite:
   public domain, ...), listed in that file.
 
-Components of FreeDyn 2
------------------------
+Components of freedyn2
+----------------------
 
 In the freedyn2 package, python\Lib\site-packages\fdgen.
 
@@ -38,6 +38,8 @@ In the freedyn2 package, python\Lib\site-packages\fdgen.
   https://gitlab.com/libeigen/eigen, license: https://www.mozilla.org/MPL/2.0/).
 - ASAM OpenCRG C library: Apache-2.0. Road surfaces. License: fdgen\licenses\opencrg.
 - three.js r170: MIT. 3D graphics of the viewer. License: fdgen\view\web\vendor\LICENSE-three.js.
+- JetBrains Mono 2.304: OFL-1.1. The font of the app and the viewer. License:
+  fdgen\view\web\vendor\fonts\LICENSE-jetbrains-mono.txt.
 
 Python packages
 ---------------

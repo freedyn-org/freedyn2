@@ -1,5 +1,5 @@
 Header freeDynHeader
-% FreeDyn 2 step 0: one rigid body floating in empty space (same model as free_body.yaml)
+% freedyn2 step 0: one rigid body floating in empty space (same model as free_body.yaml)
 EndHeader
 %
 %---------------- Rigid Bodies ------------------------

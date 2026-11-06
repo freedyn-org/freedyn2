@@ -1,4 +1,4 @@
-// FreeDyn 2 viewer: the scene of fdgen.view.scene (bodies with shapes, joints, forces, road) moved
+// freedyn2 viewer: the scene of fdgen.view.scene (bodies with shapes, joints, forces, road) moved
 // by the result CSV (R_x..R_z, theta0..theta3 per body), a timeline and plots of the channels.
 // For checking a model: the checks of fdgen.checks (findings, references), a click on an element
 // shows its data and YAML source and highlights what it is connected to. Every simulation is a
@@ -52,8 +52,9 @@ function resize() {
 }
 new ResizeObserver(resize).observe(view);
 
+const cssColor = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 function themeBackground() {
-  world.background = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue("--scene").trim() || "#e9edf3");
+  world.background = new THREE.Color(cssColor("--scene", "#EDEDE8"));
 }
 themeBackground();
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeBackground);
@@ -311,7 +312,8 @@ function build(scene) {
     const mb = motionBox(), c = mb.getCenter(new THREE.Vector3());
     const extent = Math.max(mb.getSize(new THREE.Vector3()).length(), 0.1) * 1.5;
     const spacing = Math.pow(10, Math.round(Math.log10(extent / 10))), lines = Math.ceil(extent / spacing / 2) * 2;
-    const grid = new THREE.GridHelper(lines * spacing, lines, 0x7d8696, 0xa3abb9);
+    const grid = new THREE.GridHelper(lines * spacing, lines, new THREE.Color(cssColor("--grid-major", "#8A8A85")),
+      new THREE.Color(cssColor("--grid-minor", "#B5B5B0")));
     grid.rotateX(Math.PI / 2);
     grid.position.set(c.x, c.y, Math.min(mb.min.z, 0));
     root.add(grid);
@@ -1034,6 +1036,17 @@ const strip = new RunStrip($("runs"), {
 $("plot-add-kpi").addEventListener("click", () => area.addKpi());
 $("plot-delta").addEventListener("click", (e) => { if (!reference) return; e.currentTarget.classList.toggle("on"); area.draw(); });
 
+// the agent at the right of the header: the cursor color while an MCP client serves this viewer
+// (tool view of freedyn2 mcp); "no agent" for freedyn2 view and the app
+function showAgent(agent) {
+  const el = $("agent");
+  el.hidden = false;
+  el.classList.toggle("on", !!agent);
+  el.querySelector(".text").textContent = agent ? `agent: ${agent.name}` : "no agent";
+  el.title = agent ? `connected over MCP: ${agent.name} works with this model; notes reach it (tool notes)`
+    : "no MCP client connected to this viewer: an assistant finds the notes next to the model file";
+}
+
 let version = -1, timer = null;
 function pollSoon() { clearTimeout(timer); timer = setTimeout(poll, 0); }
 async function poll() {
@@ -1043,6 +1056,7 @@ async function poll() {
     const busy = s.status === "simulating" || s.status === "loading";
     panels.serverState(s);
     $("status").textContent = s.model_file;
+    showAgent(s.agent);
     if (s.version !== version && !busy) {
       version = s.version;
       // an error is shown over the last good model (loaded if the page has none yet)
@@ -1063,11 +1077,13 @@ async function poll() {
     await syncRuns(s);
   } catch (e) {
     $("status").textContent = "server not reachable";
+    showAgent(null);
   }
   clearTimeout(timer);
   timer = setTimeout(poll, s && (s.status === "simulating" || (s.sweep && s.sweep.status === "running")) ? 300 : 800);
 }
 
+if (document.fonts) document.fonts.ready.then(() => area.draw());  // the plots: in JetBrains Mono once it is loaded
 $("overlay").textContent = "drag: rotate · right drag: pan · wheel: zoom · click: inspect · space: play";
 if (STATIC) {
   $("status").textContent = "exported view";

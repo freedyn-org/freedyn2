@@ -1,4 +1,4 @@
-"""Extensions: packages that add to FreeDyn 2 without changing it (force element types,
+"""Extensions: packages that add to freedyn2 without changing it (force element types,
 schema keys, text for the assistant), installed next to it. A guide with a complete example:
 docs/extensions.md, examples/extension.
 

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- SignPath artifact configuration "programs" (vars.SIGNPATH_CONFIG_PROGRAMS): FreeDyn 2's own
+<!-- SignPath artifact configuration "programs" (vars.SIGNPATH_CONFIG_PROGRAMS): freedyn2's own
      programs before they go into the installer. The GitHub artifact "programs-unsigned"
      (.github/workflows/wheels.yml, job installer) is a zip with these paths, relative to the
      installation directory. python.exe and the programs of the bundled packages keep the
-     signatures of their makers (or none) and are not signed as FreeDyn 2. -->
+     signatures of their makers (or none) and are not signed as freedyn2. -->
 <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
   <zip-file>
     <pe-file-set>

@@ -53,7 +53,7 @@ void load_plugin(const std::string& path) {
   auto abi = reinterpret_cast<const char* (*)()>(symbol(h, "fd_plugin_abi"));
   auto types = static_cast<const fd_element_type*>(symbol(h, "fd_plugin_element_types"));
   auto n = static_cast<const int*>(symbol(h, "fd_plugin_n_element_types"));
-  if (!abi || !types || !n) throw std::runtime_error(path + " is not a FreeDyn 2 model plugin");
+  if (!abi || !types || !n) throw std::runtime_error(path + " is not a freedyn2 model plugin");
   if (std::string(abi()) != FD_REGISTRY_ABI)
     throw std::runtime_error(path + ": generated for registry layout '" + abi() + "', this runtime has '" +
                              FD_REGISTRY_ABI + "'; regenerate the model");

@@ -60,10 +60,15 @@ def wait_ready(a, vid, timeout=60):
 
 def test_start_page_in_browser_mode(app):
     code, page = request(app.url())
-    assert code == 200 and b"FreeDyn 2" in page and b"/app/start.js" in page
+    assert code == 200 and b"freedyn2" in page and b"/app/start.js" in page
     assert request(app.url() + "app/start.js")[0] == 200
     with NO_PROXY.open(app.url() + "app/freedyn2.png") as r:
         assert r.headers["Content-Type"] == "image/png" and r.read()[:4] == b"\x89PNG"
+    for name, ctype in (("brand/tokens.css", "text/css"), ("brand/favicon.svg", "image/svg+xml"), ("fonts.css", "text/css"),
+                        ("vendor/fonts/jetbrains-mono-latin-400-normal.woff2", "font/woff2")):  # from fdgen/view/web
+        with NO_PROXY.open(app.url() + "app/view/" + name) as r:
+            assert r.headers["Content-Type"] == ctype
+    assert request(app.url() + "app/view/../../app/server.py")[0] == 404
     code, s = request(app.url() + "api/app/status")
     assert code == 200 and s["native"] is False and s["runtime"] is False and s["title"] == server.TITLE
     assert s["docs"] == "https://freedyn-org.github.io/freedyn2/" and s["update"] is None
@@ -75,14 +80,14 @@ def test_start_page_in_browser_mode(app):
 
 
 def test_open_an_example_and_its_viewer(app, tmp_path):
-    folder = tmp_path / "Documents" / "FreeDyn2"
+    folder = tmp_path / "Documents" / "freedyn2"
     code, r = request(app.url() + "api/app/example", {"name": "double_pendulum", "folder": str(folder)})
     assert code == 200, r
     assert r["url"] == "/m/1/" and r["window"] is False and Path(r["path"]) == folder / "double_pendulum.yaml"
     state = wait_ready(app, 1)
     assert state["status"] == "ready" and state["model_file"] == str(folder / "double_pendulum.yaml")
     code, page = request(app.url(1))
-    assert b'<script src="/app/shell.js"></script>' in page and b"double_pendulum.yaml - FreeDyn 2" in page
+    assert b'<script src="/app/shell.js"></script>' in page and b"double_pendulum.yaml - freedyn2" in page
     assert b"viewer.js" in page  # the viewer's own page
     code, scene = request(app.url(1) + "api/scene")
     assert code == 200 and len(scene["bodies"]) == 2
@@ -308,7 +313,7 @@ def test_cli_update_check(monkeypatch, capsys):
 
     monkeypatch.setattr(update, "fetch", lambda timeout=None: {"latest": "99.0", "url": update.RELEASE_PAGE})
     assert cli.main(["update-check"]) == 0
-    assert "FreeDyn 2 version 99.0 is available" in capsys.readouterr().out
+    assert "freedyn2 99.0 is available" in capsys.readouterr().out
     monkeypatch.setattr(update, "fetch", lambda timeout=None: {"latest": "0.0.1", "url": update.RELEASE_PAGE})
     assert cli.main(["update-check"]) == 0
     assert "is up to date" in capsys.readouterr().out
