@@ -5,6 +5,12 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+## [0.1.0rc3] - 2026-11-06
+
+Release candidate with the model editor in the viewer and a much smaller Windows installer
+(core 195 instead of about 390 MB). Not signed: Windows SmartScreen warns on the first start;
+check the download against SHA256SUMS.
+
 ### Added
 
 - The viewer edits the model file: a click on the file name (or E) opens an editor beside the
