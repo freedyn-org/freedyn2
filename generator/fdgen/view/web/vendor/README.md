@@ -11,3 +11,8 @@ Vendored so that the viewer works offline.
 Font License 1.1 (fonts/LICENSE-jetbrains-mono.txt), unmodified: the Latin and Greek subsets,
 weights 400, 500 and 700 (woff2). The type of the brand (brand/README.md); declared in
 `../fonts.css`, inlined by `freedyn2 view --export`.
+
+CodeMirror 6 (`codemirror.min.js`, MIT license, LICENSE-codemirror): the editor of the model file
+(fdview/editor.js), one ES module bundled with esbuild from the packages in
+`tools/codemirror/package.json`: `cd tools/codemirror && npm install && npm run build`
+(`entry.js` lists what the editor uses).

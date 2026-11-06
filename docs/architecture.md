@@ -101,7 +101,7 @@ Read in this order; each stop builds on the previous one.
 | `fdgen/resources.py` | data files (schema, examples, runtime programs) in the installed package or the repository |
 | `tools/build_deps.py`, `pyproject.toml` | Eigen and KLU for a build without system packages; the wheel (scikit-build-core, cibuildwheel) |
 | `fdgen/shapes.py` | shapes of bodies and the ground for the viewer, in the body frame; default shapes |
-| `fdgen/view/` | viewer: `scene.py` (model and results as viewer data), `server.py` (local server, reload, runs, cancelling, export, tuned values, eigenmodes), `notes.py` (notes to the assistant), `web/` (page: `viewer.js` 3D, checks, force arrows, eigenmode animation; `plot.js` plots; `channels.js` units and formulas; `panels.js` tuning and compute state, notes, eigenmode list, report; `runs.js` run strip; three.js r170 vendored) |
+| `fdgen/view/` | viewer: `scene.py` (model and results as viewer data), `server.py` (local server, reload, runs, cancelling, export, tuned values, eigenmodes), `notes.py` (notes to the assistant), `source.py` (the editor: read, save with a conflict check, lint), `web/` (page: `viewer.js` 3D, checks, force arrows, eigenmode animation; `plot.js` plots; `channels.js` units and formulas; `panels.js` tuning and compute state, notes, eigenmode list, report; `runs.js` run strip; `editor.js` the model file in CodeMirror 6, loaded when opened; three.js r170 and CodeMirror vendored) |
 | `fdgen/linearize.py` | linearization about a steady motion from the iteration matrices; eigenvalues |
 | `runtime/` | `model` (.fdm reader), `system` (state, elements, assembly), `scatter`, `linear_solver`, `hht`, `plugin`, `generated_function`, `crg` (OpenCRG roads); tools `freedyn2_run`, `freedyn2_road` |
 | `legacy/` | Linux build of legacy FreeDyn, result readers, comparisons (`compare.py`, `benchmark.py`), independent references (`references/`) |
@@ -408,6 +408,16 @@ constraint forces recomputed from the elements' `ic` functions in that state
 (`fdgen.view.notes`), so the person and the assistant share them without a running server.
 Force arrows are drawn from the force outputs alone (vectors in their frames), no model code
 in the page.
+
+The editor (`web/editor.js`, `fdgen.view.source`) writes the model file itself (`/api/source`),
+so a save takes the same path as one from any other editor: the file watch rebuilds. A save
+carries the stamp (a hash) of the text it was made from and is refused while the file on disk
+has another one, so the editor never overwrites a change of the assistant it has not seen.
+`/api/lint` checks a text that is not saved yet: YAML, then every schema error, then the model
+rules of `validate`, each at a line (the node of the error's path; for model errors the element
+the message names). Completion and hover help come from the JSON schema (`/api/schema`) and an
+outline of the text by indentation (sections and their names), so they work on text that does
+not parse yet.
 
 ## Checks and assistants
 

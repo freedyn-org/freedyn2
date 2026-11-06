@@ -11,6 +11,8 @@ Included third-party components:
   see its LICENSE and NOTICE.
   three.js r170 (MIT), generator/fdgen/view/web/vendor: 3D graphics of the viewer;
   see LICENSE-three.js there.
+  CodeMirror 6 with its Lezer parsers (MIT), generator/fdgen/view/web/vendor/codemirror.min.js:
+  the editor of the model file in the viewer; see LICENSE-codemirror there.
   JetBrains Mono (SIL OFL 1.1), generator/fdgen/view/web/vendor/fonts: the font of the app and
   the viewer; Inter and JetBrains Mono (SIL OFL 1.1), docs/assets/fonts: the documentation site;
   see LICENSE-*.txt there.

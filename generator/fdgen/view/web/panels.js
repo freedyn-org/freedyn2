@@ -60,7 +60,8 @@ export class Panels {
       this.maybeCompute();
     });
     window.addEventListener("keydown", (e) => {  // Enter computes pending values (not while typing a note)
-      if (e.key !== "Enter" || !this.dirty() || e.target.tagName === "TEXTAREA" || (e.target.type === "text")) return;
+      if (e.key !== "Enter" || !this.dirty() || e.target.tagName === "TEXTAREA" || (e.target.type === "text") ||
+          (e.target.closest && e.target.closest(".cm-editor"))) return;
       e.preventDefault();
       this.compute();
     });
