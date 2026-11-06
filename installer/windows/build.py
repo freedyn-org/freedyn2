@@ -16,7 +16,9 @@ caches and tests, precompiles the bytecode and writes three trees for the instal
 
 Between stage and compile, CI may sign the programs in WORK/stage (.github/workflows/wheels.yml).
 
-compile: runs ISCC on freedyn2.iss with the version of the wheel; output OUT/FreeDyn2-<version>-setup.exe.
+compile: writes WORK/stage/THIRD-PARTY-NOTICES.rtf (the license page of the wizard, from
+THIRD-PARTY-NOTICES.txt) and runs ISCC on freedyn2.iss with the version of the wheel; output
+OUT/FreeDyn2-<version>-setup.exe.
 
 --dry-run (any OS, e.g. Linux): the same downloads and extraction, the dependencies resolved for
 Windows with uv (pip on Linux would evaluate the environment markers for Linux) and installed for
@@ -407,6 +409,70 @@ def check_iss_sources(iss, defines):
     return missing
 
 
+def rtf_escape(text):
+    out = []
+    for ch in text:
+        if ch in "\\{}":
+            out.append("\\" + ch)
+        elif ord(ch) > 127:
+            out.append(f"\\u{ord(ch) if ord(ch) < 32768 else ord(ch) - 65536}?")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def notices_blocks(text):
+    """THIRD-PARTY-NOTICES.txt as blocks (kind, text): kind "title" (underlined with =), "heading"
+    (underlined with -), "item" (a line starting with "- ", continued by indented lines) or "para"
+    (lines up to a blank line). Wrapped lines are joined: the wizard page wraps them itself."""
+    blocks, lines = [], text.replace("\r\n", "\n").split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i].rstrip()
+        nxt = lines[i + 1].strip() if i + 1 < len(lines) else ""
+        if not line.strip():
+            i += 1
+        elif nxt and set(nxt) <= {"="}:
+            blocks.append(("title", line.strip()))
+            i += 2
+        elif nxt and set(nxt) <= {"-"}:
+            blocks.append(("heading", line.strip()))
+            i += 2
+        elif line.startswith("- "):
+            parts = [line[2:].strip()]
+            i += 1
+            while i < len(lines) and lines[i].startswith("  ") and lines[i].strip():
+                parts.append(lines[i].strip())
+                i += 1
+            blocks.append(("item", " ".join(parts)))
+        else:
+            parts = []
+            while i < len(lines) and lines[i].strip() and not lines[i].startswith("- "):
+                parts.append(lines[i].strip())
+                i += 1
+            blocks.append(("para", " ".join(parts)))
+    return blocks
+
+
+def notices_rtf(text):
+    """The notices for the wizard page (InfoBeforeFile): Inno Setup shows a .txt there in a narrow
+    box with a proportional font and wraps it again, which breaks hard-wrapped lines and aligned
+    columns; as RTF, with real paragraphs, bold headings and hanging list indents."""
+    out = [r"{\rtf1\ansi\ansicpg1252\deff0\uc1{\fonttbl{\f0\fswiss Segoe UI;}}\viewkind4\f0\fs17"]
+    for kind, body in notices_blocks(text):
+        t = rtf_escape(body)
+        if kind == "title":
+            out.append(rf"\pard\sa120\b\fs22 {t}\b0\fs17\par")
+        elif kind == "heading":
+            out.append(rf"\pard\sb160\sa60\b {t}\b0\par")
+        elif kind == "item":
+            out.append(rf"\pard\fi-180\li180\sa60 \bullet\tab {t}\par")
+        else:
+            out.append(rf"\pard\sa100 {t}\par")
+    out.append("}")
+    return "\r\n".join(out) + "\r\n"
+
+
 def compile_installer(args):
     work = Path(args.work).resolve()
     st = work / "stage"
@@ -416,6 +482,8 @@ def compile_installer(args):
     iss = HERE / "freedyn2.iss"
     defines = {"AppVersion": info["version"], "AppVersionNumeric": info["version_numeric"],
                "StageDir": str(st), "OutputDir": str(out), "RepoDir": str(REPO)}
+    notices = (HERE / "THIRD-PARTY-NOTICES.txt").read_text(encoding="utf-8")
+    (st / "THIRD-PARTY-NOTICES.rtf").write_text(notices_rtf(notices), encoding="ascii", newline="")
     missing = check_iss_sources(iss, defines)
     if missing:
         raise SystemExit(f"files missing for {iss.name}: {missing}")

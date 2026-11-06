@@ -67,7 +67,8 @@ ChangesAssociations=yes
 CloseApplications=yes
 CloseApplicationsFilter=*.exe,*.dll,*.pyd
 RestartApplications=no
-InfoBeforeFile=THIRD-PARTY-NOTICES.txt
+; The license page: RTF made by build.py from THIRD-PARTY-NOTICES.txt (a .txt would be rewrapped there)
+InfoBeforeFile={#StageDir}\THIRD-PARTY-NOTICES.rtf
 OutputDir={#OutputDir}
 OutputBaseFilename=FreeDyn2-{#AppVersion}-setup
 Compression=lzma2/max

@@ -1,63 +1,78 @@
 FreeDyn 2 for Windows: licenses
-=================================
+===============================
 
 FreeDyn 2
-  Copyright 2026 The FreeDyn 2 contributors. Licensed under the Apache License, Version 2.0
-  (LICENSE.txt in the installation directory, https://www.apache.org/licenses/LICENSE-2.0).
-  See NOTICE.txt. Code that FreeDyn 2 generates from your models (C sources and compiled model
-  plugins) belongs to you and is not subject to this license.
+---------
 
-This installer contains FreeDyn 2 together with a private Python and the components below.
-Each keeps its own license; the license texts are installed with them (paths relative to the
-installation directory). licenses\python-packages.txt lists every bundled Python package with
-its version and license, generated from the packages' metadata when the installer was built.
+Copyright 2026 The FreeDyn 2 contributors. Licensed under the Apache License, Version 2.0
+(LICENSE.txt in the installation directory, https://www.apache.org/licenses/LICENSE-2.0). See
+NOTICE.txt.
+
+Code that FreeDyn 2 generates from your models (C sources and compiled model plugins) belongs to
+you and is not subject to this license.
+
+This installer contains FreeDyn 2 together with a private Python and the components below. Each
+keeps its own license; the license texts are installed with them (paths relative to the
+installation directory). licenses\python-packages.txt lists every bundled Python package with its
+version and license, generated from the packages' metadata when the installer was built.
 
 Python runtime
 --------------
-Python 3.12 (CPython, build of python-build-standalone)
-  Python Software Foundation License Version 2 (PSF-2.0).  licenses\Python-LICENSE.txt
-  The Python build contains further libraries under their own permissive licenses (OpenSSL:
-  Apache-2.0, zlib, libffi: MIT, SQLite: public domain, ...), listed in that file.
 
-Components of FreeDyn 2 (in the freedyn2 package, python\Lib\site-packages\fdgen)
---------------------------------------------------------------------------------
-SuiteSparse KLU and BTF            LGPL-2.1-or-later  sparse LU factorization of the solver
-SuiteSparse AMD, COLAMD, config    BSD-3-Clause
-  Shared libraries (fdgen\bin\*.dll), linked dynamically: they may be replaced by other builds of
-  the same libraries (sources: https://github.com/DrTimothyAldenDavis/SuiteSparse).
+- Python 3.12 (CPython, build of python-build-standalone): Python Software Foundation License
+  Version 2 (PSF-2.0). License: licenses\Python-LICENSE.txt. The Python build contains further
+  libraries under their own permissive licenses (OpenSSL: Apache-2.0, zlib, libffi: MIT, SQLite:
+  public domain, ...), listed in that file.
+
+Components of FreeDyn 2
+-----------------------
+
+In the freedyn2 package, python\Lib\site-packages\fdgen.
+
+- SuiteSparse KLU and BTF: LGPL-2.1-or-later. Sparse LU factorization of the solver.
+- SuiteSparse AMD, COLAMD, config: BSD-3-Clause.
+  The SuiteSparse shared libraries (fdgen\bin\*.dll) are linked dynamically: they may be replaced
+  by other builds of the same libraries (sources: https://github.com/DrTimothyAldenDavis/SuiteSparse).
   Licenses: fdgen\licenses\suitesparse.
-Eigen                              MPL-2.0            linear algebra, compiled into the solver
-  (header-only; sources: https://gitlab.com/libeigen/eigen, license: https://www.mozilla.org/MPL/2.0/)
-ASAM OpenCRG C library             Apache-2.0         road surfaces; fdgen\licenses\opencrg
-three.js r170                      MIT                3D graphics of the viewer;
-  fdgen\view\web\vendor\LICENSE-three.js
+- Eigen: MPL-2.0. Linear algebra, compiled into the solver (header-only; sources:
+  https://gitlab.com/libeigen/eigen, license: https://www.mozilla.org/MPL/2.0/).
+- ASAM OpenCRG C library: Apache-2.0. Road surfaces. License: fdgen\licenses\opencrg.
+- three.js r170: MIT. 3D graphics of the viewer. License: fdgen\view\web\vendor\LICENSE-three.js.
 
-Python packages (python\Lib\site-packages; license texts in each package's .dist-info directory)
------------------------------------------------------------------------------------------------
-CasADi                             LGPL-3.0-or-later  symbolic derivatives and code generation
-  The CasADi package contains further solvers and libraries (IPOPT, MUMPS, CBC/CLP, HiGHS,
-  SUNDIALS, OpenBLAS, the MinGW-w64 GCC runtime, ...), each under its own license:
-  casadi\include\licenses.
-NumPy                              BSD-3-Clause (with bundled OpenBLAS: BSD-3-Clause, and others)
-PyYAML                             MIT
-jsonschema                         MIT
-mcp (Model Context Protocol SDK)   MIT
-pywebview                          BSD-3-Clause       the app window (with pythonnet: MIT,
-                                                      clr_loader: MIT, bottle: MIT, proxy_tools: MIT)
-pywin32                            PSF-2.0
-cryptography                       Apache-2.0 OR BSD-3-Clause (contains OpenSSL: Apache-2.0)
-and further dependencies under MIT, BSD-3-Clause, Apache-2.0 and PSF-2.0: see
-licenses\python-packages.txt.
+Python packages
+---------------
 
-C compiler (component "C compiler", python\Lib\site-packages\ziglang)
---------------------------------------------------------------------
-Zig (ziglang)                      MIT                ziglang\LICENSE
-  Zig ships C libraries and headers for its targets under their own licenses: musl (MIT),
-  MinGW-w64 (ZPL-2.1, parts public domain, BSD, LGPL), glibc headers (LGPL-2.1 and others),
-  wasi-libc (Apache-2.0 WITH LLVM-exception, MIT), LLVM libc++, libc++abi, libunwind, libtsan
-  (Apache-2.0 WITH LLVM-exception), FreeBSD libc headers (BSD): ziglang\lib\libc\*\COPYING,
-  COPYRIGHT, LICENSE*, and ziglang\lib\*\LICENSE.TXT. Model plugins compiled with it link only
-  what the model needs.
+In python\Lib\site-packages; the license texts are in each package's .dist-info directory.
+
+- CasADi: LGPL-3.0-or-later. Symbolic derivatives and code generation. The CasADi package contains
+  further solvers and libraries (IPOPT, MUMPS, CBC/CLP, HiGHS, SUNDIALS, OpenBLAS, the MinGW-w64
+  GCC runtime, ...), each under its own license: casadi\include\licenses.
+- NumPy: BSD-3-Clause (with bundled OpenBLAS: BSD-3-Clause, and others).
+- PyYAML: MIT.
+- jsonschema: MIT.
+- mcp (Model Context Protocol SDK): MIT.
+- pywebview: BSD-3-Clause. The app window (with pythonnet: MIT, clr_loader: MIT, bottle: MIT,
+  proxy_tools: MIT).
+- pywin32: PSF-2.0.
+- cryptography: Apache-2.0 OR BSD-3-Clause (contains OpenSSL: Apache-2.0).
+- Further dependencies under MIT, BSD-3-Clause, Apache-2.0 and PSF-2.0: see
+  licenses\python-packages.txt.
+
+C compiler
+----------
+
+Component "C compiler", in python\Lib\site-packages\ziglang.
+
+- Zig (ziglang): MIT. License: ziglang\LICENSE.
+  Zig ships C libraries and headers for its targets under their own licenses: musl (MIT), MinGW-w64
+  (ZPL-2.1, parts public domain, BSD, LGPL), glibc headers (LGPL-2.1 and others), wasi-libc
+  (Apache-2.0 WITH LLVM-exception, MIT), LLVM libc++, libc++abi, libunwind, libtsan (Apache-2.0
+  WITH LLVM-exception), FreeBSD libc headers (BSD). Their licenses: ziglang\lib\libc\*\COPYING,
+  COPYRIGHT, LICENSE*, and ziglang\lib\*\LICENSE.TXT. Model plugins compiled with it link only what
+  the model needs.
+
+Uninstalling
+------------
 
 The uninstaller removes the program; your data in %APPDATA%\freedyn2 and %LOCALAPPDATA%\freedyn2
 (settings, caches of compiled model plugins) remains. Delete those directories to remove them.
