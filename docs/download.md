@@ -39,7 +39,7 @@ or signed by hand. Each signing request is approved by a person.
 | Role | Members |
 |---|---|
 | Committers and reviewers | [members of the freedyn-org organization](https://github.com/orgs/freedyn-org/people) |
-| Approvers | ROLE-APPROVERS |
+| Approvers | Stefan Oberpeilsteiner |
 
 Changes to the main branch go through pull requests with a review. Team members use
 multi-factor authentication for GitHub and SignPath.
