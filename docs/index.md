@@ -1,8 +1,8 @@
-# FreeDyn 2.0
+# FreeDyn 2
 
 **Multibody dynamics for engineers – and for the assistants they work with.**
 
-FreeDyn 2.0 simulates mechanical systems of rigid bodies, joints and forces: suspensions,
+FreeDyn 2 simulates mechanical systems of rigid bodies, joints and forces: suspensions,
 drivelines, mechanisms, vehicles on roads, motorcycles. A model is a short text file; a
 viewer in the browser shows it, plays the results and lets you tune, compare and study
 variants; an AI assistant can build and change the model through the same tools you use.
@@ -25,18 +25,23 @@ variants; an AI assistant can build and change the model through the same tools 
   (CasADi) and compiled to plain C; a small C++ runtime integrates them (HHT on a Lie group).
   A car with tires on an OpenCRG road takes about 0.15 ms per step; a fixed
   Newton mode does exactly the same work every step, for real-time use.
-- **Open.** Apache 2.0. The successor of the FreeDyn freeware, with an importer for its
-  `.fds` models.
+- **Open.** Apache 2.0. The successor of the FreeDyn freeware: its `.fds` models run as
+  they are.
+- **Easy to install.** A Windows installer for using it as a program (no Python needed), or
+  `pip install freedyn2` for use from Python, Jupyter and on Linux.
 
 ## Where to start
 
 <div class="grid cards" markdown>
 
-- **[Getting started](getting-started.md)** – install, a first model, the viewer, in ten minutes.
+- **[Getting started](getting-started.md)** – install (Windows installer or pip), a first
+  model, the viewer, in ten minutes.
 - **[Tutorial](tutorial.md)** – tune a quarter car over a bump: sliders, runs, a fan of
   variants, eigenvalues.
 - **[Working with an assistant](assistants.md)** – let Claude or another MCP client build and
   examine models while you check and decide.
+- **[Coming from FreeDyn](from-freedyn.md)** – your `.fds` models in FreeDyn 2, side by
+  side with the legacy program.
 - **[Coming from Adams](from-adams.md)** – the concepts side by side.
 - **[Model reference](reference/model-file.md)** – every element and key.
 - **[Examples](examples.md)** – models to open, with live viewers on the page.
@@ -45,7 +50,7 @@ variants; an AI assistant can build and change the model through the same tools 
 
 ## The way of working
 
-FreeDyn 2.0 is built for a division of labour: **an assistant writes and changes the model,
+FreeDyn 2 is built for a division of labour: **an assistant writes and changes the model,
 a person checks and decides.** That only works if checking is cheaper than modelling, so the
 tools for looking at a model – the viewer, the checks, the comparison of runs, notes back to
 the assistant – are as important as the solver. You can of course write every model by hand;

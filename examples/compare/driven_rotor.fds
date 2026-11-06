@@ -1,5 +1,5 @@
 Header freeDynHeader
-% FreeDyn 2.0: rotor driven by TimeMotion on an Angle measure (2 t, ActivationPeriod 0.5 s, several revolutions), flywheel on a revolute joint with a torsion GenericTorque
+% FreeDyn 2: rotor driven by TimeMotion on an Angle measure (2 t, ActivationPeriod 0.5 s, several revolutions), flywheel on a revolute joint with a torsion GenericTorque
 EndHeader
 %
 %---------------- Rigid Bodies ------------------------

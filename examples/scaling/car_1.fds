@@ -1,5 +1,5 @@
 Header freeDynHeader
-% FreeDyn 2.0: 1 fictitious car(s) on a chassis dynamometer (examples/scaling/make_car.py)
+% FreeDyn 2: 1 fictitious car(s) on a chassis dynamometer (examples/scaling/make_car.py)
 EndHeader
 %
 DataObject Parameter

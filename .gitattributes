@@ -1,0 +1,5 @@
+# Windows batch files need CRLF line endings; the installer's texts are shown on Windows
+*.cmd text eol=crlf
+*.bat text eol=crlf
+installer/windows/*.txt text eol=crlf
+installer/windows/*.iss text eol=crlf

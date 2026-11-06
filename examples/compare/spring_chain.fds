@@ -1,7 +1,7 @@
 Header freeDynHeader
 % Note: In-line-of-sight to the ground points from the ground to the body (tension < 0 here),
 % body-body from body 1 to body 2 (tension > 0).
-% FreeDyn 2.0: two bodies hung on expression springs (line of sight, body-body), body-fixed force, torques with a step; all legacy Measure Translational kinds
+% FreeDyn 2: two bodies hung on expression springs (line of sight, body-body), body-fixed force, torques with a step; all legacy Measure Translational kinds
 EndHeader
 %
 %---------------- Rigid Bodies ------------------------

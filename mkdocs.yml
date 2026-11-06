@@ -1,4 +1,4 @@
-site_name: FreeDyn 2.0
+site_name: FreeDyn 2
 site_description: Multibody dynamics for engineers and their assistants
 site_url: https://freedyn-org.github.io/freedyn2/
 repo_url: https://github.com/freedyn-org/freedyn2
@@ -8,6 +8,7 @@ strict: true
 
 theme:
   name: material
+  font: false   # system fonts: no requests to Google Fonts (privacy.md)
   features:
     - navigation.sections
     - navigation.top
@@ -49,6 +50,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Download: download.md
   - Getting started: getting-started.md
   - Tutorial – tuning a quarter car: tutorial.md
   - Tutorial – a car on an OpenCRG road: tutorial-crg.md
@@ -66,12 +68,16 @@ nav:
       - Solver and real time: reference/solver.md
       - Checks and references: reference/checks.md
       - Result channels: reference/results.md
+  - Coming from FreeDyn: from-freedyn.md
   - Coming from Adams: from-adams.md
   - Examples: examples.md
   - Command line: cli.md
+  - Python API: python-api.md
   - For developers:
       - How the solver works: how-it-works.md
       - Architecture: architecture.md
       - Theory and algorithms: theory.md
       - Extensions: extensions.md
       - Numerical findings: findings.md
+      - Releasing: releasing.md
+  - Privacy policy: privacy.md

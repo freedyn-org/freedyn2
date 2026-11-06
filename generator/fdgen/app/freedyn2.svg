@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>FreeDyn 2</title>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f7fec"/>
+      <stop offset="1" stop-color="#2456be"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#tile)"/>
+  <line x1="330" y1="214" x2="694" y2="214" stroke="#ffffff" stroke-opacity="0.75" stroke-width="40" stroke-linecap="round"/>
+  <polyline points="512,234 330,560 676,790" fill="none" stroke="#ffffff" stroke-width="70" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="512" cy="234" r="50" fill="#ffffff"/>
+  <circle cx="512" cy="234" r="20" fill="#2456be"/>
+  <circle cx="330" cy="560" r="58" fill="#ffffff"/>
+  <circle cx="330" cy="560" r="23.2" fill="#2456be"/>
+  <circle cx="676" cy="790" r="118" fill="#f79f1f" stroke="#ffffff" stroke-width="35"/>
+  <circle cx="640.6" cy="754.6" r="25.96" fill="#ffeccd" fill-opacity="0.7"/>
+</svg>

@@ -1,6 +1,6 @@
 # Numerical findings
 
-Observations made while verifying FreeDyn 2.0 against legacy FreeDyn and against independent
+Observations made while verifying FreeDyn 2 against legacy FreeDyn and against independent
 references. The comparison models in `examples/compare` and the tests reproduce them.
 
 - **Fast rotors**: with Euler parameters as coordinates, the parameters oscillate with omega/2
@@ -23,24 +23,24 @@ references. The comparison models in `examples/compare` and the tests reproduce 
   loss over 10 s drops from 1.8e-3 to 8e-8 and the precession error from 1.7e-2 to 1.5e-4.
 - **`alpha = 0` with joints is unstable** for both bodies, as known for the trapezoidal rule with
   index-3 constraints (Cardona and Geradin 1989): a `(-1)^n` mode of the multipliers and the
-  accelerations grows until the run breaks down (pendulum: after ~8 s in FreeDyn 2.0; legacy
+  accelerations grows until the run breaks down (pendulum: after ~8 s in FreeDyn 2; legacy
   FreeDyn crashes on the same model after 2.75 s). A little numerical damping removes it:
   `alpha = -0.01` keeps the pendulum's energy to 9e-6 and its period to 3.5e-6 of the elliptic
   integral solution. The generator warns about `alpha = 0` in models with joints.
 - **Legacy line-of-sight convention**: `In-line-of-sight` points from body 1 to body 2 between two
-  bodies, but from the ground point to the body for body-ground forces. FreeDyn 2.0 always uses
+  bodies, but from the ground point to the body for body-ground forces. FreeDyn 2 always uses
   "from point 1 to point 2" (positive = tension); the `.fds` importer negates body-ground
   expressions.
 - **Legacy `AKISPL` is an alias of `SPL`**: it uses the interpolation type of the spline data
   object, not necessarily Akima (`MBS_FunctionExpression`); the importer follows that.
 - **Legacy angle measures count revolutions** with state updated at every evaluation;
-  FreeDyn 2.0 keeps the last accepted value as element state (`post`), so Newton iterations and
+  FreeDyn 2 keeps the last accepted value as element state (`post`), so Newton iterations and
   rejected steps cannot change it. Both agree as long as an angle changes by less than pi per step.
-- **Legacy differentiates driver motions numerically** for its activation polynomial; FreeDyn
-  2.0 uses exact derivatives (difference ~1e-10 in the comparison models). Legacy FreeDyn also
+- **Legacy differentiates driver motions numerically** for its activation polynomial; FreeDyn 2
+  uses exact derivatives (difference ~1e-10 in the comparison models). Legacy FreeDyn also
   crashed (Pardiso, forward/backward substitution) on a TimeMotion model with a body hung on a
   body-body force only; the comparison model keeps that body on a prismatic joint.
-- **Newton criterion on the velocities only** (FreeDyn 2.0, fixed): the `velocity` criterion
+- **Newton criterion on the velocities only** (FreeDyn 2, fixed): the `velocity` criterion
   took the maximum over the whole correction, multipliers included, and so compared the
   round-off of the multiplier corrections (eps |lambda| times the condition number) with a
   velocity tolerance. On the car model of `examples/scaling` this stopped Newton from

@@ -10,3 +10,6 @@ __pycache__/
 # documentation: generated live examples, the built site
 docs/live/
 site/
+
+# worktrees of parallel agent sessions
+.claude/worktrees/

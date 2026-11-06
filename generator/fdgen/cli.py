@@ -5,7 +5,12 @@
   freedyn2 check model.yaml [result.csv | --run] [-- runtime options]
   freedyn2 mcp                                           (MCP server for assistants, fdgen.mcp_server)
   freedyn2 examples [name [-o dir]]                     (list the examples, copy one)
+  freedyn2 gui [model ...] [--browser]                  (the app: start page and viewers, fdgen.app)
+  freedyn2 update-check                                  (is there a newer release? fdgen.update)
   freedyn2 compare model.fds ... --legacy <FreeDyn>     (legacy/benchmark.py, see there)
+  freedyn2 setup-mcp [--client claude-desktop|claude-code|all] [--remove] [--dry-run]  (fdgen.mcp_setup)
+  freedyn2 config [key [value]] | freedyn2 doctor     (fdgen.doctor)
+  freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]   (fdgen.convert)
 
 `run` imports the model, writes the runtime model file (.fdm) and, for models with expression
 forces or drivers, compiles the model plugin; then it runs the runtime `freedyn2_run`. Building
@@ -169,6 +174,14 @@ def examples(args):
     return 0
 
 
+def convert(args):
+    from .convert import convert as convert_fds
+
+    out = convert_fds(args.model, args.output, args.profile, args.force)
+    print(f"wrote {out} (profile {args.profile})")
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] == "compare":
@@ -179,13 +192,16 @@ def main(argv=None):
             print("freedyn2 compare needs the legacy/ directory of the freedyn2 repository", file=sys.stderr)
             return 2
         return benchmark.main(argv[1:])
-    ap = argparse.ArgumentParser(prog="freedyn2", description="FreeDyn 2.0: build and simulate a model")
+    ap = argparse.ArgumentParser(prog="freedyn2", description="FreeDyn 2: build and simulate a model")
+    from . import __version__
+
+    ap.add_argument("--version", action="version", version=f"FreeDyn 2 (freedyn2 {__version__})")
     sub = ap.add_subparsers(dest="command", required=True)
     r = sub.add_parser("run", help="import, build and simulate a model (.yaml or .fds)")
     r.add_argument("model")
     r.add_argument("-o", "--output", help="result CSV (default <model>.csv)")
     r.add_argument("--profile", choices=("v2", "legacy"), default="v2",
-                   help=".fds models: FreeDyn 2.0 methods (default) or the legacy algorithm")
+                   help=".fds models: FreeDyn 2 methods (default) or the legacy algorithm")
     r.add_argument("--workdir", help="keep the model file and plugin here (default: temporary)")
     r.add_argument("--runtime", help="path of freedyn2_run")
     r.epilog = "Runtime options follow after --, e.g. freedyn2 run model.fds -- --step 1e-4 --end-time 2"
@@ -209,7 +225,30 @@ def main(argv=None):
     e = sub.add_parser("examples", help="list the example models, or copy one (freedyn2 examples quarter_car)")
     e.add_argument("name", nargs="?")
     e.add_argument("-o", "--output", help="directory to copy it to (default: the current one)")
-    sub.add_parser("compare", help="legacy FreeDyn against FreeDyn 2.0 (see freedyn2 compare -h)")
+    g = sub.add_parser("gui", help="the app: start page, recent models, examples; a window per model (fdgen.app)")
+    g.add_argument("models", nargs="*", help="model files to open (none: the start page)")
+    g.add_argument("--browser", action="store_true", help="the web browser instead of an app window")
+    g.add_argument("--port", type=int, help="of the local server (default 8767, else any free one)")
+    g.add_argument("--new-instance", action="store_true", help="do not hand the models to a running app")
+    g.add_argument("--profile", choices=("v2", "legacy"), default="v2")
+    g.add_argument("--runtime", help="path of freedyn2_run")
+    sub.add_parser("update-check", help="ask GitHub whether a newer FreeDyn 2 is released (no download)")
+    sub.add_parser("compare", help="legacy FreeDyn against FreeDyn 2 (see freedyn2 compare -h)")
+    s = sub.add_parser("setup-mcp", help="register the MCP server with Claude Desktop / Claude Code")
+    s.add_argument("--client", choices=("claude-desktop", "claude-code", "all"), default="all")
+    s.add_argument("--remove", action="store_true", help="unregister it")
+    s.add_argument("--dry-run", action="store_true", help="only show what would change")
+    g = sub.add_parser("config", help="show or set the user configuration (freedyn2 config compiler zig)")
+    g.add_argument("key", nargs="?")
+    g.add_argument("value", nargs="?")
+    g.add_argument("--unset", action="store_true", help="remove the key")
+    sub.add_parser("doctor", help="what this installation finds: runtime, compiler, directories, MCP")
+    cv = sub.add_parser("convert", help="write a legacy .fds model as a YAML model file")
+    cv.add_argument("model", help="the .fds file")
+    cv.add_argument("-o", "--output", help="YAML file or directory (default: <model>.yaml next to the .fds)")
+    cv.add_argument("--profile", choices=("v2", "legacy"), default="v2",
+                    help="solver settings and bodies of freedyn2 run --profile (default v2)")
+    cv.add_argument("--force", action="store_true", help="overwrite an existing YAML file")
     k = argv.index("--") if "--" in argv else len(argv)
     args = ap.parse_args(argv[:k])
     args.options = argv[k + 1:]
@@ -218,7 +257,23 @@ def main(argv=None):
             from .mcp_server import serve
 
             return serve(args.workdir)
-        return {"view": view, "check": check, "examples": examples}.get(args.command, run)(args)
+        if args.command == "setup-mcp":
+            from .mcp_setup import setup_mcp
+
+            return setup_mcp(args.client, args.remove, args.dry_run)
+        if args.command in ("config", "doctor"):
+            from . import doctor
+
+            return doctor.doctor() if args.command == "doctor" else doctor.config(args.key, args.value, args.unset)
+        if args.command == "gui":
+            from .app import run as gui
+
+            return gui(args.models, args.browser, args.port, args.new_instance, args.profile, args.runtime)
+        if args.command == "update-check":
+            from .update import main as update_check
+
+            return update_check()
+        return {"view": view, "check": check, "examples": examples, "convert": convert}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)
         return 1

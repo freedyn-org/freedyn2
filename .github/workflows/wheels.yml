@@ -1,13 +1,24 @@
 name: Wheels
 
 # Wheels for Windows and Linux (pip install / uv tool install freedyn2): the Python package with
-# the compiled runtime and its KLU libraries (pyproject.toml: scikit-build-core, cibuildwheel).
-# Runs for pull requests that change the packaging, by hand, and for version tags; a version tag
-# (v0.1.0, ...) also publishes to PyPI (trusted publishing: the PyPI project must have this
-# repository and workflow registered as a trusted publisher, environment "pypi").
+# the compiled runtime and its KLU libraries (pyproject.toml: scikit-build-core, cibuildwheel), and
+# the Windows installer built from the Windows wheel (installer/windows).
+# Runs for pull requests that change the packaging, by hand, and for version tags. A version tag
+# (v0.1.0, ...) must equal the version in pyproject.toml; it publishes to PyPI (trusted publishing:
+# the PyPI project must have this repository and workflow registered as a trusted publisher,
+# environment "pypi"), creates the GitHub Release with the wheels, the sdist and the installer,
+# and updates the winget package (secret WINGET_TOKEN). Maintainers: docs/releasing.md.
+#
+# Code signing (optional, on version tags only): SignPath (SignPath Foundation for open-source
+# projects), enabled by the secret SIGNPATH_API_TOKEN and the variables SIGNPATH_ORGANIZATION_ID,
+# SIGNPATH_PROJECT_SLUG, SIGNPATH_SIGNING_POLICY_SLUG, SIGNPATH_CONFIG_PROGRAMS,
+# SIGNPATH_CONFIG_INSTALLER (artifact configurations: installer/windows/signpath). Without the token
+# the installer is built unsigned. Another signer replaces the two steps "Sign the programs" and
+# "Sign the installer": they read build/installer/to-sign and dist-installer and write the signed
+# files back to the same places.
 on:
   pull_request:
-    paths: [pyproject.toml, CMakeLists.txt, tools/**, .github/workflows/wheels.yml]
+    paths: [pyproject.toml, CMakeLists.txt, tools/**, installer/**, .github/workflows/wheels.yml]
   workflow_dispatch:
   push:
     tags: ["v*"]
@@ -17,7 +28,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version of pyproject.toml (equal to the tag for a release)
+        id: v
+        run: |
+          v=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if [[ "$v" =~ [a-zA-Z] ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$v" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match the version $v in pyproject.toml (expected tag v$v)"
+            exit 1
+          fi
+          echo "version $v"
+
   wheels:
+    needs: [version]
     strategy:
       matrix:
         os: [ubuntu-24.04, windows-latest]
@@ -38,6 +69,7 @@ jobs:
           path: wheelhouse/*.whl
 
   sdist:
+    needs: [version]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -47,9 +79,167 @@ jobs:
           name: sdist
           path: dist/*.tar.gz
 
+  # The Windows installer (Inno Setup) from the Windows wheel, then installed, used and uninstalled.
+  installer:
+    needs: [wheels]
+    runs-on: windows-latest
+    env:
+      SIGNER: ${{ (secrets.SIGNPATH_API_TOKEN != '' && startsWith(github.ref, 'refs/tags/v')) && 'signpath' || 'none' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-windows-latest
+          path: wheelhouse
+      - name: Inno Setup
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+            if ($LASTEXITCODE) { exit 1 }
+          }
+          if (-not (Test-Path $iscc)) { Write-Error "ISCC.exe not found after installing Inno Setup"; exit 1 }
+          "ISCC=$iscc" >> $env:GITHUB_ENV
+      - uses: actions/cache@v4
+        with:
+          path: build/installer/downloads
+          key: installer-python-${{ hashFiles('installer/windows/build.py') }}
+      - name: Stage (Python, packages, launchers)
+        run: python installer/windows/build.py stage --wheel-dir wheelhouse --work build/installer
+
+      # --- signing of the programs inside the installer (SIGNER) -----------------------------
+      - name: Collect the programs to sign
+        if: env.SIGNER != 'none'
+        run: |
+          # our own programs only (python.exe and the packages' binaries carry their makers' signatures)
+          $stage = "build/installer/stage/core"
+          $files = @(Get-ChildItem "$stage/bin/*.exe") + @(Get-ChildItem "$stage/python/Scripts/freedyn2*.exe") +
+                   @(Get-ChildItem "$stage/python/Lib/site-packages/fdgen/bin/*.exe")
+          foreach ($f in $files) {
+            $rel = [IO.Path]::GetRelativePath((Resolve-Path $stage), $f.FullName)
+            $dest = Join-Path "build/installer/to-sign" $rel
+            New-Item -ItemType Directory -Force (Split-Path $dest) | Out-Null
+            Copy-Item $f.FullName $dest
+          }
+          Get-ChildItem -Recurse -File build/installer/to-sign | ForEach-Object FullName
+      - name: Upload the programs to sign
+        if: env.SIGNER == 'signpath'
+        id: upload-programs
+        uses: actions/upload-artifact@v4
+        with:
+          name: programs-unsigned
+          path: build/installer/to-sign
+      - name: Sign the programs
+        if: env.SIGNER == 'signpath'
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092  # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_CONFIG_PROGRAMS }}
+          github-artifact-id: ${{ steps.upload-programs.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 7200  # release signing waits for a manual approval
+          output-artifact-directory: build/installer/to-sign
+      - name: Put the signed programs into the stage
+        if: env.SIGNER != 'none'
+        run: |
+          Copy-Item -Recurse -Force build/installer/to-sign/* build/installer/stage/core/
+          Get-ChildItem -Recurse -File build/installer/to-sign | ForEach-Object {
+            $s = Get-AuthenticodeSignature $_.FullName
+            "$($s.Status)  $($_.Name)"
+            if ($s.Status -ne 'Valid') { Write-Error "$($_.Name) is not signed"; exit 1 }
+          }
+
+      - name: Installer
+        run: python installer/windows/build.py compile --work build/installer --out dist-installer --iscc "$env:ISCC"
+
+      - name: Upload the installer to sign
+        if: env.SIGNER == 'signpath'
+        id: upload-installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-unsigned
+          path: dist-installer/*.exe
+      - name: Sign the installer
+        if: env.SIGNER == 'signpath'
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092  # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_CONFIG_INSTALLER }}
+          github-artifact-id: ${{ steps.upload-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 7200
+          output-artifact-directory: dist-installer
+      - name: Check the signature of the installer
+        if: env.SIGNER != 'none'
+        run: |
+          $s = Get-AuthenticodeSignature (Get-ChildItem dist-installer/FreeDyn2-*-setup.exe)
+          "$($s.Status) $($s.SignerCertificate.Subject)"
+          if ($s.Status -ne 'Valid') { exit 1 }
+
+      # --- smoke test: install silently (per user, into a path with a space), use, uninstall ----
+      - name: Smoke test
+        run: |
+          $ErrorActionPreference = 'Stop'
+          function Check([string]$what) { if ($LASTEXITCODE) { Write-Error "$what failed (exit code $LASTEXITCODE)" } }
+          $setup = (Get-ChildItem dist-installer/FreeDyn2-*-setup.exe | Select-Object -First 1).FullName
+          $dir = Join-Path $env:RUNNER_TEMP 'FreeDyn2 smoke'
+          $log = Join-Path $env:RUNNER_TEMP 'install.log'
+          $p = Start-Process $setup -Wait -PassThru -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER',
+                 "/DIR=`"$dir`"", '/COMPONENTS=core,compiler,examples', '/TASKS=path', "/LOG=`"$log`""
+          if ($p.ExitCode -ne 0) { Get-Content $log -Tail 50; Write-Error "setup exit code $($p.ExitCode)" }
+          $bin = Join-Path $dir 'bin'
+          foreach ($f in 'bin\freedyn2.exe', 'bin\freedyn2-gui.exe', 'bin\freedyn2-prompt.cmd', 'python\python.exe',
+                         'python\Lib\site-packages\ziglang', 'examples\driven_rotor.yaml', 'licenses\python-packages.txt',
+                         'THIRD-PARTY-NOTICES.txt', 'unins000.exe') {
+            if (-not (Test-Path (Join-Path $dir $f))) { Write-Error "not installed: $f" }
+          }
+          $userPath = (Get-ItemProperty HKCU:\Environment).Path -split ';'
+          if ($userPath -notcontains $bin) { Write-Error "bin not on the user PATH: $userPath" }
+
+          # an isolated user: settings in FREEDYN2_HOME, no CC; the compiler is Zig (component compiler)
+          $env:FREEDYN2_HOME = Join-Path $env:RUNNER_TEMP 'fd2home'
+          Remove-Item Env:CC -ErrorAction SilentlyContinue
+          $work = Join-Path $env:RUNNER_TEMP 'fd2work'
+          New-Item -ItemType Directory -Force $work | Out-Null
+          Set-Location $work
+          $fd = Join-Path $bin 'freedyn2.exe'
+          & $fd --version; Check 'freedyn2 --version'
+          & $fd config compiler zig; Check 'freedyn2 config compiler zig'
+          & $fd doctor; Check 'freedyn2 doctor'
+          & $fd run (Join-Path $dir 'examples\compare\pendulum.fds') -o pendulum.csv; Check 'freedyn2 run pendulum.fds'
+          & $fd run (Join-Path $dir 'examples\driven_rotor.yaml') -o driven_rotor.csv; Check 'freedyn2 run driven_rotor.yaml (Zig)'
+          foreach ($csv in 'pendulum.csv', 'driven_rotor.csv') { if (-not (Test-Path $csv)) { Write-Error "no $csv" } }
+          & $fd setup-mcp --client claude-desktop --dry-run; Check 'freedyn2 setup-mcp --dry-run'
+          # the launcher in python\Scripts works as well (relocated like bin)
+          & (Join-Path $dir 'python\Scripts\freedyn2.exe') --version; Check 'python\Scripts\freedyn2.exe --version'
+
+          Set-Location $env:RUNNER_TEMP
+          $p = Start-Process (Join-Path $dir 'unins000.exe') -Wait -PassThru -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
+          if ($p.ExitCode -ne 0) { Write-Error "uninstall exit code $($p.ExitCode)" }
+          # the uninstaller continues from a copy in %TEMP%: wait for it
+          for ($i = 0; $i -lt 180 -and (Test-Path $dir); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path $dir) { Get-ChildItem -Recurse $dir | Select-Object -First 30 | ForEach-Object FullName; Write-Error "left after uninstall: $dir" }
+          $userPath = (Get-ItemProperty HKCU:\Environment).Path -split ';'
+          if ($userPath -contains $bin) { Write-Error "bin still on the user PATH" }
+          "installed, used and uninstalled"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: dist-installer/FreeDyn2-*-setup.exe
+          if-no-files-found: error
+
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [wheels, sdist]
+    needs: [wheels, sdist, installer]
     runs-on: ubuntu-24.04
     environment: pypi
     permissions:
@@ -57,6 +247,94 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: wheels-*
           path: dist
           merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # GitHub Release vX.Y.Z: wheels, sdist, the installer (also as FreeDyn2-setup.exe for the stable
+  # link .../releases/latest/download/FreeDyn2-setup.exe), SHA256SUMS; notes from CHANGELOG.md
+  # and generated. The app's update notice reads the latest release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, wheels, sdist, installer]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4  # not the unsigned intermediates of the signing
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer-windows
+          path: dist
+      - name: Assets and notes
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          cd dist
+          cp "FreeDyn2-$VERSION-setup.exe" FreeDyn2-setup.exe
+          sha256sum -- *.whl *.tar.gz *.exe > SHA256SUMS
+          cat SHA256SUMS
+          cd ..
+          # the section "## [VERSION]" of CHANGELOG.md (empty if there is none)
+          python3 - "$VERSION" > notes.md <<'EOF'
+          import re, sys
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(rf"^## \[{re.escape(sys.argv[1])}\][^\n]*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+          print(m.group(1).strip() if m else "")
+          EOF
+          cat notes.md
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
+        with:
+          name: FreeDyn 2 version ${{ needs.version.outputs.version }}
+          body_path: notes.md
+          generate_release_notes: true
+          prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.version.outputs.prerelease == 'true' && 'false' || 'true' }}
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/FreeDyn2-*-setup.exe
+            dist/FreeDyn2-setup.exe
+            dist/SHA256SUMS
+
+  # winget (microsoft/winget-pkgs): a pull request with the new version, after the first version was
+  # submitted by hand (installer/winget). Needs the secret WINGET_TOKEN (a classic GitHub token
+  # with public_repo of an account with a fork of winget-pkgs); skipped without it and for pre-releases.
+  winget:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, release]
+    runs-on: windows-latest
+    env:
+      HAS_TOKEN: ${{ secrets.WINGET_TOKEN != '' }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+    steps:
+      - name: Notice
+        if: env.HAS_TOKEN != 'true' || env.PRERELEASE == 'true'
+        run: echo "::notice::winget update skipped (no WINGET_TOKEN, or a pre-release)"
+      - name: wingetcreate update
+        if: env.HAS_TOKEN == 'true' && env.PRERELEASE != 'true'
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v$env:VERSION/FreeDyn2-$env:VERSION-setup.exe"
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          # the same installer for both scopes of the manifest (user, machine)
+          .\wingetcreate.exe update FreeDynOrg.FreeDyn2 --version $env:VERSION `
+            --urls "$url|x64|user" "$url|x64|machine" --submit --token $env:WINGET_TOKEN
+          if ($LASTEXITCODE) { exit 1 }

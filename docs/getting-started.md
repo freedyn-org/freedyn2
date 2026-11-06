@@ -2,38 +2,117 @@
 
 ## Install
 
-FreeDyn 2.0 is a Python package with a compiled runtime inside; Windows (x64) and Linux
-(x86_64) are supported, with Python 3.10 or newer.
+FreeDyn 2 runs on Windows (x64) and Linux (x86_64). It comes in two forms: a Windows
+installer that sets up a program, and a Python package for use from Python.
 
-=== "uv (recommended)"
+### Which way suits me?
+
+| you want to | take |
+|---|---|
+| use FreeDyn as a program on Windows: the app window, the command line, an assistant; no Python needed | the **Windows installer** |
+| use FreeDyn from your own Python, Jupyter or scripts, or on Linux | **uv** or **pip** |
+
+Both give the same `freedyn2` command and the same results. They can be installed side by
+side; each has its own Python.
+
+!!! note "Before the first release"
+    The installer comes with the first release; until then there is no download. Until
+    FreeDyn 2 is on PyPI, take the wheel for your platform from the artifacts of the *Wheels*
+    workflow on GitHub and install it with `pip install "freedyn2-0.1.0-py3-none-<platform>.whl[gui,compiler]"`.
+
+=== "Windows installer"
+
+    Download [`FreeDyn2-setup.exe`](https://github.com/freedyn-org/freedyn2/releases/latest/download/FreeDyn2-setup.exe)
+    from the GitHub releases and run it. It installs for the current user, without
+    administrator rights, and brings its own private Python. A legacy FreeDyn on the same
+    machine is not touched ([Coming from FreeDyn](from-freedyn.md)). Later also:
+    `winget install FreeDynOrg.FreeDyn2`.
+
+    The installer asks for components:
+
+    | component | default | |
+    |---|---|---|
+    | C compiler (Zig) | on | for models with expression forces or drivers (see below) |
+    | examples | on | the example models |
+    | add to PATH | on | `freedyn2` in every command prompt |
+    | associate `.fds` | off | double click opens a legacy model in FreeDyn 2 |
+    | "Open with FreeDyn 2" for `.yaml` | off | in the context menu of model files |
+    | register with Claude Desktop | off | the [MCP server](assistants.md) for Claude Desktop |
+    | desktop icon | off | |
+
+    The start menu then has **FreeDyn 2** (the app window: open a model, recent models,
+    examples, the documentation), **FreeDyn 2 Command Prompt** (a prompt with `freedyn2` on
+    the PATH) and **FreeDyn 2 Documentation**.
+
+    For rollouts: `FreeDyn2-setup.exe /VERYSILENT /CURRENTUSER` installs without questions.
+
+=== "uv"
 
     [uv](https://docs.astral.sh/uv/) installs FreeDyn as a command, with its own Python if
     needed:
 
     ```sh
-    uv tool install freedyn2
+    uv tool install "freedyn2[gui,compiler]"
     ```
 
 === "pip"
 
+    Into the current environment (a virtual environment, conda, the Python of your Jupyter):
+
     ```sh
-    pip install freedyn2
+    pip install "freedyn2[gui,compiler]"
     ```
 
-!!! note "Before the first release"
-    Until FreeDyn 2.0 is on PyPI, take the wheel for your platform from the artifacts of the
-    *Wheels* workflow on GitHub and install it with `pip install freedyn2-0.1.0-py3-none-*.whl`.
+The extras are optional: `gui` (pywebview) opens `freedyn2 gui` in a window of its own
+instead of the browser; `compiler` (ziglang) brings a C compiler that FreeDyn finds by itself.
+`pip install freedyn2` alone is enough for the command line, the viewer in the browser and
+the MCP server.
 
-Models that use **expression forces or drivers** are compiled into a small plugin and need a
-C compiler: on Linux gcc or clang, on Windows the Visual Studio Build Tools (run FreeDyn from a
-developer prompt) or MinGW-w64 gcc on the PATH. Everything else – bodies, joints, springs,
-bushings, tires – needs none.
+!!! warning "The installer's Python is private"
+    The Python inside the Windows installation serves FreeDyn only. To use FreeDyn from your
+    own Python or Jupyter (`import freedyn2`, see the [Python API](python-api.md)), install it
+    into that environment with `pip install freedyn2`, even if the installer is there too.
 
-Check the installation:
+### The C compiler
+
+Models with **expression forces or drivers** are compiled into a small plugin and need a C
+compiler. Everything else (bodies, joints, springs, bushings, tires) needs none.
+
+The installer (component *C compiler*) and the `compiler` extra bring Zig, which FreeDyn
+finds by itself. Other options:
+
+- Linux: gcc or clang, as installed by the system.
+- Windows: the Visual Studio Build Tools (found with vswhere, no developer prompt needed) or
+  MinGW-w64 gcc on the PATH.
+
+`freedyn2 config compiler zig|msvc|auto|<path>` chooses one (`auto`: the first one found);
+the `CC` environment variable overrides the setting.
+
+### Check the installation
 
 ```sh
-freedyn2 --help
+freedyn2 --version
+freedyn2 doctor
 ```
+
+`freedyn2 doctor` shows what FreeDyn found on your machine (its Python, the runtime, the C
+compiler and more). Add its output when you ask for help.
+
+### Updating and uninstalling
+
+FreeDyn does not update itself. The app shows a notice when a newer release is on GitHub (it
+looks once a day; `freedyn2 config update_check false` or `FREEDYN2_NO_UPDATE_CHECK=1` turns
+that off).
+
+| | update | uninstall |
+|---|---|---|
+| Windows installer | download the new `FreeDyn2-setup.exe` and run it over the old installation | Windows Settings > Apps > FreeDyn 2 |
+| uv | `uv tool upgrade freedyn2` | `uv tool uninstall freedyn2` |
+| pip | `pip install -U freedyn2` | `pip uninstall freedyn2` |
+
+Uninstalling keeps your settings and caches in `%APPDATA%\freedyn2` and
+`%LOCALAPPDATA%\freedyn2` (Windows); delete these folders to remove everything. Your model
+files are never touched.
 
 ## A first model
 
@@ -88,10 +167,14 @@ mass, move the hinge – and save: the viewer simulates again and shows the new 
 old one. That loop, *edit, save, look*, is the whole idea; the [viewer page](viewer.md) shows
 everything else it can do.
 
+`freedyn2 gui pendulum.yaml` shows the same in a window of its own (with the `gui` extra or
+the Windows installer; the start menu entry **FreeDyn 2** opens it with a start page).
+
 ![The pendulum in the viewer](img/pendulum.png)
 
 ## Next
 
+- [Coming from FreeDyn](from-freedyn.md): your `.fds` models in FreeDyn 2.
 - The [tutorial](tutorial.md) tunes a quarter car with sliders, compares runs and studies
   variants.
 - [Working with an assistant](assistants.md) connects Claude (or another MCP client) so it

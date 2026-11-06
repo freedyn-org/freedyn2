@@ -15,6 +15,53 @@ editing with the viewer open.
 
 ![The viewer](img/viewer.png)
 
+## The app
+
+```sh
+freedyn2-gui                  # the start page (on Windows: the FreeDyn 2 shortcut, no console)
+freedyn2-gui model.fds        # open a model (also: a double click on a model file)
+freedyn2 gui [model ...]      # the same from a console; --browser: in the web browser
+```
+
+`freedyn2-gui` is FreeDyn 2 as a desktop program around the same viewer. With
+[pywebview](https://pywebview.flowrl.com/) (`pip install "freedyn2[gui]"`; WebView2 on
+Windows, GTK or Qt on Linux) the start page and every opened model get a window of their own,
+titled *FreeDyn 2*; without it, or with `--browser`, they open in the default web
+browser. Closing the last window ends the program (in the browser: *Quit* on the start page, or
+a few minutes after the last tab was closed).
+
+![The start page](img/app-start.png)
+
+The **start page** offers:
+
+- **Open a model**: a `.yaml` or legacy `.fds` file, with the file dialog of the system (app
+  window), or by its path, or dropped onto the page (browser; a dropped file is opened as a
+  copy, so files it reads – meshes, roads – must be given with absolute paths).
+- **Recent models**, the newest first (kept in the per-user data folder, `recent.json`).
+- **Examples**: a click copies the example, with the files it reads, into a folder you choose
+  (default `Documents\FreeDyn2`; files already there are kept) and opens your copy.
+- **Documentation**: links to this site.
+
+Only one app runs per user: a second start – a double click on another model file – hands the
+file to the running app, which opens it in a new window. The app writes its log to
+`freedyn2.log` in the per-user log folder (Windows `%LOCALAPPDATA%\freedyn2\logs`, Linux
+`~/.local/share/freedyn2/logs`); errors are shown on the page and in a dialog. Each model
+window is the viewer described below, unchanged; it simulates again on every save of the file,
+as `freedyn2 view` does.
+
+### Update notice
+
+At start the app asks GitHub, at most once a day and in the background, whether a newer
+release is out. If so, the start page and the viewer windows show a small notice *FreeDyn 2
+X.Y.Z is available* with a link to the
+[release page](https://github.com/freedyn-org/freedyn2/releases/latest). Nothing is downloaded
+or installed; without a network nothing is shown. `freedyn2 update-check` asks right away and
+prints the answer.
+
+To turn the check off, set `"update_check": false` in `config.json` of the per-user settings
+folder (Windows `%APPDATA%\freedyn2`, Linux `~/.config/freedyn2`), or the environment
+variable `FREEDYN2_NO_UPDATE_CHECK=1`.
+
 ## 3D view and timeline
 
 - Drag to rotate, right-drag to pan, wheel to zoom; *fit view*; *follow* a body (a model that

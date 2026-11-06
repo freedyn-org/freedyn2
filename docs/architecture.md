@@ -1,6 +1,6 @@
-# FreeDyn 2.0 architecture and reading guide
+# FreeDyn 2 architecture and reading guide
 
-FreeDyn 2.0 splits multibody simulation into two programs with one narrow interface between
+FreeDyn 2 splits multibody simulation into two programs with one narrow interface between
 them:
 
 - the **generator** (Python, `generator/fdgen`) knows the physics: it derives every equation
@@ -34,7 +34,8 @@ change to the solver.
   with `dlopen`. Constants stay parameters, so changing a value needs no recompilation.
 - **`.fdm`** lists element instances: element type, global indices (coordinates, velocity
   dofs, constraint rows), parameters `p`, initial state, solver settings.
-- `freedyn2 run model.fds` (`fdgen/cli.py`) does all three steps in one call.
+- `freedyn2 run model.fds` (`fdgen/cli.py`) does all three steps in one call; from Python,
+  `freedyn2.run` (`generator/freedyn2`).
 
 ## Reading guide
 
@@ -92,7 +93,9 @@ Read in this order; each stop builds on the previous one.
 | `fdgen/codegen.py` | C code of the library element types and the registry |
 | `fdgen/model.py`, `schema/` | YAML validation, `.fdm` writer |
 | `fdgen/fds/` | legacy `.fds` importer and solver profiles |
+| `fdgen/convert.py` | `freedyn2 convert`: an imported `.fds` model written as YAML, read back and compared |
 | `fdgen/cli.py` | `freedyn2 run` (import, build, simulate), `view`, `check`, `mcp` |
+| `freedyn2/` (`generator/freedyn2`) | Python API: `load`, `run`, `check`, `sweep` (`Model`, `Result`, `Report`) over `fdgen.cli`, `fdgen.sweep`, `fdgen.checks`; the runtime in a subprocess |
 | `fdgen/checks.py` | checks of a model and its results; references (`checks` section) |
 | `fdgen/mcp_server.py` | `freedyn2 mcp`: tools for assistants (`Session`), MCP registration |
 | `fdgen/resources.py` | data files (schema, examples, runtime programs) in the installed package or the repository |
@@ -225,8 +228,9 @@ than `newton_tol` (`newton velocity`, YAML and profile `v2`): `gamma h |dx| <= t
 criterion directly on `x` cannot go below the round-off floor `eps/(beta h^2)` of the scaled
 constraint rows.
 
-**Step size control** (only with `adaptive`, i.e. `.fds` models; YAML models and the planned
-real-time use run with a fixed step). The controller is the one of legacy FreeDyn
+**Step size control** (only with `adaptive`, i.e. `.fds` models and YAML files converted from
+them by `freedyn2 convert`; other YAML models and the planned real-time use run with a fixed
+step). The controller is the one of legacy FreeDyn
 (`LegacyTimeStepper`: `SOL_SimTimeManagerHHT`, `SIM_SimulationObject`): step factor
 `0.9 theta^(-1/6)`, halving after a rejected step, output time handling. The local error is
 Negrut et al. (2007) Eq. 37a, the Newmark truncation term `(beta - 1/(6(1+alpha))) h^2 (qdd -

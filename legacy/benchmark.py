@@ -1,15 +1,15 @@
-"""freedyn2 compare: legacy FreeDyn and FreeDyn 2.0 on the same .fds file, accuracy and speed.
+"""freedyn2 compare: legacy FreeDyn and FreeDyn 2 on the same .fds file, accuracy and speed.
 
 Usage:
   freedyn2 compare model.fds [...] --legacy build/legacy/build/FreeDyn [--runtime build/freedyn2_run]
                    [--refine 16] [--repeat 3] [--markdown report.md] [--json report.json]
 
 Both programs read the same .fds and run it as given (its step size, tolerance and end time);
-FreeDyn 2.0 with its own methods (profile v2). Single-threaded, best of --repeat runs.
+FreeDyn 2 with its own methods (profile v2). Single-threaded, best of --repeat runs.
 
 Accuracy: against a converged solution, computed by both programs themselves, so it needs no
 model-specific reference code. Each program runs the model again with the maximum step size
-divided by --refine and the tolerance by --refine^2. The FreeDyn 2.0 fine run is the
+divided by --refine and the tolerance by --refine^2. The FreeDyn 2 fine run is the
 reference; a second one with half that step size estimates its uncertainty, and the legacy
 fine run cross-checks it (an independent program converging to the same solution: its error
 drops with the step size). Errors are the largest deviations over all output times and bodies:
@@ -18,15 +18,15 @@ drops with the step size). Errors are the largest deviations over all output tim
   velocity   max of |omega - omega_ref| / max |omega_ref| and |Rdot - Rdot_ref| / max |Rdot_ref|
 For chaotic or unstable motion (a body flipping about its intermediate axis, a double pendulum)
 any two accurate solutions drift apart after a while, and a maximum over the whole run measures
-nothing. The comparison window therefore ends where the two FreeDyn 2.0 reference runs start
+nothing. The comparison window therefore ends where the two FreeDyn 2 reference runs start
 to disagree by more than HORIZON_TOL (the "trust horizon", reported); for regular motion it is
 the whole run. Within the window, "accurate until" is the time at which a program's deviation
 first exceeds VALID_TOL: for chaotic motion every finite step size loses the solution after a
-while, and the later the better. FreeDyn 2.0 counts as equally accurate when it stays accurate
+while, and the later the better. FreeDyn 2 counts as equally accurate when it stays accurate
 at least as long and its errors are within 10 % or the reference uncertainty of the legacy ones.
 
 Timing: legacy FreeDyn as one program run (input, setup, simulation, result files).
-FreeDyn 2.0 split into build (import, model file, model plugin; once per model, independent of
+FreeDyn 2 split into build (import, model file, model plugin; once per model, independent of
 the simulated time; cold: without the plugin cache, cached: with it) and simulation (runtime: load, setup,
 simulation, result file).
 """
@@ -93,7 +93,7 @@ def run_legacy(exe, fds, work, repeat, refine=1):
 
 
 def run_v2(runtime, fds, work, repeat, refine=1, cold=False):
-    """Results, build time, best simulation time and step count of FreeDyn 2.0 (profile v2).
+    """Results, build time, best simulation time and step count of FreeDyn 2 (profile v2).
     cold: build without the plugin cache."""
     from fdgen import cli
 

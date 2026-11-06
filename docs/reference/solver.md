@@ -4,7 +4,7 @@
 solver: {type: HHT, alpha: -0.1, end_time: 10.0, step: 0.001, output_step: 0.01}
 ```
 
-FreeDyn 2.0 integrates with the **HHT-α method** (Hilber–Hughes–Taylor) on the Lie group of
+FreeDyn 2 integrates with the **HHT-α method** (Hilber–Hughes–Taylor) on the Lie group of
 the bodies, at a fixed step, solving the nonlinear equations of each step with Newton's
 method and a sparse LU (KLU). The equations and their Jacobians are exact (generated).
 
@@ -35,6 +35,17 @@ With `newton: fixed` every step does exactly `newton_iterations` corrections, wi
 pivot order: every step costs the same, for hardware-in-the-loop and driving simulators. At
 1 ms the Newton error is far below the discretization error (10⁷ times at 2 iterations).
 Median cost per step at two iterations: a car with simple tires 164 µs (one core).
+
+## Models converted from FreeDyn
+
+A model converted from a legacy `.fds` ([`freedyn2 convert`](../cli.md#convert)) keeps the step
+size control of legacy FreeDyn: `adaptive: true`, the error tolerance `eps`
+(`GlobalErrorTolerance`), `step` as the largest step (`SolverMaxTimeStep`; `output_step` need
+not be a multiple of it), `h_min`. Converted with `--profile legacy` it also has `form: negrut`,
+`newton: legacy`, `error_norm: legacy`, `vproj_tol` and Euler-parameter bodies
+(`element: rigid_body_euler`), and runs as legacy FreeDyn does. For a fixed step, remove
+`adaptive` and `eps` and choose `step`; `--fixed-step` on the command line does the same for
+one run.
 
 ## Linear solvers and the command line
 
