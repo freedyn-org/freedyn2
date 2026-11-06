@@ -205,6 +205,11 @@ def test_massless_body_is_an_error(tmp_path):
     assert not (tmp_path / "pendulum.yaml").exists()
 
 
+def test_output_must_be_yaml(tmp_path):
+    with pytest.raises(ModelError, match=r"end in \.yaml"):
+        onshape.import_onshape(URL, tmp_path / "m.yam", client=Client(*pendulum()))
+
+
 def test_existing_file_needs_force(tmp_path):
     (tmp_path / "pendulum.yaml").write_text("x")
     with pytest.raises(ModelError, match="exists"):

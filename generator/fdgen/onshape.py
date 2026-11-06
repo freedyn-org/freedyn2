@@ -472,6 +472,8 @@ def import_onshape(url, output=None, client=None, meshes=True, force=False, name
     out = Path(output) if output else Path(f"{model_name}.yaml")
     if out.is_dir():
         out = out / f"{model_name}.yaml"
+    if out.suffix.lower() not in (".yaml", ".yml"):
+        raise ModelError(f"{out}: model files end in .yaml (or .yml)")
     if out.exists() and not force:
         raise ModelError(f"{out} exists (--force / force=True overwrites it)")
     asm = read_assembly(client, did, wvm, wvmid, eid, configuration)
