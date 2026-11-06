@@ -79,6 +79,9 @@ struct Model {
 };
 
 Model load_model(const std::string& path);
+// The contents of a model file; path names it in messages and is the base of relative paths
+// (plugin, splines, roads).
+Model parse_model(const std::string& text, const std::string& path);
 const fd_element_type& find_element_type(const std::string& name);
 
 }  // namespace fd

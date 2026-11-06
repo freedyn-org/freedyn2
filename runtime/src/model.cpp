@@ -4,7 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
-#include <fstream>
+#include <cstdio>
 #include <sstream>
 #include <stdexcept>
 
@@ -41,9 +41,19 @@ std::vector<T> read_all(std::istringstream& ss) {
 }
 }  // namespace
 
+// C stdio, not fstream: also for targets whose C++ library has no file streams (WebAssembly).
 Model load_model(const std::string& path) {
-  std::ifstream in(path);
-  if (!in) throw std::runtime_error("cannot open model file " + path);
+  std::FILE* f = std::fopen(path.c_str(), "rb");
+  if (!f) throw std::runtime_error("cannot open model file " + path);
+  std::string text;
+  char buf[65536];
+  for (size_t n; (n = std::fread(buf, 1, sizeof buf, f)) > 0;) text.append(buf, n);
+  std::fclose(f);
+  return parse_model(text, path);
+}
+
+Model parse_model(const std::string& text, const std::string& path) {
+  std::istringstream in(text);
   Model m;
   ElementSpec* cur = nullptr;
   std::string line;

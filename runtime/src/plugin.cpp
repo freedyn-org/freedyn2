@@ -8,7 +8,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
-#else
+#elif !defined(__wasi__)
 #include <dlfcn.h>
 #endif
 
@@ -29,6 +29,11 @@ void* open_library(const std::string& path, std::string& err) {
   void* h = reinterpret_cast<void*>(LoadLibraryA(path.c_str()));
   if (!h) err = "LoadLibrary failed, error " + std::to_string(GetLastError());
   return h;
+#elif defined(__wasi__)
+  // WebAssembly: no shared libraries; models with expression forces need the native runtime.
+  (void)path;
+  err = "model plugins (expression forces, drivers) are not supported in WebAssembly";
+  return nullptr;
 #else
   void* h = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
   if (!h) err = dlerror();
@@ -39,6 +44,10 @@ void* open_library(const std::string& path, std::string& err) {
 void* symbol(void* h, const char* name) {
 #ifdef _WIN32
   return reinterpret_cast<void*>(GetProcAddress(static_cast<HMODULE>(h), name));
+#elif defined(__wasi__)
+  (void)h;
+  (void)name;
+  return nullptr;
 #else
   return dlsym(h, name);
 #endif

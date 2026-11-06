@@ -3,7 +3,6 @@
 #include <cmath>
 #include <cctype>
 #include <cstdio>
-#include <fstream>
 #include <stdexcept>
 #include <string>
 
@@ -19,15 +18,22 @@ const double kGradientStep = 1e-4;  // [m], central difference of the height
 
 // Whether the header of an OpenCRG file has a modifiers section ($ROAD_CRG_MODS).
 bool has_modifiers_section(const std::string& path) {
-  std::ifstream in(path, std::ios::binary);
-  std::string line;
-  while (std::getline(in, line)) {
+  std::FILE* f = std::fopen(path.c_str(), "rb");  // C stdio: also without file streams (WebAssembly)
+  if (!f) return false;
+  bool found = false;
+  char buf[4096];
+  while (std::fgets(buf, sizeof buf, f)) {
+    std::string line(buf);
     if (line.rfind("$$$$", 0) == 0) break;  // the data follow
     std::string up;
     for (char c : line) up += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-    if (up.rfind("$ROAD_CRG_MODS", 0) == 0) return true;
+    if (up.rfind("$ROAD_CRG_MODS", 0) == 0) {
+      found = true;
+      break;
+    }
   }
-  return false;
+  std::fclose(f);
+  return found;
 }
 
 int load(const std::string& path) {

@@ -1,4 +1,5 @@
 build/
+build-wasm/
 __pycache__/
 *.egg-info/
 .pytest_cache/
