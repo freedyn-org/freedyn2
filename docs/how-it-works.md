@@ -256,7 +256,7 @@ solution of the position-level constraints slowly grows unstable (theory 7).
 Two forms are implemented:
 
 - **Negrut form** (legacy profile): forces averaged between the old and the new time, positions
-  added. With the legacy profile, FreeDyn 2 and the legacy FreeDyn kernel take the same steps
+  added. With the legacy profile, freedyn2 and the legacy FreeDyn kernel take the same steps
   with the same Newton iterations and agree to round-off.
 - **Arnold-Brüls form** (default): the equations hold at the new time, \(\alpha\) enters through
   a pseudo-acceleration, the configuration is updated by \(\exp\) on the Lie group.

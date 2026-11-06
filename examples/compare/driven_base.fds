@@ -1,5 +1,5 @@
 Header freeDynHeader
-% FreeDyn 2: base on a prismatic joint driven by TimeMotion (z = 0.05 sin(2 pi t), default ActivationPeriod 0.1 s), mass hung on an expression spring below it
+% freedyn2: base on a prismatic joint driven by TimeMotion (z = 0.05 sin(2 pi t), default ActivationPeriod 0.1 s), mass hung on an expression spring below it
 % on its own prismatic joint (legacy FreeDyn crashes in Pardiso with a free hung body here), gravity
 EndHeader
 %

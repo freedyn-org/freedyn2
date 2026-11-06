@@ -43,7 +43,7 @@ def elem():
 
 @pytest.fixture(scope="session")
 def lie():
-    """Lie group rigid body (FreeDyn 2 default)."""
+    """Lie group rigid body (freedyn2 default)."""
     return rigid_body.build()
 
 

@@ -513,7 +513,7 @@ def test_brand_files_of_the_viewer_are_the_brand():
     web = server.WEB / "brand"
     for name in ("tokens.css", "lockup-small-light.svg", "lockup-small-dark.svg", "favicon.svg"):
         source = ROOT / "brand" / (name if name == "tokens.css" else f"logo/{name}")
-        assert (web / name).read_bytes() == source.read_bytes(), f"{web / name}: copy {source} again"
+        assert (web / name).read_bytes() == source.read_bytes(), f"{web / name}: run tools/sync_brand.py"
 
 
 def test_state_names_the_agent(tmp_path):

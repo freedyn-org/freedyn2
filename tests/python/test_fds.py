@@ -95,7 +95,7 @@ def test_fdm_from_fds(tmp_path):
 
 
 def test_profiles(tmp_path):
-    """Same model, two ways to solve it: legacy algorithm or FreeDyn 2 defaults."""
+    """Same model, two ways to solve it: legacy algorithm or freedyn2 defaults."""
     legacy = load_fds(COMPARE / "rotated_gui_defaults.fds")
     v2 = load_fds(COMPARE / "rotated_gui_defaults.fds", profile="v2")
     assert legacy["bodies"]["rotated"]["orientation"] == v2["bodies"]["rotated"]["orientation"]

@@ -54,6 +54,11 @@ from . import notes, source
 from .scene import attach_sources, read_results, scene
 
 WEB = Path(__file__).resolve().parent / "web"
+# types the page needs, independent of the platform's table (Windows reads it from the registry,
+# where .woff2, .mjs or .svg can be missing or wrong)
+for _ext, _type in ((".woff2", "font/woff2"), (".svg", "image/svg+xml"), (".js", "text/javascript"),
+                    (".mjs", "text/javascript"), (".css", "text/css"), (".json", "application/json")):
+    mimetypes.add_type(_type, _ext)
 POLL_SECONDS = 0.5
 MAX_POST = 20_000_000  # bytes (a note with its picture)
 MAX_RUNS = 20  # kept for comparison (the reference always)

@@ -1,5 +1,5 @@
 Header freeDynHeader
-% FreeDyn 2: mass on a prismatic joint under gravity with a nonlinear spring from an Akima spline
+% freedyn2: mass on a prismatic joint under gravity with a nonlinear spring from an Akima spline
 % of the displacement and a time excitation from zero clamped cubic and Akima splines
 EndHeader
 %

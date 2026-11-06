@@ -1,4 +1,4 @@
-"""Run legacy FreeDyn and FreeDyn 2 on the same .fds models and compare results and speed.
+"""Run legacy FreeDyn and freedyn2 on the same .fds models and compare results and speed.
 
 Usage:
   python legacy/compare.py examples/compare/*.fds [--level exact|physics]
@@ -6,17 +6,17 @@ Usage:
          [--json report.json] [--markdown report.md]
 
 Two levels:
-- exact: FreeDyn 2 with the "legacy" profile (legacy algorithm) against legacy FreeDyn,
+- exact: freedyn2 with the "legacy" profile (legacy algorithm) against legacy FreeDyn,
   to round-off. Verifies the generator, assembly and solver implementation.
-- physics: FreeDyn 2 with its own defaults ("v2" profile) and legacy FreeDyn, each against
-  an independent reference (legacy/references). Both must solve the same physics; FreeDyn 2
+- physics: freedyn2 with its own defaults ("v2" profile) and legacy FreeDyn, each against
+  an independent reference (legacy/references). Both must solve the same physics; freedyn2
   is free to use other methods and is expected to be at least as accurate.
 
 For every model both programs run in a fresh directory, single-threaded
 (OMP_NUM_THREADS = MKL_NUM_THREADS = 1), writing results at the model's output step.
 Compared: output times, the accepted step sequence (legacy DebugLevel 1 log), and per body
 R, A (rotation matrix), Rdot and omega (body frame). Times are wall-clock times of the whole
-program run (best of --repeat); FreeDyn 2 additionally reports its time per step.
+program run (best of --repeat); freedyn2 additionally reports its time per step.
 """
 
 import argparse
@@ -156,7 +156,7 @@ def compare(legacy_res, v2_res):
 # perturbations: near the unstable axis differences grow by e^(lambda t), so after the first flip
 # any two accurate solutions drift apart and a maximum over the whole run measures nothing.
 # double_pendulum is chaotic; spring_chain starts to tumble after ~2 s (second-order convergence
-# of FreeDyn 2 to the reference up to there: 1.9e-5, 4.7e-6, 1.2e-6 for h = 1e-3, 5e-4, 2.5e-4).
+# of freedyn2 to the reference up to there: 1.9e-5, 4.7e-6, 1.2e-6 for h = 1e-3, 5e-4, 2.5e-4).
 HORIZON = {"dzhanibekov": 5.0, "double_pendulum": 3.0, "spring_chain": 2.0}
 
 

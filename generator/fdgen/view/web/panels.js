@@ -473,7 +473,7 @@ export class Panels {
     const view = await image(this.v.viewImage()), plots = this.v.area.png();
     const rows = (items) => items.map((r) => `<tr>${r.map((x) => `<td>${x}</td>`).join("")}</tr>`).join("");
     const sev = (k, label) => `<span class="sev ${k}">${label}</span>`;
-    let html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(s.model)} – FreeDyn 2 report</title>
+    let html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(s.model)} – freedyn2 report</title>
 <style>body{font:14px/1.45 system-ui,sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#1d2330}
 h1{font-size:22px;margin:0}h2{font-size:15px;margin:22px 0 6px;border-bottom:1px solid #dde1e8;padding-bottom:3px}
 .muted{color:#677085}table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:3px 8px;border-bottom:1px solid #eef0f4;text-align:left;vertical-align:top}
@@ -482,7 +482,7 @@ th{color:#677085;font-weight:600}img{max-width:100%;border:1px solid #dde1e8;bor
 .info{background:#868e96}.passed{background:#2b8a3e}code{font:12px ui-monospace,Consolas,monospace}
 @media print{button{display:none}}</style></head><body>
 <button onclick="print()" style="float:right">print / PDF</button>
-<h1>${esc(s.model)}</h1><div class="muted">FreeDyn 2 · ${new Date().toLocaleString()} · ${sum.bodies ?? "?"} bodies · ${sum.joints ?? "?"} joints ·
+<h1>${esc(s.model)}</h1><div class="muted">freedyn2 · ${new Date().toLocaleString()} · ${sum.bodies ?? "?"} bodies · ${sum.joints ?? "?"} joints ·
 ${sum.forces ?? "?"} forces · ${sum.degrees_of_freedom ?? "?"} degrees of freedom · total mass ${fmt(sum.total_mass ?? "?")} kg` +
       (results ? ` · results t = ${fmt(results.t[0])} … ${fmt(results.t[results.t.length - 1])} s (${results.n} outputs)` : "") + "</div>";
     html += `<h2>View at t = ${fmt(this.v.state.time)} s</h2><img src="${view.src}" alt="3D view">`;

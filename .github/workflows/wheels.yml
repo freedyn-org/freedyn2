@@ -181,7 +181,7 @@ jobs:
       - name: Check the signature of the installer
         if: env.SIGNER != 'none'
         run: |
-          $s = Get-AuthenticodeSignature (Get-ChildItem dist-installer/FreeDyn2-*-setup.exe)
+          $s = Get-AuthenticodeSignature (Get-ChildItem dist-installer/freedyn2-*-setup.exe)
           "$($s.Status) $($s.SignerCertificate.Subject)"
           if ($s.Status -ne 'Valid') { exit 1 }
 
@@ -190,8 +190,8 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           function Check([string]$what) { if ($LASTEXITCODE) { Write-Error "$what failed (exit code $LASTEXITCODE)" } }
-          $setup = (Get-ChildItem dist-installer/FreeDyn2-*-setup.exe | Select-Object -First 1).FullName
-          $dir = Join-Path $env:RUNNER_TEMP 'FreeDyn2 smoke'
+          $setup = (Get-ChildItem dist-installer/freedyn2-*-setup.exe | Select-Object -First 1).FullName
+          $dir = Join-Path $env:RUNNER_TEMP 'freedyn2 smoke'
           $log = Join-Path $env:RUNNER_TEMP 'install.log'
           $p = Start-Process $setup -Wait -PassThru -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER',
                  "/DIR=`"$dir`"", '/COMPONENTS=core,compiler,examples', '/TASKS=path', "/LOG=`"$log`""
@@ -234,7 +234,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: installer-windows
-          path: dist-installer/FreeDyn2-*-setup.exe
+          path: dist-installer/freedyn2-*-setup.exe
           if-no-files-found: error
 
   publish:
@@ -256,8 +256,8 @@ jobs:
           path: dist
       - uses: pypa/gh-action-pypi-publish@release/v1
 
-  # GitHub Release vX.Y.Z: wheels, sdist, the installer (also as FreeDyn2-setup.exe for the stable
-  # link .../releases/latest/download/FreeDyn2-setup.exe), SHA256SUMS; notes from CHANGELOG.md
+  # GitHub Release vX.Y.Z: wheels, sdist, the installer (also as freedyn2-setup.exe for the stable
+  # link .../releases/latest/download/freedyn2-setup.exe), SHA256SUMS; notes from CHANGELOG.md
   # and generated. The app's update notice reads the latest release.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -285,7 +285,7 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           cd dist
-          cp "FreeDyn2-$VERSION-setup.exe" FreeDyn2-setup.exe
+          cp "freedyn2-$VERSION-setup.exe" freedyn2-setup.exe
           sha256sum -- *.whl *.tar.gz *.exe > SHA256SUMS
           cat SHA256SUMS
           cd ..
@@ -299,7 +299,7 @@ jobs:
           cat notes.md
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
         with:
-          name: FreeDyn 2 version ${{ needs.version.outputs.version }}
+          name: freedyn2 ${{ needs.version.outputs.version }}
           body_path: notes.md
           generate_release_notes: true
           prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
@@ -308,8 +308,8 @@ jobs:
           files: |
             dist/*.whl
             dist/*.tar.gz
-            dist/FreeDyn2-*-setup.exe
-            dist/FreeDyn2-setup.exe
+            dist/freedyn2-*-setup.exe
+            dist/freedyn2-setup.exe
             dist/SHA256SUMS
 
   # winget (microsoft/winget-pkgs): a pull request with the new version, after the first version was
@@ -332,9 +332,9 @@ jobs:
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v$env:VERSION/FreeDyn2-$env:VERSION-setup.exe"
+          $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v$env:VERSION/freedyn2-$env:VERSION-setup.exe"
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
           # the same installer for both scopes of the manifest (user, machine)
-          .\wingetcreate.exe update FreeDynOrg.FreeDyn2 --version $env:VERSION `
+          .\wingetcreate.exe update freedyn-org.freedyn2 --version $env:VERSION `
             --urls "$url|x64|user" "$url|x64|machine" --submit --token $env:WINGET_TOKEN
           if ($LASTEXITCODE) { exit 1 }

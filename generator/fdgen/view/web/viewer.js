@@ -1,4 +1,4 @@
-// FreeDyn 2 viewer: the scene of fdgen.view.scene (bodies with shapes, joints, forces, road) moved
+// freedyn2 viewer: the scene of fdgen.view.scene (bodies with shapes, joints, forces, road) moved
 // by the result CSV (R_x..R_z, theta0..theta3 per body), a timeline and plots of the channels.
 // For checking a model: the checks of fdgen.checks (findings, references), a click on an element
 // shows its data and YAML source and highlights what it is connected to. Every simulation is a

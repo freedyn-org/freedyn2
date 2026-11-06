@@ -2,9 +2,9 @@
 
   python installer/winget/render.py VERSION SETUP_EXE [-o OUT]
 
-SETUP_EXE: the released FreeDyn2-VERSION-setup.exe (its SHA256 goes into the manifest; download it
+SETUP_EXE: the released freedyn2-VERSION-setup.exe (its SHA256 goes into the manifest; download it
 from the release, so that the hash is that of the published file). Writes
-OUT/manifests/f/FreeDynOrg/FreeDyn2/VERSION/*.yaml (OUT: build/winget), the layout of
+OUT/manifests/f/FreeDynOrg/freedyn2/VERSION/*.yaml (OUT: build/winget), the layout of
 microsoft/winget-pkgs. Check with `winget validate --manifest DIR` and test with
 `winget install --manifest DIR` on Windows. Later versions: wingetcreate in the release workflow.
 """
@@ -15,7 +15,7 @@ import hashlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ID = "FreeDynOrg.FreeDyn2"
+ID = "freedyn-org.freedyn2"
 
 
 def main():

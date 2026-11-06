@@ -1,14 +1,14 @@
 # Coming from FreeDyn
 
-FreeDyn 2 is the successor of the FreeDyn freeware. If you have worked with the legacy
+freedyn2 is the successor of the FreeDyn freeware. If you have worked with the legacy
 FreeDyn binaries, unpacked into a folder, this page says what changes, what stays, and how to
-run your existing `.fds` models in FreeDyn 2.
+run your existing `.fds` models in freedyn2.
 
 ## What changes
 
-| legacy FreeDyn | FreeDyn 2 |
+| legacy FreeDyn | freedyn2 |
 |---|---|
-| binaries downloaded and unpacked into a folder | one installer (`FreeDyn2-setup.exe`), or `pip` / `uv` ([Getting started](getting-started.md#install)) |
+| binaries downloaded and unpacked into a folder | one installer (`freedyn2-setup.exe`), or `pip` / `uv` ([Getting started](getting-started.md#install)) |
 | model files in `.fds` | YAML model files ([the model file](reference/model-file.md)); `.fds` files keep working |
 | result files next to the model | one CSV file per run, one column per [channel](reference/results.md) |
 | | the app window and the [viewer](viewer.md): 3D view, plots, checks, tuning, runs side by side |
@@ -17,13 +17,13 @@ run your existing `.fds` models in FreeDyn 2.
 | Euler-parameter bodies, the Negrut form of HHT | Lie group bodies, the Arnold–Brüls form of HHT; the legacy algorithms on request (`--profile legacy`) |
 
 **Your `.fds` files keep working.** `freedyn2 run`, `freedyn2 view` and `freedyn2 check` read
-them as they are. By default FreeDyn 2 solves them with its own methods, with the step size
+them as they are. By default freedyn2 solves them with its own methods, with the step size
 control keeping the model's `GlobalErrorTolerance` and `SolverMaxTimeStep`. With
 `--profile legacy` it uses the legacy algorithms instead (Euler-parameter bodies, Negrut HHT,
 the legacy Newton rule and step size control): then both programs take the same steps and
 agree to round-off.
 
-The importer reads the blocks FreeDyn 2 supports: `Body Rigid_EulerParameter_PAI`,
+The importer reads the blocks freedyn2 supports: `Body Rigid_EulerParameter_PAI`,
 `Constraint Generic`, `Constraint TimeMotion`, `Force Gravity`, `Force GenericForce` and
 `GenericTorque`, `Measure Translational` and `Rotational`, `DataObject Parameter` and
 `Spline_1D`, `Simulation Dynamic`, `Solver HHT` and `HHT_Negrut`. Any other block is rejected
@@ -31,17 +31,17 @@ with its name, so a model is never simulated with parts missing.
 
 ## Side by side
 
-FreeDyn 2 and legacy FreeDyn can stay on the same machine. The installer installs for the
+freedyn2 and legacy FreeDyn can stay on the same machine. The installer installs for the
 current user into its own folder, with its own Python, and does not touch the folder of the
 legacy FreeDyn. The component *associate `.fds`* is off by default, so what opens `.fds` files
-now keeps opening them; switch it on if a double click should open FreeDyn 2.
+now keeps opening them; switch it on if a double click should open freedyn2.
 
 ## A first session with an existing model
 
-1. Install FreeDyn 2 ([Getting started](getting-started.md#install)) and open
-   **FreeDyn 2 Command Prompt** from the start menu (or any prompt, if `freedyn2` is on the
+1. Install freedyn2 ([Getting started](getting-started.md#install)) and open
+   **freedyn2 Command Prompt** from the start menu (or any prompt, if `freedyn2` is on the
    PATH).
-2. Go to the folder of your model. FreeDyn 2 does not change the `.fds` file; `run` writes its
+2. Go to the folder of your model. freedyn2 does not change the `.fds` file; `run` writes its
    results as a CSV next to it.
 
     ```sh
@@ -61,7 +61,7 @@ now keeps opening them; switch it on if a double click should open FreeDyn 2.
     freedyn2 run crank.fds --profile legacy -o crank_legacy.csv
     ```
 
-5. Run it with FreeDyn 2's methods (the default) and look at it:
+5. Run it with freedyn2's methods (the default) and look at it:
 
     ```sh
     freedyn2 run crank.fds -o crank_v2.csv
@@ -84,7 +84,7 @@ channels are `crank.R_x`, `crank.omega_z` and so on.
 `freedyn2 convert` writes an `.fds` model as a YAML model file:
 
 ```sh
-freedyn2 convert crank.fds                     # crank.yaml, FreeDyn 2 methods (profile v2)
+freedyn2 convert crank.fds                     # crank.yaml, freedyn2 methods (profile v2)
 freedyn2 convert crank.fds -o crank_legacy.yaml --profile legacy
 ```
 
@@ -128,13 +128,13 @@ change.
 
 ## Differences in results
 
-FreeDyn 2 solves the same physics with other methods, so its results differ from legacy
-FreeDyn by the accuracy of both. On the 14 comparison models FreeDyn 2 is as accurate or
+freedyn2 solves the same physics with other methods, so its results differ from legacy
+FreeDyn by the accuracy of both. On the 14 comparison models freedyn2 is as accurate or
 more accurate, and its simulation 2.5 to 19 times faster. The largest differences:
 
 - **Fast rotors**: with Euler parameters, HHT damping slows a freely spinning body down (at
   300 rad/s and h = 1 ms by more than half in one second); the legacy `ModifyNewmark` option
-  removes most of that. FreeDyn 2's Lie group body has no such loss.
+  removes most of that. freedyn2's Lie group body has no such loss.
 - **`alpha = 0` with joints** is unstable in both programs; a little numerical damping
   (`alpha = -0.01`) removes it.
 - **Line of sight forces** between a body and the ground point the other way in legacy
@@ -145,7 +145,7 @@ more accurate, and its simulation 2.5 to 19 times faster. The largest difference
 All of them, with numbers: [Numerical findings](findings.md). How the two programs were
 compared (two levels: equal to round-off with `--profile legacy`, against independent
 references with the default): the sections *Comparison with legacy FreeDyn* and *Legacy
-FreeDyn against FreeDyn 2* of the
+FreeDyn against freedyn2* of the
 [README](https://github.com/freedyn-org/freedyn2#comparison-with-legacy-freedyn).
 
 ### `freedyn2 compare`
