@@ -1,8 +1,8 @@
 """The server of the app: the start page, and a viewer per opened model in one process.
 
   /                     the start page (web/start.html)
-  /app/...              its files (web/), the icon; /app/brand/...: the brand assets of the
-                        viewer (fdgen/view/web/brand: tokens, fonts, logos)
+  /app/...              its files (web/), the icon
+  /app/view/...         the viewer's static files (fdgen/view/web: brand tokens, fonts, logos)
   /api/app/...          the start page's API (below)
   /m/<id>/...           the viewer of opened model <id>: fdgen.view.server, unchanged, under
                         this prefix (its page uses relative URLs); the page gets the app shell
@@ -340,10 +340,10 @@ def _handler(app):
                 return self._file(WEB / "start.html")
             if url == "/app/freedyn2.png":
                 return self._file(ICON)
-            if url.startswith("/app/brand/"):
-                brand = view_server.WEB / "brand"
-                path = (brand / url[len("/app/brand/"):]).resolve()
-                return self._file(path) if brand in path.parents else self._send(b"not found", "text/plain", 404)
+            if url.startswith("/app/view/"):  # the viewer's static files: brand tokens, fonts, logos
+                web = view_server.WEB
+                path = (web / url[len("/app/view/"):]).resolve()
+                return self._file(path) if web in path.parents else self._send(b"not found", "text/plain", 404)
             if url.startswith("/app/"):
                 path = (WEB / url[len("/app/"):]).resolve()
                 return self._file(path) if WEB in path.parents else self._send(b"not found", "text/plain", 404)

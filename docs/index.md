@@ -1,10 +1,4 @@
-# freedyn2 { .fd-sr-only }
-
-<div class="fd-hero" markdown>
-![freedyn2](brand/logo/lockup-light-transparent.svg#only-light)
-![freedyn2](brand/logo/lockup-dark-transparent.svg#only-dark)
-<p class="fd-claim">ai-first multibody dynamics<span class="fd-period">.</span></p>
-</div>
+# freedyn2
 
 **Multibody dynamics for engineers – and for the assistants they work with.**
 

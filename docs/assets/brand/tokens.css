@@ -1,0 +1,63 @@
+/* freedyn2 brand tokens. Source of truth: brand/tokens.json (keep both in sync). */
+:root {
+  --fd-ink: #0B0B0C;
+  --fd-paper: #EDEDE8;
+  --fd-rule: #3A3A38;
+  --fd-graphite: #5E5E5A;
+  --fd-slash: #6E6E6A;
+  --fd-muted: #8A8A85;
+  --fd-soft: #B5B5B0;
+  --fd-cursor: #C8F031;
+
+  --fd-font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --fd-font-sans: Inter, system-ui, sans-serif;
+
+  --fd-size-xs: 11px;
+  --fd-size-sm: 13px;
+  --fd-size-base: 16px;
+  --fd-size-lg: 22px;
+  --fd-size-xl: 32px;
+  --fd-size-display: 92px;
+
+  --fd-hairline: 1px;
+
+  /* light theme (default) */
+  --fd-bg: var(--fd-paper);
+  --fd-fg: var(--fd-ink);
+  --fd-fg-soft: var(--fd-rule);
+  --fd-fg-muted: var(--fd-graphite);
+  --fd-line: var(--fd-ink);
+  --fd-line-soft: var(--fd-soft);   /* hairlines in dense UI (inputs, grids, panel borders) */
+  --fd-surface: #DFDFDB;            /* hover, inputs, the 3D scene: 6% ink on paper */
+  --fd-fg-slash: var(--fd-graphite); /* the slash of the word mark (theme.*.slash) */
+  --fd-accent: var(--fd-ink);       /* the cursor is ink on paper */
+  --fd-on-accent: var(--fd-paper);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fd-bg: var(--fd-ink);
+    --fd-fg: var(--fd-paper);
+    --fd-fg-soft: var(--fd-soft);
+    --fd-fg-muted: var(--fd-muted);
+    --fd-line: var(--fd-rule);
+    --fd-line-soft: var(--fd-rule);
+    --fd-surface: #19191A;          /* 6% paper on ink */
+    --fd-fg-slash: var(--fd-slash);
+    --fd-accent: var(--fd-cursor);
+    --fd-on-accent: var(--fd-ink);
+  }
+}
+
+/* The text cursor: a block after the word mark or a prompt. */
+.fd-cursor {
+  display: inline-block;
+  width: 0.52em;
+  height: 0.86em;
+  margin-left: 0.06em;
+  vertical-align: -0.1em;
+  background: var(--fd-accent);
+}
+
+/* The claim's period: "ai-first multibody dynamics<span class="fd-period">.</span>" */
+.fd-period { color: var(--fd-accent); }

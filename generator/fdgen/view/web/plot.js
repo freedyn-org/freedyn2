@@ -19,6 +19,7 @@ import { unit } from "fdview/channels.js";
 const COLORS = ["#2f6fdf", "#e8590c", "#2b8a3e", "#c2255c", "#0c8599", "#a07c00", "#7048e8", "#5c636a",
   "#d9480f", "#1098ad", "#5f3dc4", "#74b816"];
 const MAX_FFT = 1 << 16;
+const FONT = "'JetBrains Mono', ui-monospace, Consolas, monospace";  // brand/tokens.css --fd-font-mono
 
 export function index(t, time) {
   let a = 0, b = t.length - 1;
@@ -376,7 +377,7 @@ export class PlotArea {
   axes(g, W, H, xr, lanes, xLabel) {
     // frame, grid, ticks; lanes: [[lo, hi, color]], returns pixel <-> value maps
     const text = css("--muted"), line = css("--line");
-    g.font = "11px system-ui, sans-serif";
+    g.font = `11px ${FONT}`;
     const ticks = lanes.map(([lo, hi]) => niceTicks(lo, hi, Math.max(2, Math.floor(H / lanes.length / 34))));
     const labelW = Math.max(30, ...ticks.flat().map((v) => g.measureText(fmt(v)).width)) + 10;
     const x0 = labelW + 4, w = W - x0 - 10, y0 = 6, h = H - y0 - (xLabel ? 32 : 20), hl = h / lanes.length;
@@ -505,7 +506,7 @@ export class PlotArea {
       if (x < f.x0 || x > f.x0 + f.w) return;
       g.strokeStyle = color; g.lineWidth = 1; g.setLineDash(dash);
       g.beginPath(); g.moveTo(x, f.y0); g.lineTo(x, f.y0 + f.h); g.stroke(); g.setLineDash([]);
-      if (label) { g.fillStyle = color; g.font = "bold 11px system-ui"; g.textAlign = "left"; g.textBaseline = "top"; g.fillText(label, x + 3, f.y0 + 2); }
+      if (label) { g.fillStyle = color; g.font = `bold 11px ${FONT}`; g.textAlign = "left"; g.textBaseline = "top"; g.fillText(label, x + 3, f.y0 + 2); }
     };
     if (this.measure) {
       const [a, b] = this.cursors;
@@ -535,7 +536,7 @@ export class PlotArea {
   }
 
   tooltip(g, f, x, y, rows, colors) {
-    g.font = "12px system-ui, sans-serif";
+    g.font = `11px ${FONT}`;
     const w = Math.max(...rows.map((r) => g.measureText(r).width)) + 16, h = rows.length * 16 + 8;
     let bx = x + 12, by = Math.max(f.y0, Math.min(y - h / 2, f.y0 + f.h - h));
     if (bx + w > f.x0 + f.w) bx = x - 12 - w;
@@ -598,7 +599,7 @@ export class PlotArea {
     // visible time range of the time plots
     const sw = this.p.sweep(), name = pane.kpi || "max", fn = KPIS[name];
     if (!sw || !sw.runs.some(Boolean)) {
-      g.fillStyle = css("--muted"); g.font = "12px system-ui"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillStyle = css("--muted"); g.font = `11px ${FONT}`; g.textAlign = "center"; g.textBaseline = "middle";
       g.fillText("no sweep: ≋ at a slider (Tune) simulates it over its range", W / 2, H / 2);
       return;
     }
@@ -675,7 +676,7 @@ export class PlotArea {
     const yp = f.yps[0];
     g.save(); g.beginPath(); g.rect(f.x0, f.y0, f.w, f.h); g.clip();
     // lines of equal damping ratio: re = -zeta wn, f = wn sqrt(1 - zeta^2) / 2 pi
-    g.font = "10px system-ui"; g.textAlign = "left"; g.textBaseline = "bottom";
+    g.font = `10px ${FONT}`; g.textAlign = "left"; g.textBaseline = "bottom";
     for (const z of [0.05, 0.1, 0.2, 0.3, 0.5, 0.7]) {
       const wn = 4 * Math.max(Math.abs(xr[0]), Math.abs(xr[1]), 2 * Math.PI * Math.abs(yr[1]));
       const x1 = -z * wn, y1 = (wn * Math.sqrt(1 - z * z)) / (2 * Math.PI);
@@ -737,7 +738,7 @@ export class PlotArea {
       peaks.push([it, best]);
     });
     g.restore();
-    g.font = "11px system-ui"; g.textAlign = "right"; g.textBaseline = "top";
+    g.font = `11px ${FONT}`; g.textAlign = "right"; g.textBaseline = "top";
     peaks.forEach(([it, j], k) => {
       g.fillStyle = this.color(it.s.name);
       g.fillText(`peak ${fmt(it.sp.f[j])} Hz, amplitude ${fmt(it.sp.a[j])}`, f.x0 + f.w - 4, f.y0 + 4 + 14 * k);
@@ -782,7 +783,7 @@ export class PlotArea {
     g.fillStyle = css("--panel"); g.fillRect(0, 0, W, H);
     let y = 0;
     for (const p of panes) {
-      g.fillStyle = css("--text"); g.font = `${12 * dpr}px system-ui`; g.textBaseline = "top";
+      g.fillStyle = css("--text"); g.font = `${11 * dpr}px ${FONT}`; g.textBaseline = "top";
       let x = 8 * dpr;
       for (const s of p.series.filter((s) => !s.hidden)) {
         g.fillStyle = this.color(s.name); g.fillRect(x, y + 9 * dpr, 10 * dpr, 3 * dpr); x += 14 * dpr;

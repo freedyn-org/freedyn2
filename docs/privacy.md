@@ -24,7 +24,6 @@ governed by that provider's terms.
 **This website** is hosted on GitHub Pages; GitHub may log visits
 ([GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement)).
 Formulas are rendered with MathJax, loaded from the jsDelivr CDN. The site uses no cookies,
-no analytics and no external fonts (its fonts, Inter and JetBrains Mono, come from the
-site itself).
+no analytics and no external fonts (JetBrains Mono and Inter are served from this site).
 
 Questions: open an issue at [github.com/freedyn-org/freedyn2](https://github.com/freedyn-org/freedyn2/issues).

@@ -115,12 +115,17 @@ The header shows whether the results belong to what is set:
 |---|---|
 | 🟢 **up to date** | the results are those of the values shown |
 | 🟠 **N changes not computed** | values were changed: the 3D view and the curves fade. **Compute ⏎** or Enter computes, *discard* goes back |
-| 🔵 **computing N %** | the new curves grow over the faded ones while the simulation runs |
+| ▮ **computing N %** | the new curves grow over the faded ones while the simulation runs (in the cursor color: something is live) |
 | 🔴 **error** | the message, over the last good results |
 
 When to compute is set in *Tune*: **adaptive** (by itself when the last run took less than
 1.5 s, else on Enter), **always**, or **on Enter**. A new computation stops the one still
 running.
+
+At the right of the header, **agent: *name*▮** says that an assistant opened this viewer over
+MCP (tool `view` of `freedyn2 mcp`, *name* as the assistant reports itself): its notes reach the
+assistant directly, and the cursor takes the cursor color. **no agent** for `freedyn2 view` and
+the app; an assistant working in the repository still finds the notes next to the model file.
 
 ## Tune
 

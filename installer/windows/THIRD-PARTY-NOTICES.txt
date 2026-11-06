@@ -31,8 +31,8 @@ Eigen                              MPL-2.0            linear algebra, compiled i
 ASAM OpenCRG C library             Apache-2.0         road surfaces; fdgen\licenses\opencrg
 three.js r170                      MIT                3D graphics of the viewer;
   fdgen\view\web\vendor\LICENSE-three.js
-Inter, JetBrains Mono               OFL-1.1            fonts of the app and the viewer;
-  fdgen\view\web\brand\fonts\OFL-*.txt
+JetBrains Mono 2.304               OFL-1.1            the font of the app and the viewer;
+  fdgen\view\web\vendor\fonts\LICENSE-jetbrains-mono.txt
 
 Python packages (python\Lib\site-packages; license texts in each package's .dist-info directory)
 -----------------------------------------------------------------------------------------------

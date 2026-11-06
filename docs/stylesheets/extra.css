@@ -1,187 +1,113 @@
-/* freedyn2 documentation theme (brand/README.md).
-
-   All colors come from brand/tokens.css (served as brand/tokens.css by tools/docs_hooks.py,
-   loaded before this file); this file maps them onto mkdocs-material's variables and holds
-   no color values of its own (tests/python/test_docs.py checks that).
-
-   light scheme (default) = paper, dark scheme (slate) = ink. The cursor color is only for the
-   cursor and the claim's period (.fd-cursor, .fd-period): links are ink on paper and paper on
-   ink, set apart by a hairline underline. */
-
-/* fonts: self-hosted, latin subset (docs/fonts, SIL OFL 1.1, from @fontsource 5.3.0) */
-@font-face {
-  font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap;
-  src: url(../fonts/inter-latin-400-normal.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Inter'; font-style: italic; font-weight: 400; font-display: swap;
-  src: url(../fonts/inter-latin-400-italic.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: swap;
-  src: url(../fonts/inter-latin-700-normal.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400; font-display: swap;
-  src: url(../fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'JetBrains Mono'; font-style: normal; font-weight: 500; font-display: swap;
-  src: url(../fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'JetBrains Mono'; font-style: normal; font-weight: 700; font-display: swap;
-  src: url(../fonts/jetbrains-mono-latin-700-normal.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-:root {
-  --md-text-font: "Inter";
-  --md-code-font: "JetBrains Mono";
-}
-
-/* the two schemes: the theme part of brand/tokens.css, keyed to the scheme toggle instead of
-   prefers-color-scheme (mkdocs.yml picks the scheme from prefers-color-scheme at first visit) */
-[data-md-color-scheme="default"] {
-  --fd-bg: var(--fd-paper);
-  --fd-fg: var(--fd-ink);
-  --fd-fg-soft: var(--fd-rule);
-  --fd-fg-muted: var(--fd-graphite);
-  --fd-line: var(--fd-ink);
-  --fd-accent: var(--fd-ink);
-  --fd-on-accent: var(--fd-paper);
-  --fd-text: var(--fd-ink);          /* running text */
-  --fd-claim: var(--fd-graphite);    /* the claim, as in lockup-claim-light.svg */
-}
-[data-md-color-scheme="slate"] {
-  --fd-bg: var(--fd-ink);
-  --fd-fg: var(--fd-paper);
-  --fd-fg-soft: var(--fd-soft);
-  --fd-fg-muted: var(--fd-muted);
-  --fd-line: var(--fd-rule);
-  --fd-accent: var(--fd-cursor);
-  --fd-on-accent: var(--fd-ink);
-  --fd-text: var(--fd-soft);         /* body text on ink */
-  --fd-claim: var(--fd-soft);        /* as in lockup-claim-dark.svg */
-}
-
-[data-md-color-scheme="default"],
-[data-md-color-scheme="slate"] {
-  --md-default-bg-color: var(--fd-bg);
-  --md-default-bg-color--light: var(--fd-bg);
-  --md-default-bg-color--lighter: var(--fd-bg);
-  --md-default-bg-color--lightest: var(--fd-bg);
-  --md-default-fg-color: var(--fd-fg);
-  --md-default-fg-color--light: var(--fd-fg-muted);
-  --md-default-fg-color--lighter: var(--fd-fg-muted);
-  --md-default-fg-color--lightest: var(--fd-line);
-
-  --md-primary-fg-color: var(--fd-bg);          /* header and tabs: the page ground */
-  --md-primary-fg-color--light: var(--fd-bg);
-  --md-primary-fg-color--dark: var(--fd-bg);
-  --md-primary-bg-color: var(--fd-fg);
-  --md-primary-bg-color--light: var(--fd-fg-muted);
-  --md-accent-fg-color: var(--fd-fg-muted);     /* hover: the secondary text color */
-  --md-accent-fg-color--transparent: transparent;
-  --md-accent-bg-color: var(--fd-bg);
-  --md-accent-bg-color--light: var(--fd-bg);
-
-  --md-typeset-color: var(--fd-text);
-  --md-typeset-a-color: var(--fd-fg);
-  --md-typeset-table-color: var(--fd-line);
-  --md-code-fg-color: var(--fd-fg);
-  --md-code-bg-color: var(--fd-bg);
-
-  --md-footer-fg-color: var(--fd-fg);
-  --md-footer-fg-color--light: var(--fd-fg-muted);
-  --md-footer-fg-color--lighter: var(--fd-fg-muted);
-  --md-footer-bg-color: var(--fd-bg);
-  --md-footer-bg-color--dark: var(--fd-bg);
-
-  --md-shadow-z1: none;
-  --md-shadow-z2: none;
-  --md-shadow-z3: none;
-}
-body { background-color: var(--fd-bg); }
-
-/* hairlines instead of shadows */
-.md-header { border-bottom: var(--fd-hairline) solid var(--fd-line); box-shadow: none; }
-.md-tabs { border-bottom: var(--fd-hairline) solid var(--fd-line); }
-.md-footer { border-top: var(--fd-hairline) solid var(--fd-line); }
-.md-footer-meta { border-top: var(--fd-hairline) solid var(--fd-line); }
-.md-typeset hr { border-bottom: var(--fd-hairline) solid var(--fd-line); }
-.md-typeset pre > code { border: var(--fd-hairline) solid var(--fd-line); }
-.md-typeset table:not([class]) { border: var(--fd-hairline) solid var(--fd-line); box-shadow: none; }
-.md-typeset .grid.cards > ul > li { border: var(--fd-hairline) solid var(--fd-line); border-radius: 0; }
-.md-typeset .grid.cards > ul > li:hover { box-shadow: none; border-color: var(--fd-fg); }
-.md-search__form { background-color: var(--fd-bg); box-shadow: none; border: var(--fd-hairline) solid var(--fd-line); border-radius: 0; }
-.md-search__input { color: var(--fd-fg); }
-.md-search__input::placeholder { color: var(--fd-fg-muted); }
-
-/* links: ground color text, hairline underline; no accent color */
-.md-typeset a {
-  color: var(--fd-fg);
-  text-decoration: underline;
-  text-decoration-thickness: var(--fd-hairline);
-  text-underline-offset: 0.18em;
-  text-decoration-color: var(--fd-fg-muted);
-}
-.md-typeset a:hover, .md-typeset a:focus { color: var(--fd-fg-muted); text-decoration-color: currentColor; }
-.md-typeset .headerlink { text-decoration: none; color: var(--fd-fg-muted); }
-.md-typeset a code { color: inherit; }
-.md-nav__link--active { font-weight: 700; }
-:focus-visible { outline-color: var(--fd-fg) !important; }
-
-/* monospace: headings, labels, the header; running text stays Inter */
-.md-typeset h1, .md-typeset h2, .md-typeset h3, .md-typeset h4,
-.md-header__title, .md-nav__title, .md-nav__item--section > .md-nav__link,
-.md-typeset table:not([class]) th, .md-typeset .admonition-title, .md-typeset summary,
-.md-tabs__link, .md-footer__title, .md-source {
-  font-family: var(--fd-font-mono);
-}
-.md-typeset h1, .md-typeset h2, .md-typeset h3, .md-typeset h4 {
-  color: var(--fd-fg);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
-.md-typeset h1 { font-weight: 500; }
-.md-typeset code { border-radius: 0; }
-.md-typeset :not(pre) > code { padding: 0 0.2em; }
-
-/* the header: the small lockup (no axes below 32 px cursor height), swapped per scheme */
-.md-header__button.md-logo { padding: 0.2rem; margin: 0.2rem; }
-.md-header__button.md-logo img, .md-nav__button.md-logo img { height: 1.6rem; width: auto; }
-[data-md-color-scheme="slate"] .md-logo img { content: url("../brand/logo/lockup-small-dark.svg"); }
-@media screen and (min-width: 76.25em) {   /* where the header shows the logo, it says the name */
-  .md-header__topic:first-child .md-ellipsis { visibility: hidden; }
-}
-.md-header__source { font-size: 0.65rem; }
-
-/* home page hero (docs/index.md) */
-.fd-sr-only {
-  position: absolute; width: 1px; height: 1px; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap; margin: -1px; padding: 0; border: 0;
-}
-/* the proportions of lockup-claim-*.svg: lockup 168 units high, claim 26 units at x = 40, */
-/* JetBrains Mono 400, tracking 0.02em */
-.md-typeset .fd-hero { --fd-hero-h: 104px; margin: 0.8em 0 2.4em; }
-.md-typeset .fd-hero img { height: var(--fd-hero-h); width: auto; max-width: 100%; }
-.md-typeset .fd-hero p { margin: 0; }
-[data-md-color-scheme="default"] .md-typeset .fd-hero img[src$="#only-dark"],
-[data-md-color-scheme="slate"] .md-typeset .fd-hero img[src$="#only-light"] { display: none; }
-.md-typeset .fd-claim {
-  font-family: var(--fd-font-mono);
-  font-weight: 400;
-  font-size: calc(var(--fd-hero-h) * 26 / 168);
-  letter-spacing: 0.02em;
-  color: var(--fd-claim);
-  padding-left: calc(var(--fd-hero-h) * 40 / 168);
-}
+/* The brand (brand/README.md) on Material: ink and paper, hairlines, one accent.
+   Colors: assets/brand/tokens.css (a copy of brand/tokens.css, kept equal by a test).
+   Fonts: served from this site (assets/fonts, SIL OFL 1.1), no requests to Google Fonts. */
 
 /* key tables: keep the key in one line */
 .md-typeset table td:first-child code { white-space: nowrap; }
+
+@font-face { font-family: 'JetBrains Mono'; font-weight: 400; font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  src: url(../assets/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 400; font-display: swap; unicode-range: U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF;
+  src: url(../assets/fonts/jetbrains-mono-greek-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 500; font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  src: url(../assets/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 500; font-display: swap; unicode-range: U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF;
+  src: url(../assets/fonts/jetbrains-mono-greek-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 700; font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  src: url(../assets/fonts/jetbrains-mono-latin-700-normal.woff2) format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 700; font-display: swap; unicode-range: U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF;
+  src: url(../assets/fonts/jetbrains-mono-greek-700-normal.woff2) format('woff2'); }
+@font-face { font-family: Inter; font-weight: 400; font-style: normal; font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  src: url(../assets/fonts/inter-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: Inter; font-weight: 400; font-style: italic; font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  src: url(../assets/fonts/inter-latin-400-italic.woff2) format('woff2'); }
+@font-face { font-family: Inter; font-weight: 600; font-style: normal; font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  src: url(../assets/fonts/inter-latin-600-normal.woff2) format('woff2'); }
+@font-face { font-family: Inter; font-weight: 700; font-style: normal; font-display: swap; unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  src: url(../assets/fonts/inter-latin-700-normal.woff2) format('woff2'); }
+
+:root {
+  --md-text-font: Inter;
+  --md-code-font: "JetBrains Mono";
+}
+
+/* light (scheme default): paper, ink text, ink links; the header is ink like a terminal */
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: var(--fd-paper);
+  --md-default-fg-color: var(--fd-ink);
+  --md-default-fg-color--light: var(--fd-graphite);
+  --md-default-fg-color--lighter: var(--fd-muted);
+  --md-default-fg-color--lightest: var(--fd-soft);
+  --md-primary-fg-color: var(--fd-ink);
+  --md-primary-fg-color--light: var(--fd-rule);
+  --md-primary-fg-color--dark: var(--fd-ink);
+  --md-primary-bg-color: var(--fd-paper);
+  --md-primary-bg-color--light: var(--fd-soft);
+  --md-accent-fg-color: var(--fd-ink);
+  --md-accent-fg-color--transparent: color-mix(in srgb, var(--fd-ink) 8%, transparent);
+  --md-typeset-a-color: var(--fd-ink);
+  --md-code-bg-color: color-mix(in srgb, var(--fd-ink) 5%, var(--fd-paper));
+  --md-code-fg-color: var(--fd-ink);
+  --md-footer-bg-color: var(--fd-ink);
+  --md-footer-bg-color--dark: var(--fd-ink);
+  --md-footer-fg-color: var(--fd-paper);
+  --md-footer-fg-color--light: var(--fd-soft);
+  --md-footer-fg-color--lighter: var(--fd-muted);
+}
+
+/* dark (scheme slate): ink, paper text; the cursor color only for what is live (hover, focus) */
+[data-md-color-scheme="slate"] {
+  --md-hue: 60;
+  --md-default-bg-color: var(--fd-ink);
+  --md-default-fg-color: var(--fd-paper);
+  --md-default-fg-color--light: var(--fd-soft);
+  --md-default-fg-color--lighter: var(--fd-muted);
+  --md-default-fg-color--lightest: var(--fd-rule);
+  --md-primary-fg-color: var(--fd-ink);
+  --md-primary-fg-color--light: var(--fd-rule);
+  --md-primary-fg-color--dark: var(--fd-ink);
+  --md-primary-bg-color: var(--fd-paper);
+  --md-primary-bg-color--light: var(--fd-soft);
+  --md-accent-fg-color: var(--fd-cursor);
+  --md-accent-fg-color--transparent: color-mix(in srgb, var(--fd-cursor) 10%, transparent);
+  --md-typeset-a-color: var(--fd-paper);
+  --md-code-bg-color: color-mix(in srgb, var(--fd-paper) 6%, var(--fd-ink));
+  --md-code-fg-color: var(--fd-paper);
+  --md-footer-bg-color: var(--fd-ink);
+  --md-footer-bg-color--dark: var(--fd-ink);
+  --md-footer-fg-color: var(--fd-paper);
+  --md-footer-fg-color--light: var(--fd-soft);
+  --md-footer-fg-color--lighter: var(--fd-muted);
+}
+
+/* header and tabs: ink in both schemes, a hairline below */
+.md-header, .md-tabs { background-color: var(--fd-ink); color: var(--fd-paper); }
+.md-header { box-shadow: none; border-bottom: var(--fd-hairline) solid var(--fd-rule); }
+.md-header--shadow { box-shadow: none; }
+.md-header__button.md-logo { padding: 0.2rem; margin: 0 0.2rem 0 0; }
+.md-header__button.md-logo img { height: 1.9rem; width: auto; }  /* the lockup with its clear space */
+.md-header__topic:first-child { display: none; }  /* the site name: the lockup says it */
+.md-search__form { background-color: var(--fd-rule); border-radius: 0; }
+.md-search__form:hover { background-color: var(--fd-graphite); }
+
+/* links: underlined in the text color, not a second color */
+.md-typeset a { text-decoration: underline; text-decoration-color: var(--md-default-fg-color--lighter);
+  text-underline-offset: 0.15em; }
+.md-typeset a:hover, .md-typeset a:focus { text-decoration-color: currentColor; }
+.md-typeset .headerlink, .md-typeset .md-button { text-decoration: none; }
+.md-typeset .md-button { border-radius: 0; }
+
+/* headings: JetBrains Mono, lower weight, tight like the word mark */
+.md-typeset h1, .md-typeset h2, .md-typeset h3, .md-typeset h4 {
+  font-family: var(--fd-font-mono); font-weight: 500; letter-spacing: -0.02em; color: var(--md-default-fg-color);
+}
+.md-typeset h1 { letter-spacing: -0.04em; }
+
+/* hairlines, square corners */
+.md-typeset code, .md-typeset pre > code, .md-typeset .admonition, .md-typeset details,
+.md-typeset .tabbed-set, .md-typeset table:not([class]), .md-search__output, .md-clipboard { border-radius: 0; }
+.md-typeset table:not([class]) { box-shadow: none; border: var(--fd-hairline) solid var(--md-default-fg-color--lightest); }
+.md-typeset img { border-radius: 0; }
+
+/* labels of the navigation: lower case is the brand; the content keeps its case */
+.md-nav__title { font-family: var(--fd-font-mono); font-weight: 500; }

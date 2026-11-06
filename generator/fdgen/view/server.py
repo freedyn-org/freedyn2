@@ -106,6 +106,7 @@ class View:
         self._lock = threading.Lock()
         self._building = threading.Lock()  # one rebuild at a time
         self._symbolic = threading.Lock()  # CasADi model building: one thread at a time
+        self.agent = None  # {"name": client}: the MCP client whose session serves this viewer (mcp_server)
 
     def road_tool(self):
         if self.runtime is None:
@@ -427,7 +428,7 @@ class View:
                     "model_file": str(self.model_path), "scene": self.scene is not None, "results": self.csv is not None,
                     "runs": runs, "current": self.current, "reference": self.reference,
                     "progress": self.progress() if self.status == "simulating" else None,
-                    "overrides": self.overrides, "notes": notes.stamp(self.model_path),
+                    "overrides": self.overrides, "notes": notes.stamp(self.model_path), "agent": self.agent,
                     "sweep": None if self.sweep is None else {**self.sweep, "results": list(self.sweep["results"])}}
 
     def watch(self, stop):
@@ -586,22 +587,20 @@ def serve(view, port=8765, open_browser=True):
     return 0
 
 
-def _inline_brand(html):
-    """The page's brand files (web/brand: tokens, fonts, favicon, logos) inlined, for one file
-    that works offline: the four woff2 fonts as data URIs (about 120 kB)."""
-    brand = WEB / "brand"
+def _data_uri(path):
+    ctype = {".svg": "image/svg+xml", ".woff2": "font/woff2"}.get(path.suffix, "application/octet-stream")
+    return f"data:{ctype};base64," + base64.b64encode(path.read_bytes()).decode()
 
-    def uri(name, mime):
-        return f"data:{mime};base64," + base64.b64encode((brand / name).read_bytes()).decode()
 
-    fonts = re.sub(r"url\((fonts/[\w.-]+\.woff2)\)", lambda m: f"url({uri(m.group(1), 'font/woff2')})",
-                   (brand / "fonts.css").read_text(encoding="utf-8"))
-    css = (brand / "tokens.css").read_text(encoding="utf-8") + "\n" + fonts
-    start, end = html.index("<!-- brand"), html.index("<!-- /brand -->") + len("<!-- /brand -->")
-    html = html[:start] + "<style>\n" + css + "</style>" + html[end:]
-    for name in ("favicon.svg", "lockup-small-light.svg", "lockup-small-dark.svg"):
-        html = html.replace(f'"./brand/{name}"', f'"{uri(name, "image/svg+xml")}"')
-    return html
+def inline_assets(html):
+    """The page with its style sheets, fonts and brand images inside (for one HTML file)."""
+    def sheet(m):
+        css = (WEB / m.group(1)).read_text(encoding="utf-8")
+        css = re.sub(r"url\(\./([\w/.-]+)\)", lambda u: f"url({_data_uri(WEB / u.group(1))})", css)
+        return f"<style>\n{css}</style>"
+
+    html = re.sub(r'<link rel="stylesheet" href="\./([\w/.-]+)">', sheet, html)
+    return re.sub(r'(src|srcset|href)="\./(brand/[\w.-]+\.svg)"', lambda m: f'{m.group(1)}="{_data_uri(WEB / m.group(2))}"', html)
 
 
 def export(view, path):
@@ -609,7 +608,7 @@ def export(view, path):
     view.rebuild()
     if view.error:
         raise RuntimeError(view.error)
-    html = (WEB / "index.html").read_text(encoding="utf-8")
+    html = inline_assets((WEB / "index.html").read_text(encoding="utf-8"))
     data = {"scene": view.scene, "csv": Path(view.csv).read_text(encoding="utf-8") if view.csv else "",
             "meshes": {f"api/mesh/{k}{m.suffix.lower()}": base64.b64encode(m.read_bytes()).decode()
                        for k, m in enumerate(view.meshes)}}
@@ -627,6 +626,6 @@ def export(view, path):
             "const v = document.createElement('script'); v.type = 'module'; v.src = map['./viewer.js'];"
             "document.body.appendChild(v);})();</script>")
     start, end = html.index("<!-- modules -->"), html.index("<!-- /modules -->") + len("<!-- /modules -->")
-    Path(path).write_text(_inline_brand(html[:start] + boot + html[end:]), encoding="utf-8")
+    Path(path).write_text(html[:start] + boot + html[end:], encoding="utf-8")
     shutil.rmtree(view.workdir, ignore_errors=True)
     return Path(path)

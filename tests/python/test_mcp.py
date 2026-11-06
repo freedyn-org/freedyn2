@@ -73,7 +73,8 @@ def test_view_serves_the_model(session):
     msg = session.view(PENDULUM, open_browser=False)
     url = msg.split()[1]
     with urllib.request.urlopen(url + "api/state", timeout=10) as r:
-        assert json.loads(r.read())["status"] == "ready"
+        state = json.loads(r.read())
+    assert state["status"] == "ready" and state["agent"] == {"name": "mcp client"}  # the header: agent connected
     assert session.view(PENDULUM, open_browser=False).startswith("viewer already open")
 
 

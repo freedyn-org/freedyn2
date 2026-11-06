@@ -7,10 +7,6 @@ documentation never disagree with what the generator accepts.
 
 and LIVE/ in a page: the relative path to the live examples (docs/live, tools/docs_examples.py),
 right for directory URLs (the site) and flat ones (a preview) alike.
-
-The brand (brand/README.md): brand/tokens.css and the logos in brand/logo/ are served as
-brand/... from the repository's brand/ folder itself, not from a copy in docs/, so the site
-always has the tokens and logos the brand defines.
 """
 
 import json
@@ -18,9 +14,6 @@ import re
 from pathlib import Path
 
 SCHEMA = Path(__file__).resolve().parents[1] / "schema" / "model.schema.json"
-BRAND = SCHEMA.parents[1] / "brand"
-BRAND_FILES = ["tokens.css", "logo/favicon.svg", "logo/lockup-small-light.svg", "logo/lockup-small-dark.svg",
-               "logo/lockup-light-transparent.svg", "logo/lockup-dark-transparent.svg"]
 
 
 def load_schema():
@@ -83,16 +76,3 @@ def on_page_markdown(markdown, page, config, files):
     schema = load_schema()
     markdown = MARKER.sub(lambda m: table(m.group(1), schema), markdown)
     return markdown.replace('src="LIVE/', f'src="{"../" * page.url.count("/")}live/')
-
-
-def on_files(files, config):
-    from mkdocs.structure.files import File
-
-    for name in BRAND_FILES:
-        files.append(File.generated(config, f"brand/{name}", abs_src_path=str(BRAND / name)))
-    return files
-
-
-def on_serve(server, config, builder):
-    server.watch(str(BRAND))
-    return server

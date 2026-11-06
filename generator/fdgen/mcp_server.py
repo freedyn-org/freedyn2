@@ -117,6 +117,7 @@ class Session:
         self._runtime = runtime
         self.runs = {}
         self.viewers = {}
+        self.client = None  # name of the MCP client (clientInfo), shown in the viewer's header
         self._shots = 0
 
     def runtime(self):
@@ -242,6 +243,7 @@ class Session:
             return f"viewer already open: {self.viewers[key][1]}"
         csv = self.run(run_id).csv if run_id else None
         v = server.View(model_file, csv, run=csv is None, runtime=self.runtime())
+        v.agent = {"name": self.client or "mcp client"}  # the page: an agent is connected
         v.rebuild()
         httpd = ThreadingHTTPServer(("127.0.0.1", 0), server._handler(v))
         stop = threading.Event()
@@ -387,19 +389,30 @@ class Session:
 
     def close(self):
         for v, _, httpd, stop in self.viewers.values():
+            v.agent = None
             stop.set()
             httpd.shutdown()
             shutil.rmtree(v.workdir, ignore_errors=True)
         self.viewers.clear()
 
 
+def _client_name(ctx):
+    """The name the MCP client gave in initialize (clientInfo.name), or None."""
+    try:
+        params = ctx.session.client_params
+        info = getattr(params, "clientInfo", None) or getattr(params, "client_info", None)
+        return str(info.name) or None
+    except Exception:  # noqa: BLE001  (no context, or another SDK version: the viewer says "mcp client")
+        return None
+
+
 def serve(workdir=None):
     """Run the MCP server on stdio."""
     try:
-        from mcp.server.mcpserver import Image, MCPServer
+        from mcp.server.mcpserver import Context, Image, MCPServer
     except ImportError:
         try:
-            from mcp.server.fastmcp import FastMCP as MCPServer, Image
+            from mcp.server.fastmcp import Context, FastMCP as MCPServer, Image
         except ImportError:
             raise SystemExit("freedyn2 mcp needs the MCP SDK: pip install mcp") from None
     session = Session(workdir)
@@ -451,8 +464,9 @@ def serve(workdir=None):
         return session.check(model_file, run_id)
 
     @mcp.tool()
-    def view(model_file: str, run_id: str | None = None) -> str:
+    def view(model_file: str, run_id: str | None = None, ctx: Context | None = None) -> str:
         """Open the viewer in the person's browser: 3D model, animation, plots, checks; reloads when the file is saved."""
+        session.client = session.client or _client_name(ctx)
         return session.view(model_file, run_id)
 
     @mcp.tool()

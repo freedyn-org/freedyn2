@@ -64,11 +64,11 @@ def test_start_page_in_browser_mode(app):
     assert request(app.url() + "app/start.js")[0] == 200
     with NO_PROXY.open(app.url() + "app/freedyn2.png") as r:
         assert r.headers["Content-Type"] == "image/png" and r.read()[:4] == b"\x89PNG"
-    for name, ctype in (("tokens.css", "text/css"), ("favicon.svg", "image/svg+xml"),
-                        ("fonts/inter-latin-400-normal.woff2", "font/woff2")):  # the brand, from fdgen/view/web/brand
-        with NO_PROXY.open(app.url() + "app/brand/" + name) as r:
+    for name, ctype in (("brand/tokens.css", "text/css"), ("brand/favicon.svg", "image/svg+xml"), ("fonts.css", "text/css"),
+                        ("vendor/fonts/jetbrains-mono-latin-400-normal.woff2", "font/woff2")):  # from fdgen/view/web
+        with NO_PROXY.open(app.url() + "app/view/" + name) as r:
             assert r.headers["Content-Type"] == ctype
-    assert request(app.url() + "app/brand/../../server.py")[0] == 404
+    assert request(app.url() + "app/view/../../app/server.py")[0] == 404
     code, s = request(app.url() + "api/app/status")
     assert code == 200 and s["native"] is False and s["runtime"] is False and s["title"] == server.TITLE
     assert s["docs"] == "https://freedyn-org.github.io/freedyn2/" and s["update"] is None
@@ -337,22 +337,6 @@ def test_entry_points_and_icon():
     png = (app_dir / "freedyn2.png").read_bytes()  # signature, then IHDR: width, height
     assert png[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", png[16:24]) == (256, 256)
     assert (app_dir / "freedyn2.svg").read_text(encoding="utf-8").startswith("<svg")
-
-
-def test_brand_copies_are_current():
-    """fdgen/view/web/brand holds copies of brand/ (python tools/sync_brand.py): one source of truth."""
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("sync_brand", ROOT / "tools" / "sync_brand.py")
-    sync = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(sync)
-    for src, dst in sync.COPIES.items():
-        assert (sync.OUT / dst).read_bytes() == (sync.BRAND / src).read_bytes(), f"{dst}: run tools/sync_brand.py"
-    for pkg, (_, _, stem, license_name) in sync.FONTS.items():
-        assert (sync.OUT / "fonts" / license_name).is_file()
-        for w in sync.WEIGHTS:
-            assert (sync.OUT / "fonts" / f"{stem}-latin-{w}-normal.woff2").read_bytes()[:4] == b"wOF2"
-    assert (ROOT / "generator" / "fdgen" / "app" / "freedyn2.svg").read_bytes() == (sync.BRAND / "logo" / "app-icon.svg").read_bytes()
 
 
 def test_no_window_without_a_display(monkeypatch):
