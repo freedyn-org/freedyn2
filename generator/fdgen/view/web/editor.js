@@ -385,35 +385,40 @@ const values = ViewPlugin.fromClass(class {
   update(u) { this.decorations = valueMarks.updateDeco(u, this.decorations); }
 }, { decorations: (v) => v.decorations });
 
+// on the brand (brand/README.md): monochrome like the rest of the viewer; keys in the text color,
+// values a step softer, comments muted; no colors besides the tokens (the cursor color is for
+// what is live, the status colors for errors and warnings)
 const style = HighlightStyle.define([
-  { tag: tags.definition(tags.propertyName), color: "var(--accent)" },
+  { tag: tags.definition(tags.propertyName), color: "var(--text)", fontWeight: "500" },
+  { tag: [tags.content, tags.string], color: "var(--fd-fg-soft)" },
   { tag: tags.lineComment, color: "var(--muted)", fontStyle: "italic" },
-  { tag: tags.string, color: "var(--ok)" },
-  { tag: [tags.separator, tags.squareBracket, tags.brace, tags.punctuation], color: "var(--muted)" },
-  { tag: tags.meta, color: "var(--muted)" },
+  { tag: [tags.separator, tags.squareBracket, tags.brace, tags.punctuation, tags.meta], color: "var(--muted)" },
 ]);
 
 const theme = EditorView.theme({
-  "&": { height: "100%", fontSize: "12.5px", backgroundColor: "var(--panel)", color: "var(--text)" },
+  "&": { height: "100%", fontSize: "12px", backgroundColor: "var(--panel)", color: "var(--text)" },
   "&.cm-focused": { outline: "none" },
-  ".cm-scroller": { fontFamily: "ui-monospace, Consolas, monospace", lineHeight: "1.5" },
+  ".cm-scroller": { fontFamily: "var(--font)", lineHeight: "1.55" },
   ".cm-content": { caretColor: "var(--text)" },
-  ".cm-cursor": { borderLeftColor: "var(--text)" },
+  ".cm-cursor": { borderLeftColor: "var(--text)", borderLeftWidth: "2px" },
   ".cm-gutters": { backgroundColor: "var(--panel)", color: "var(--muted)", border: "none" },
-  ".cm-activeLine": { backgroundColor: "color-mix(in srgb, var(--accent) 6%, transparent)" },
-  ".cm-activeLineGutter": { backgroundColor: "color-mix(in srgb, var(--accent) 10%, transparent)" },
+  ".cm-activeLine": { backgroundColor: "color-mix(in srgb, var(--text) 4%, transparent)" },
+  ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--text)" },
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
-    { backgroundColor: "color-mix(in srgb, var(--accent) 25%, transparent) !important" },
-  ".cm-element": { boxShadow: "inset 3px 0 0 var(--accent)", backgroundColor: "color-mix(in srgb, var(--accent) 5%, transparent)" },
-  ".cm-number": { color: "var(--pending)" },
-  ".cm-formula": { color: "var(--running)" },
-  ".cm-tooltip": { backgroundColor: "var(--panel)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: "6px" },
-  ".cm-tooltip-autocomplete ul li[aria-selected]": { backgroundColor: "var(--accent)", color: "#fff" },
-  ".cm-tooltip.cm-completionInfo": { maxWidth: "360px", padding: "6px 8px", fontFamily: "system-ui, sans-serif" },
+    { backgroundColor: "color-mix(in srgb, var(--text) 18%, transparent) !important" },
+  ".cm-element": { boxShadow: "inset 2px 0 0 var(--text)" },
+  ".cm-number": { color: "var(--text)" },
+  ".cm-formula": { color: "var(--text)", fontStyle: "italic" },
+  ".cm-tooltip": { backgroundColor: "var(--panel)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: "2px" },
+  ".cm-tooltip-autocomplete ul li": { fontFamily: "var(--font)" },
+  ".cm-tooltip-autocomplete ul li[aria-selected]": { backgroundColor: "var(--accent)", color: "var(--on-accent)" },
+  ".cm-tooltip-autocomplete ul li[aria-selected] .cm-completionDetail": { color: "var(--on-accent)" },
+  ".cm-tooltip.cm-completionInfo": { maxWidth: "360px", padding: "6px 8px" },
   ".cm-completionDetail": { color: "var(--muted)", fontStyle: "normal", marginLeft: "8px" },
-  ".cm-key-help": { maxWidth: "380px", padding: "6px 8px", fontFamily: "system-ui, sans-serif", fontSize: "12px" },
-  ".cm-key-help .values": { marginTop: "4px", color: "var(--accent)", fontFamily: "ui-monospace, Consolas, monospace" },
-  ".cm-diagnostic": { fontFamily: "system-ui, sans-serif", fontSize: "12px" },
+  ".cm-completionMatchedText": { textDecoration: "none", fontWeight: "700" },
+  ".cm-key-help": { maxWidth: "380px", padding: "6px 8px", fontSize: "12px" },
+  ".cm-key-help .values": { marginTop: "4px", color: "var(--muted)" },
+  ".cm-diagnostic": { fontSize: "12px" },
   ".cm-foldGutter span": { color: "var(--muted)" },
 });
 

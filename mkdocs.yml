@@ -1,5 +1,5 @@
-site_name: FreeDyn 2
-site_description: Multibody dynamics for engineers and their assistants
+site_name: freedyn2
+site_description: ai-first multibody dynamics.
 site_url: https://freedyn-org.github.io/freedyn2/
 repo_url: https://github.com/freedyn-org/freedyn2
 edit_uri: edit/main/docs/
@@ -8,7 +8,9 @@ strict: true
 
 theme:
   name: material
-  font: false   # system fonts: no requests to Google Fonts (privacy.md)
+  font: false   # no requests to Google Fonts (privacy.md): JetBrains Mono and Inter from docs/assets/fonts (extra.css)
+  logo: assets/brand/lockup-small-dark.svg      # brand/logo (the header is ink in both schemes)
+  favicon: assets/brand/favicon.svg
   features:
     - navigation.sections
     - navigation.top
@@ -18,14 +20,17 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
+      primary: custom   # the brand: brand/tokens.css, docs/stylesheets/extra.css
+      accent: custom
       toggle: {icon: material/weather-night, name: Dark mode}
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
+      primary: custom
+      accent: custom
       toggle: {icon: material/weather-sunny, name: Light mode}
 
 extra_css:
+  - assets/brand/tokens.css
   - stylesheets/extra.css
 
 extra_javascript:
