@@ -1,16 +1,25 @@
 // Simulate .fdm models with freedyn2.wasm and with the native freedyn2_run; compare the results.
 //
-//   node runtime/wasm/compare.mjs build-wasm/freedyn2.wasm build/freedyn2_run build/generated/*.fdm
+//   node runtime/wasm/compare.mjs build-wasm/freedyn2.wasm build/freedyn2_run build/generated
+//
+// Models: .fdm files or directories (all .fdm files in them; no shell globbing needed, e.g. in
+// PowerShell). The native runtime: on Windows e.g. build/Release/freedyn2_run.exe.
 //
 // Models with a plugin line (expression forces) are skipped: WebAssembly has no model plugins.
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { loadFreedyn2 } from "./fd_wasm.mjs";
 
-const [wasmPath, nativeRun, ...models] = process.argv.slice(2);
+const [wasmPath, nativeRun, ...args] = process.argv.slice(2);
+if (!nativeRun || !args.length) {
+  console.error("usage: node compare.mjs freedyn2.wasm freedyn2_run[.exe] model.fdm|directory ...");
+  process.exit(2);
+}
+const models = args.flatMap((a) =>
+  statSync(a).isDirectory() ? readdirSync(a).filter((f) => f.endsWith(".fdm")).sort().map((f) => join(a, f)) : [a]);
 const fd = await loadFreedyn2(readFileSync(wasmPath));
 const work = mkdtempSync(join(tmpdir(), "fd-wasm-"));
 let worst = 0;

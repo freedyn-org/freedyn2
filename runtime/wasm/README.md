@@ -7,7 +7,7 @@ a server). Status: a spike; not part of the CMake build, the wheels or CI.
 cmake -S . -B build && cmake --build build -j          # generated element code: build/generated
 pip install ziglang
 python tools/build_wasm.py build/generated build-wasm   # build-wasm/freedyn2.wasm
-node runtime/wasm/compare.mjs build-wasm/freedyn2.wasm build/freedyn2_run build/generated/*.fdm
+node runtime/wasm/compare.mjs build-wasm/freedyn2.wasm build/freedyn2_run build/generated
 ```
 
 ```js

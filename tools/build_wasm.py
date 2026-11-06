@@ -4,7 +4,8 @@
 
 The first argument is a directory with the generated library element code (fd_registry.c and the
 element .c files: the CMake build writes them to build/generated, or python -m fdgen -o DIR).
-Eigen is taken from /usr/include/eigen3 or EIGEN3_INCLUDE_DIR.
+Eigen: EIGEN3_INCLUDE_DIR, else the Eigen of the CMake build next to the generated directory
+(build/CMakeCache.txt, e.g. deps from tools/build_deps.py on Windows), else /usr/include/eigen3.
 
 The module is a WASI reactor without a file system (runtime/wasm/fd_wasm.mjs provides the few
 WASI functions it calls). Library elements only: no model plugins, no KLU (Eigen SparseLU).
@@ -29,6 +30,23 @@ def zig(*args):
     subprocess.run([sys.executable, "-m", "ziglang", *map(str, args)], check=True)
 
 
+def find_eigen(gen):
+    if os.environ.get("EIGEN3_INCLUDE_DIR"):
+        return Path(os.environ["EIGEN3_INCLUDE_DIR"])
+    cache = gen.parent / "CMakeCache.txt"
+    if cache.exists():
+        for line in cache.read_text(errors="replace").splitlines():
+            if line.startswith("Eigen3_DIR:"):  # <prefix>/share/eigen3/cmake or <prefix>/lib/cmake/eigen3
+                d = Path(line.split("=", 1)[1])
+                for up in (d.parent.parent.parent, d.parent.parent.parent.parent):
+                    if (up / "include/eigen3/Eigen").is_dir():
+                        return up / "include/eigen3"
+    for d in (Path("/usr/include/eigen3"), Path("/usr/local/include/eigen3"), ROOT / "deps/include/eigen3"):
+        if (d / "Eigen").is_dir():
+            return d
+    sys.exit("Eigen not found: set EIGEN3_INCLUDE_DIR (the directory that contains Eigen/)")
+
+
 def main(argv):
     if len(argv) != 2:
         print(__doc__)
@@ -39,7 +57,8 @@ def main(argv):
     import ziglang
 
     zl = Path(ziglang.__file__).parent / "lib"
-    eigen = os.environ.get("EIGEN3_INCLUDE_DIR", "/usr/include/eigen3")
+    eigen = find_eigen(gen)
+    print(f"Eigen: {eigen}")
     rt, crg = ROOT / "runtime", ROOT / "runtime/third_party/opencrg"
     out.mkdir(parents=True, exist_ok=True)
     obj = Path(tempfile.mkdtemp(prefix="fd-wasm-"))
