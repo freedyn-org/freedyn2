@@ -58,3 +58,6 @@
   vertical-align: -0.1em;
   background: var(--fd-accent);
 }
+
+/* The claim's period: "ai-first multibody dynamics<span class="fd-period">.</span>" */
+.fd-period { color: var(--fd-accent); }
