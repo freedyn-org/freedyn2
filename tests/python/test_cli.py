@@ -92,7 +92,7 @@ def test_plugin_cache(tmp_path, monkeypatch):
     plugin.compile_library([src], tmp_path / "a.so")
     cached = list((tmp_path / "cache").glob("*"))
     assert len(cached) == 1
-    def no_compiler(cmd):
+    def no_compiler(cmd, env=None):
         raise AssertionError("compiled although cached")
 
     monkeypatch.setattr(plugin, "_run", no_compiler)

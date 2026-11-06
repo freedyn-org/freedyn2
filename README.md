@@ -47,10 +47,10 @@ first: `uvx freedyn2 mcp`, e.g. `claude mcp add freedyn2 -- uvx freedyn2 mcp`;
 
 Models with expression forces or drivers are compiled into a model plugin and need a C
 compiler: Zig from the installer or the `compiler` extra, gcc or clang, or on Windows the
-Visual Studio Build Tools (found without a developer prompt) or MinGW-w64 gcc;
-`freedyn2 config compiler zig|msvc|auto|<path>` (`CC` overrides). Library elements (bodies,
-joints, springs, bushings, tires, ...) need none. Details, updating and uninstalling:
-[`docs/getting-started.md`](docs/getting-started.md).
+Visual Studio Build Tools (found without a developer prompt) or MinGW-w64 gcc. Library elements
+(bodies, joints, springs, bushings, tires, ...) need none. `freedyn2 doctor` shows which
+compiler is used, `freedyn2 config compiler zig|msvc|auto|<path>` picks one (`CC` overrides).
+Details, updating and uninstalling: [`docs/getting-started.md`](docs/getting-started.md).
 
 ## Build and test
 
@@ -280,6 +280,7 @@ which an assistant builds and examines models: it writes the YAML file and calls
 | `sweep` | variant study: one number over several values, simulated in parallel; a key figure of channels per value |
 | `notes`, `note_image`, `answer_note` | what the person wrote in the viewer (with context and picture); the answer |
 
+Installed: `freedyn2 setup-mcp` registers it with Claude Desktop and Claude Code.
 Claude Code: `claude mcp add freedyn2 -- uvx freedyn2 mcp` (or `-- freedyn2 mcp` if installed).
 Claude Desktop (`claude_desktop_config.json`):
 
