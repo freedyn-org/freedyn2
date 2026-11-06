@@ -301,8 +301,8 @@ def _handler(app):
             """The viewer's page with the app shell: title, icon, shell.js."""
             html = (view_server.WEB / "index.html").read_text(encoding="utf-8")
             name = self._entry["path"].name if self._entry else "FreeDyn 2"
-            html = html.replace("<title>FreeDyn 2 Viewer</title>", f"<title>{_esc(name)} - {TITLE}</title>", 1)
-            html = html.replace('<link rel="icon" href="data:,">', '<link rel="icon" href="/app/freedyn2.png">', 1)
+            html = html.replace("<title>freedyn2 viewer</title>", f"<title>{_esc(name)} - {TITLE}</title>", 1)
+            html = html.replace('<link rel="icon" href="./brand/favicon.svg">', '<link rel="icon" href="/app/freedyn2.png">', 1)
             html = html.replace("</body>", '<script src="/app/shell.js"></script>\n</body>', 1)
             self._send(html.encode("utf-8"), "text/html; charset=utf-8")
 
