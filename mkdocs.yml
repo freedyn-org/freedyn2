@@ -8,6 +8,7 @@ strict: true
 
 theme:
   name: material
+  font: false   # system fonts: no requests to Google Fonts (privacy.md)
   features:
     - navigation.sections
     - navigation.top
@@ -49,6 +50,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Download: download.md
   - Getting started: getting-started.md
   - Tutorial – tuning a quarter car: tutorial.md
   - Tutorial – a car on an OpenCRG road: tutorial-crg.md
@@ -77,3 +79,4 @@ nav:
       - Theory and algorithms: theory.md
       - Extensions: extensions.md
       - Numerical findings: findings.md
+  - Privacy policy: privacy.md
