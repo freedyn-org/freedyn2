@@ -54,13 +54,16 @@ markdown_extensions:
   - pymdownx.arithmatex: {generic: true}
 
 nav:
-  - Home: index.md
-  - Download: download.md
-  - Getting started: getting-started.md
-  - Tutorial – tuning a quarter car: tutorial.md
-  - Tutorial – a car on an OpenCRG road: tutorial-crg.md
-  - Working with an assistant: assistants.md
-  - The viewer: viewer.md
+  - Start:
+      - Home: index.md
+      - Download: download.md
+      - Getting started: getting-started.md
+  - Guides:
+      - Tutorial – tuning a quarter car: tutorial.md
+      - Tutorial – a car on an OpenCRG road: tutorial-crg.md
+      - Working with an assistant: assistants.md
+      - The viewer: viewer.md
+      - Examples: examples.md
   - Model reference:
       - The model file: reference/model-file.md
       - Bodies and geometry: reference/bodies.md
@@ -73,11 +76,12 @@ nav:
       - Solver and real time: reference/solver.md
       - Checks and references: reference/checks.md
       - Result channels: reference/results.md
-  - Coming from FreeDyn: from-freedyn.md
-  - Coming from Adams: from-adams.md
-  - Examples: examples.md
-  - Command line: cli.md
-  - Python API: python-api.md
+  - Tools:
+      - Command line: cli.md
+      - Python API: python-api.md
+  - Switching over:
+      - Coming from FreeDyn: from-freedyn.md
+      - Coming from Adams: from-adams.md
   - For developers:
       - How the solver works: how-it-works.md
       - Architecture: architecture.md
@@ -85,4 +89,5 @@ nav:
       - Extensions: extensions.md
       - Numerical findings: findings.md
       - Releasing: releasing.md
-  - Privacy policy: privacy.md
+  - About:
+      - Privacy policy: privacy.md
