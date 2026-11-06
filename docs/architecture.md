@@ -34,7 +34,8 @@ change to the solver.
   with `dlopen`. Constants stay parameters, so changing a value needs no recompilation.
 - **`.fdm`** lists element instances: element type, global indices (coordinates, velocity
   dofs, constraint rows), parameters `p`, initial state, solver settings.
-- `freedyn2 run model.fds` (`fdgen/cli.py`) does all three steps in one call.
+- `freedyn2 run model.fds` (`fdgen/cli.py`) does all three steps in one call; from Python,
+  `freedyn2.run` (`generator/freedyn2`).
 
 ## Reading guide
 
@@ -93,6 +94,7 @@ Read in this order; each stop builds on the previous one.
 | `fdgen/model.py`, `schema/` | YAML validation, `.fdm` writer |
 | `fdgen/fds/` | legacy `.fds` importer and solver profiles |
 | `fdgen/cli.py` | `freedyn2 run` (import, build, simulate), `view`, `check`, `mcp` |
+| `freedyn2/` (`generator/freedyn2`) | Python API: `load`, `run`, `check`, `sweep` (`Model`, `Result`, `Report`) over `fdgen.cli`, `fdgen.sweep`, `fdgen.checks`; the runtime in a subprocess |
 | `fdgen/checks.py` | checks of a model and its results; references (`checks` section) |
 | `fdgen/mcp_server.py` | `freedyn2 mcp`: tools for assistants (`Session`), MCP registration |
 | `fdgen/resources.py` | data files (schema, examples, runtime programs) in the installed package or the repository |
