@@ -210,3 +210,12 @@ def test_existing_file_needs_force(tmp_path):
     with pytest.raises(ModelError, match="exists"):
         onshape.import_onshape(URL, tmp_path, client=Client(*pendulum()))
     onshape.import_onshape(URL, tmp_path, client=Client(*pendulum()), force=True)
+
+
+def test_record(tmp_path):
+    asm, mass = pendulum()
+    mass["JR"] = props(0.0, [0, 0, 0], [0, 0, 0])
+    with pytest.raises(ModelError):
+        onshape.import_onshape(URL, tmp_path, client=Client(asm, mass), record=tmp_path / "rec")
+    saved = sorted((tmp_path / "rec").glob("*.json"))
+    assert len(saved) == 4 and '"Rod <1>"' in saved[1].read_text()

@@ -114,6 +114,26 @@ class OnshapeClient:
         return self._get(path, params, "application/octet-stream")
 
 
+class Recorder:
+    """A client that saves every JSON response to a directory (for bug reports and test data;
+    the responses contain geometry and names of the document, no API keys)."""
+
+    def __init__(self, client, directory):
+        self.client, self.dir, self.n = client, Path(directory), 0
+        self.dir.mkdir(parents=True, exist_ok=True)
+
+    def get_json(self, path, params=None):
+        d = self.client.get_json(path, params)
+        self.n += 1
+        name = f"{self.n:03d}_" + IDENT.sub("_", path.strip("/").split("/")[0] + "_" + path.rsplit("/", 1)[-1])[:60]
+        (self.dir / f"{name}.json").write_text(json.dumps({"path": path, "params": params, "response": d}, indent=1),
+                                               encoding="utf-8")
+        return d
+
+    def get_bytes(self, path, params=None):
+        return self.client.get_bytes(path, params)
+
+
 # --- the assembly ------------------------------------------------------------------------------
 
 @dataclass
@@ -430,15 +450,18 @@ def model_text(model, groups, source, warnings):
     return w.text()
 
 
-def import_onshape(url, output=None, client=None, meshes=True, force=False, name=None):
+def import_onshape(url, output=None, client=None, meshes=True, force=False, name=None, record=None):
     """Write the Onshape assembly at url as a YAML model file; (its path, warnings).
     output: the YAML file (default: <assembly name>.yaml in the current directory); meshes: STL
     files of the parts in <model>_meshes/ for the viewer; client: OnshapeClient (default: from the
-    environment variables ONSHAPE_ACCESS_KEY, ONSHAPE_SECRET_KEY)."""
+    environment variables ONSHAPE_ACCESS_KEY, ONSHAPE_SECRET_KEY); record: a directory to save the
+    API responses in (also when the import fails)."""
     from .model import validate
 
     server, did, wvm, wvmid, eid, configuration = parse_url(url)
     client = client or OnshapeClient.from_env(server)
+    if record:
+        client = Recorder(client, record)
     if name is None:
         try:
             el = client.get_json(f"/documents/d/{did}/{wvm}/{wvmid}/elements", {"elementId": eid})

@@ -6,7 +6,7 @@ freedyn2 view model.yaml [result.csv] [--no-run] [--export page.html] [--port N]
 freedyn2 check model.yaml [result.csv | --run] [-- runtime options]
 freedyn2 examples [name [-o DIR]]
 freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]
-freedyn2 import-onshape <assembly address> [-o model.yaml] [--no-meshes] [--force]
+freedyn2 import-onshape <assembly address> [-o model.yaml] [--no-meshes] [--force] [--record DIR]
 freedyn2 gui [model ...] [--browser] [--port N] [--new-instance]
 freedyn2 update-check
 freedyn2 mcp [--workdir DIR]

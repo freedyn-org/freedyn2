@@ -36,6 +36,7 @@ freedyn2 import-onshape "<address>" -o models/crank.yaml --force
 | `-o FILE` | the YAML file, or a directory for `<assembly name>.yaml` in it (default: the current directory) |
 | `--no-meshes` | no STL files of the parts (the viewer then draws the inertia boxes) |
 | `--force` | overwrite an existing file (without it, `import-onshape` stops) |
+| `--record DIR` | save the API responses in `DIR`, also when the import fails (for bug reports; they contain names and geometry of the document, no API keys) |
 
 A version (`/v/...`) or a configuration (`?configuration=...`) in the address is imported as
 it is. Enterprise addresses (`https://<company>.onshape.com/...`) work the same way.

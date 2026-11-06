@@ -186,10 +186,10 @@ def convert(args):
 def import_onshape(args):
     from .onshape import import_onshape as read
 
-    out, warnings = read(args.url, args.output, meshes=not args.no_meshes, force=args.force)
+    out, warnings = read(args.url, args.output, meshes=not args.no_meshes, force=args.force, record=args.record)
     for w in warnings:
         print(f"warning: {w}", file=sys.stderr)
-    print(f"wrote {out}")
+    print(f"wrote {out.resolve()}")
     return 0
 
 
@@ -266,6 +266,7 @@ def main(argv=None):
     io.add_argument("-o", "--output", help="YAML file or directory (default: <assembly name>.yaml here)")
     io.add_argument("--no-meshes", action="store_true", help="no STL files of the parts for the viewer")
     io.add_argument("--force", action="store_true", help="overwrite an existing YAML file")
+    io.add_argument("--record", metavar="DIR", help="save the API responses in DIR (for bug reports)")
     k = argv.index("--") if "--" in argv else len(argv)
     args = ap.parse_args(argv[:k])
     args.options = argv[k + 1:]
