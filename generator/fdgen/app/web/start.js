@@ -101,13 +101,13 @@ function drawStatus(s) {
     $("folder").value = s.examples_dir;
     $("docs-link").href = s.docs;
     $("doc-links").innerHTML = DOC_PAGES.map(([t, p]) => `<a href="${esc(s.docs + p)}" target="_blank" rel="noopener">${esc(t)}</a>`).join("");
-    $("footer").textContent = `FreeDyn 2 · version ${s.version} · ` + (s.update_check ? "checks once a day for a new release (update_check)" : "the check for new releases is off");
+    $("footer").textContent = `freedyn2 · version ${s.version} · ` + (s.update_check ? "checks once a day for a new release (update_check)" : "the check for new releases is off");
   }
   const u = s.update;
   let hidden = true;
   try { hidden = !u || !u.newer || sessionStorage.getItem("fd.update.hide") === u.latest; } catch (e) { hidden = !u || !u.newer; }
   if (!hidden) {
-    $("update-text").textContent = `FreeDyn 2 version ${u.latest} is available (you have ${u.current}).`;
+    $("update-text").textContent = `freedyn2 version ${u.latest} is available (you have ${u.current}).`;
     $("update-link").href = u.url || s.releases;
   }
   $("update").hidden = hidden;
@@ -142,7 +142,7 @@ $("open-path").addEventListener("click", () => openPath($("path").value.trim().r
 $("path").addEventListener("keydown", (e) => { if (e.key === "Enter") $("open-path").click(); });
 $("quit").addEventListener("click", async () => {
   try { await post("/api/app/quit"); } catch (e) { /* gone */ }
-  document.body.innerHTML = '<header><h1>FreeDyn 2</h1></header><main><section>The app has ended; this tab can be closed.</section></main>';
+  document.body.innerHTML = '<header><h1 style="line-height:1.5">freedyn2</h1></header><main><section>The app has ended; this tab can be closed.</section></main>';
 });
 
 async function upload(file) {

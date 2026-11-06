@@ -2,6 +2,7 @@
 
   /                     the start page (web/start.html)
   /app/...              its files (web/), the icon
+  /view/...             the viewer's style sheets, fonts and brand images (fdgen/view/web)
   /api/app/...          the start page's API (below)
   /m/<id>/...           the viewer of opened model <id>: fdgen.view.server, unchanged, under
                         this prefix (its page uses relative URLs); the page gets the app shell
@@ -45,7 +46,7 @@ DOCS = "https://freedyn-org.github.io/freedyn2/"
 MODEL_SUFFIXES = (".yaml", ".yml", ".fds")
 PREFERRED_PORT = 8767  # a fixed origin keeps the viewer's settings (local storage) between starts
 IDLE_SECONDS = 180  # browser mode: no page asked for so long -> the app ends (tabs closed)
-TITLE = "FreeDyn 2"  # the version: start page, freedyn2 --version
+TITLE = "freedyn2"  # the version: start page, freedyn2 --version
 
 log = logging.getLogger("freedyn2.app")
 
@@ -300,7 +301,7 @@ def _handler(app):
         def _page(self):
             """The viewer's page with the app shell: title, icon, shell.js."""
             html = (view_server.WEB / "index.html").read_text(encoding="utf-8")
-            name = self._entry["path"].name if self._entry else "FreeDyn 2"
+            name = self._entry["path"].name if self._entry else TITLE
             html = html.replace("<title>freedyn2 viewer</title>", f"<title>{_esc(name)} - {TITLE}</title>", 1)
             html = html.replace('<link rel="icon" href="./brand/favicon.svg">', '<link rel="icon" href="/app/freedyn2.png">', 1)
             html = html.replace("</body>", '<script src="/app/shell.js"></script>\n</body>', 1)
@@ -340,6 +341,10 @@ def _handler(app):
                 return self._file(WEB / "start.html")
             if url == "/app/freedyn2.png":
                 return self._file(ICON)
+            if url.startswith("/view/"):  # the viewer's brand files and fonts for the start page
+                path = (view_server.WEB / url[len("/view/"):]).resolve()
+                ok = view_server.WEB in path.parents and path.suffix in (".css", ".svg", ".woff2")
+                return self._file(path) if ok else self._send(b"not found", "text/plain", 404)
             if url.startswith("/app/"):
                 path = (WEB / url[len("/app/"):]).resolve()
                 return self._file(path) if WEB in path.parents else self._send(b"not found", "text/plain", 404)

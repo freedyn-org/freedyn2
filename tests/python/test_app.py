@@ -60,10 +60,14 @@ def wait_ready(a, vid, timeout=60):
 
 def test_start_page_in_browser_mode(app):
     code, page = request(app.url())
-    assert code == 200 and b"FreeDyn 2" in page and b"/app/start.js" in page
+    assert code == 200 and b"<title>freedyn2</title>" in page and b"/app/start.js" in page
     assert request(app.url() + "app/start.js")[0] == 200
     with NO_PROXY.open(app.url() + "app/freedyn2.png") as r:
         assert r.headers["Content-Type"] == "image/png" and r.read()[:4] == b"\x89PNG"
+    for brand in ("view/brand/tokens.css", "view/fonts.css", "view/brand/lockup-small-light.svg",
+                  "view/vendor/fonts/jetbrains-mono-latin-400-normal.woff2"):  # the brand of the viewer
+        assert request(app.url() + brand)[0] == 200, brand
+    assert request(app.url() + "view/index.html")[0] == 404  # only style sheets, images, fonts
     code, s = request(app.url() + "api/app/status")
     assert code == 200 and s["native"] is False and s["runtime"] is False and s["title"] == server.TITLE
     assert s["docs"] == "https://freedyn-org.github.io/freedyn2/" and s["update"] is None
@@ -82,7 +86,7 @@ def test_open_an_example_and_its_viewer(app, tmp_path):
     state = wait_ready(app, 1)
     assert state["status"] == "ready" and state["model_file"] == str(folder / "double_pendulum.yaml")
     code, page = request(app.url(1))
-    assert b'<script src="/app/shell.js"></script>' in page and b"double_pendulum.yaml - FreeDyn 2" in page
+    assert b'<script src="/app/shell.js"></script>' in page and b"double_pendulum.yaml - freedyn2" in page
     assert b"viewer.js" in page  # the viewer's own page
     code, scene = request(app.url(1) + "api/scene")
     assert code == 200 and len(scene["bodies"]) == 2

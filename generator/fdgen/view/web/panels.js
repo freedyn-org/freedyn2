@@ -46,6 +46,36 @@ function image(src) {
   return new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; });
 }
 
+// the brand for the report (one HTML file): JetBrains Mono (400/500/700) and the light
+// lockup as data URIs, read from this page's style sheets and header (served or exported alike)
+async function dataURL(url) {
+  const blob = await (await fetch(url)).blob();
+  return new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); });
+}
+async function reportBrand() {
+  const out = { fonts: "", logo: "" };
+  try {
+    const img = document.querySelector("header h1 img");
+    if (img) out.logo = await dataURL(img.src);
+  } catch (e) { /* the name as text */ }
+  for (const sheet of document.styleSheets) {
+    let rules = [];
+    try { rules = [...sheet.cssRules]; } catch (e) { continue; }
+    for (const r of rules) {
+      if (!(r instanceof CSSFontFaceRule) || !/JetBrains Mono/.test(r.style.getPropertyValue("font-family"))) continue;
+      const m = /url\(["']?([^"')]+)["']?\)/.exec(r.style.getPropertyValue("src"));
+      if (!m) continue;
+      try {
+        const src = await dataURL(new URL(m[1], sheet.href || location.href).href);
+        const range = r.style.getPropertyValue("unicode-range");
+        out.fonts += `@font-face{font-family:'JetBrains Mono';font-weight:${r.style.getPropertyValue("font-weight")};` +
+          `src:url(${src}) format('woff2')${range ? `;unicode-range:${range}` : ""}}\n`;
+      } catch (e) { /* the fallback fonts */ }
+    }
+  }
+  return out;
+}
+
 export class Panels {
   // v: {static, area, state, viewImage, showMode, stopMode, select, setTime, render, model(), results()}
   constructor(v) {
@@ -472,16 +502,23 @@ export class Panels {
     const view = await image(this.v.viewImage()), plots = this.v.area.png();
     const rows = (items) => items.map((r) => `<tr>${r.map((x) => `<td>${x}</td>`).join("")}</tr>`).join("");
     const sev = (k, label) => `<span class="sev ${k}">${label}</span>`;
-    let html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(s.model)} – FreeDyn 2 report</title>
-<style>body{font:14px/1.45 system-ui,sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#1d2330}
-h1{font-size:22px;margin:0}h2{font-size:15px;margin:22px 0 6px;border-bottom:1px solid #dde1e8;padding-bottom:3px}
-.muted{color:#677085}table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:3px 8px;border-bottom:1px solid #eef0f4;text-align:left;vertical-align:top}
-th{color:#677085;font-weight:600}img{max-width:100%;border:1px solid #dde1e8;border-radius:4px}
-.sev{font-size:10px;font-weight:700;color:#fff;border-radius:3px;padding:0 4px}.error,.failed{background:#d9480f}.warning{background:#e67700}
-.info{background:#868e96}.passed{background:#2b8a3e}code{font:12px ui-monospace,Consolas,monospace}
-@media print{button{display:none}}</style></head><body>
-<button onclick="print()" style="float:right">print / PDF</button>
-<h1>${esc(s.model)}</h1><div class="muted">FreeDyn 2 · ${new Date().toLocaleString()} · ${sum.bodies ?? "?"} bodies · ${sum.joints ?? "?"} joints ·
+    const brand = await reportBrand();
+    let html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(s.model)} – freedyn2 report</title>
+<style>${brand.fonts}
+:root{--ink:#0B0B0C;--paper:#EDEDE8;--graphite:#5E5E5A;--soft:#B5B5B0}
+body{font:13px/1.5 'JetBrains Mono',ui-monospace,Consolas,monospace;max-width:960px;margin:24px auto;padding:0 16px;color:var(--ink);background:var(--paper)}
+header{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--ink);padding-bottom:8px;margin-bottom:10px}
+header img{height:40px;margin:-6px 0 -6px -12px}
+h1{font-size:20px;font-weight:500;letter-spacing:-0.02em;margin:0}h2{font-size:14px;font-weight:500;margin:22px 0 6px;border-bottom:1px solid var(--soft);padding-bottom:3px}
+.muted{color:var(--graphite)}table{border-collapse:collapse;width:100%;font-size:12px}td,th{padding:3px 8px;border-bottom:1px solid var(--soft);text-align:left;vertical-align:top}
+th{color:var(--graphite);font-weight:500}img{max-width:100%;border:1px solid var(--soft)}header img{border:0}
+.sev{font-size:10px;font-weight:700;color:#fff;border-radius:2px;padding:0 4px}.error,.failed{background:#d9480f}.warning{background:#e67700}
+.info{background:#868e96}.passed{background:#2b8a3e}code{font:inherit}
+button{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:2px;padding:3px 10px;cursor:pointer}
+@media print{button{display:none}body{background:none;margin:0 auto}}</style></head><body>
+<header>${brand.logo ? `<img src="${brand.logo}" alt="freedyn2">` : "<b>freedyn2</b>"}<span class="muted">report</span>
+<button onclick="print()" style="margin-left:auto">print / pdf</button></header>
+<h1>${esc(s.model)}</h1><div class="muted">${new Date().toLocaleString()} · ${sum.bodies ?? "?"} bodies · ${sum.joints ?? "?"} joints ·
 ${sum.forces ?? "?"} forces · ${sum.degrees_of_freedom ?? "?"} degrees of freedom · total mass ${fmt(sum.total_mass ?? "?")} kg` +
       (results ? ` · results t = ${fmt(results.t[0])} … ${fmt(results.t[results.t.length - 1])} s (${results.n} outputs)` : "") + "</div>";
     html += `<h2>View at t = ${fmt(this.v.state.time)} s</h2><img src="${view.src}" alt="3D view">`;
