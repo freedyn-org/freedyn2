@@ -23,8 +23,12 @@ Source = "https://github.com/freedyn-org/freedyn2"
 [project.scripts]
 freedyn2 = "fdgen.cli:main"
 
+[project.gui-scripts]
+freedyn2-gui = "fdgen.app:main"  # the app (Windows: freedyn2-gui.exe without a console)
+
 [project.optional-dependencies]
 test = ["pytest"]
+gui = ["pywebview>=5"]  # app windows for freedyn2-gui (else the web browser)
 screenshots = ["playwright"]  # the MCP tool screenshot (also: playwright install chromium)
 
 [tool.scikit-build]

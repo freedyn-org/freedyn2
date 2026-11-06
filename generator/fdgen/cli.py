@@ -5,6 +5,8 @@
   freedyn2 check model.yaml [result.csv | --run] [-- runtime options]
   freedyn2 mcp                                           (MCP server for assistants, fdgen.mcp_server)
   freedyn2 examples [name [-o dir]]                     (list the examples, copy one)
+  freedyn2 gui [model ...] [--browser]                  (the app: start page and viewers, fdgen.app)
+  freedyn2 update-check                                  (is there a newer release? fdgen.update)
   freedyn2 compare model.fds ... --legacy <FreeDyn>     (legacy/benchmark.py, see there)
 
 `run` imports the model, writes the runtime model file (.fdm) and, for models with expression
@@ -212,6 +214,14 @@ def main(argv=None):
     e = sub.add_parser("examples", help="list the example models, or copy one (freedyn2 examples quarter_car)")
     e.add_argument("name", nargs="?")
     e.add_argument("-o", "--output", help="directory to copy it to (default: the current one)")
+    g = sub.add_parser("gui", help="the app: start page, recent models, examples; a window per model (fdgen.app)")
+    g.add_argument("models", nargs="*", help="model files to open (none: the start page)")
+    g.add_argument("--browser", action="store_true", help="the web browser instead of an app window")
+    g.add_argument("--port", type=int, help="of the local server (default 8767, else any free one)")
+    g.add_argument("--new-instance", action="store_true", help="do not hand the models to a running app")
+    g.add_argument("--profile", choices=("v2", "legacy"), default="v2")
+    g.add_argument("--runtime", help="path of freedyn2_run")
+    sub.add_parser("update-check", help="ask GitHub whether a newer FreeDyn 2.0 is released (no download)")
     sub.add_parser("compare", help="legacy FreeDyn against FreeDyn 2.0 (see freedyn2 compare -h)")
     k = argv.index("--") if "--" in argv else len(argv)
     args = ap.parse_args(argv[:k])
@@ -221,6 +231,14 @@ def main(argv=None):
             from .mcp_server import serve
 
             return serve(args.workdir)
+        if args.command == "gui":
+            from .app import run as gui
+
+            return gui(args.models, args.browser, args.port, args.new_instance, args.profile, args.runtime)
+        if args.command == "update-check":
+            from .update import main as update_check
+
+            return update_check()
         return {"view": view, "check": check, "examples": examples}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)

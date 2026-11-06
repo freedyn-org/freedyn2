@@ -433,114 +433,129 @@ class View:
             stop.wait(POLL_SECONDS)
 
 
-def _handler(view):
-    class Handler(BaseHTTPRequestHandler):
-        def log_message(self, *args):
-            pass
+class ViewHandler(BaseHTTPRequestHandler):
+    """The routes of one View: view_get / view_post with the URL path below the viewer's root
+    ("/" is the page). The app (fdgen.app) serves several views under prefixes this way."""
 
-        def _send(self, body, ctype, code=200):
-            self.send_response(code)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(body)
+    view = None
 
-        def _file(self, path):
-            if not path.is_file():
-                return self._send(b"not found", "text/plain", 404)
-            ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-            if path.suffix == ".js":
-                ctype = "text/javascript"
-            self._send(path.read_bytes(), ctype)
+    def log_message(self, *args):
+        pass
 
-        def do_GET(self):
-            url = self.path.split("?", 1)[0]
-            if url == "/":
-                return self._file(WEB / "index.html")
-            if url == "/api/state":
-                return self._send(json.dumps(view.state()).encode(), "application/json")
-            if url == "/api/scene":
-                return self._send(json.dumps(view.scene).encode(), "application/json")
-            if url == "/api/results.csv":
-                return self._file(view.csv) if view.csv else self._send(b"", "text/csv")
-            if url == "/api/notes":
-                return self._send(json.dumps(notes.read_notes(view.model_path)).encode(), "application/json")
-            if url.startswith("/api/notes/") and url.endswith(".png"):
-                return self._file(notes.notes_dir(view.model_path) / Path(url).name)
-            if url == "/api/modes":
-                from urllib.parse import parse_qs
+    def do_GET(self):
+        self.view_get(self.view, self.path)
 
-                query = parse_qs(self.path.partition("?")[2])
-                try:
-                    data = view.modes(float(query.get("t", ["0"])[0]))
-                except Exception as e:  # noqa: BLE001  (shown on the page)
-                    return self._send(json.dumps({"error": str(e)}).encode(), "application/json", 400)
-                return self._send(json.dumps(data).encode(), "application/json")
-            if url == "/api/running.csv":
-                return self._send(view.partial(), "text/csv")
-            if url.startswith("/api/sweep/") and url.endswith(".csv"):
-                k = url[len("/api/sweep/"):-4]
-                path = view.sweep_csv(int(k)) if k.isdigit() else None
-                return self._file(path) if path else self._send(b"not found", "text/plain", 404)
-            if url.startswith("/api/runs/") and url.endswith(".csv"):
-                k = url[len("/api/runs/"):-4]
-                path = view.run_csv(int(k)) if k.isdigit() else None
-                return self._file(path) if path else self._send(b"not found", "text/plain", 404)
-            if url.startswith("/api/mesh/"):
-                k = url.rsplit("/", 1)[1].split(".")[0]
-                meshes = view.meshes
-                return self._file(meshes[int(k)]) if k.isdigit() and int(k) < len(meshes) else self._send(b"", "text/plain", 404)
-            path = (WEB / url.lstrip("/")).resolve()
-            if WEB not in path.parents:
-                return self._send(b"not found", "text/plain", 404)
-            return self._file(path)
+    def do_POST(self):
+        self.view_post(self.view, self.path)
 
-        def do_POST(self):
-            url = self.path.split("?", 1)[0]
-            n = int(self.headers.get("Content-Length") or 0)
-            if n > MAX_POST or self.headers.get("Origin", "").split("//")[-1] not in ("", self.headers.get("Host")):
-                return self._send(b"refused", "text/plain", 403)  # only the page of this server
+    def _send(self, body, ctype, code=200):
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _file(self, path):
+        if not path.is_file():
+            return self._send(b"not found", "text/plain", 404)
+        ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        if path.suffix == ".js":
+            ctype = "text/javascript"
+        self._send(path.read_bytes(), ctype)
+
+    def _page(self):
+        self._file(WEB / "index.html")
+
+    def view_get(self, view, path):
+        url = path.split("?", 1)[0]
+        if url == "/":
+            return self._page()
+        if url == "/api/state":
+            return self._send(json.dumps(view.state()).encode(), "application/json")
+        if url == "/api/scene":
+            return self._send(json.dumps(view.scene).encode(), "application/json")
+        if url == "/api/results.csv":
+            return self._file(view.csv) if view.csv else self._send(b"", "text/csv")
+        if url == "/api/notes":
+            return self._send(json.dumps(notes.read_notes(view.model_path)).encode(), "application/json")
+        if url.startswith("/api/notes/") and url.endswith(".png"):
+            return self._file(notes.notes_dir(view.model_path) / Path(url).name)
+        if url == "/api/modes":
+            from urllib.parse import parse_qs
+
+            query = parse_qs(path.partition("?")[2])
             try:
-                body = json.loads(self.rfile.read(n) or b"{}")
-                if url == "/api/overrides":
-                    view.set_overrides(body, wait=False)
-                    out = view.state()
-                elif url == "/api/modes":
-                    out = view.preview_modes({str(k): float(v) for k, v in (body.get("overrides") or {}).items()},
-                                             float(body.get("t", 0.0)))
-                elif url == "/api/sweep":
-                    if body.get("stop") or body.get("clear"):
-                        view.stop_sweep(clear=bool(body.get("clear")))
-                    else:
-                        view.start_sweep(str(body["path"]), body["values"])
-                    out = view.state()
-                elif url == "/api/locus":
-                    values = [float(v) for v in body["values"]][:41]
-                    out = view.locus(str(body["path"]), values, float(body.get("t", 0.0)))
-                elif url.startswith("/api/runs/"):
-                    rid = int(url.rsplit("/", 1)[1])
-                    if body.get("delete"):
-                        view.delete_run(rid)
-                    else:
-                        view.set_reference(rid if body.get("reference", True) else None)
-                    out = view.state()
-                elif url == "/api/notes":
-                    out = notes.add_note(view.model_path, body.get("text", ""), body.get("context"), body.get("image"))
-                elif url.startswith("/api/notes/"):
-                    nid = int(url.rsplit("/", 1)[1])
-                    if body.get("delete"):
-                        notes.delete_note(view.model_path, nid)
-                        out = {}
-                    else:
-                        out = notes.answer_note(view.model_path, nid, done=bool(body.get("done", True)))
-                else:
-                    return self._send(b"not found", "text/plain", 404)
-            except (ValueError, KeyError, TypeError, RuntimeError, np.linalg.LinAlgError) as e:
+                data = view.modes(float(query.get("t", ["0"])[0]))
+            except Exception as e:  # noqa: BLE001  (shown on the page)
                 return self._send(json.dumps({"error": str(e)}).encode(), "application/json", 400)
-            return self._send(json.dumps(out).encode(), "application/json")
+            return self._send(json.dumps(data).encode(), "application/json")
+        if url == "/api/running.csv":
+            return self._send(view.partial(), "text/csv")
+        if url.startswith("/api/sweep/") and url.endswith(".csv"):
+            k = url[len("/api/sweep/"):-4]
+            path = view.sweep_csv(int(k)) if k.isdigit() else None
+            return self._file(path) if path else self._send(b"not found", "text/plain", 404)
+        if url.startswith("/api/runs/") and url.endswith(".csv"):
+            k = url[len("/api/runs/"):-4]
+            path = view.run_csv(int(k)) if k.isdigit() else None
+            return self._file(path) if path else self._send(b"not found", "text/plain", 404)
+        if url.startswith("/api/mesh/"):
+            k = url.rsplit("/", 1)[1].split(".")[0]
+            meshes = view.meshes
+            return self._file(meshes[int(k)]) if k.isdigit() and int(k) < len(meshes) else self._send(b"", "text/plain", 404)
+        path = (WEB / url.lstrip("/")).resolve()
+        if WEB not in path.parents:
+            return self._send(b"not found", "text/plain", 404)
+        return self._file(path)
 
-    return Handler
+    def view_post(self, view, path):
+        url = path.split("?", 1)[0]
+        n = int(self.headers.get("Content-Length") or 0)
+        if n > MAX_POST or self.headers.get("Origin", "").split("//")[-1] not in ("", self.headers.get("Host")):
+            return self._send(b"refused", "text/plain", 403)  # only the page of this server
+        try:
+            body = json.loads(self.rfile.read(n) or b"{}")
+            if url == "/api/overrides":
+                view.set_overrides(body, wait=False)
+                out = view.state()
+            elif url == "/api/modes":
+                out = view.preview_modes({str(k): float(v) for k, v in (body.get("overrides") or {}).items()},
+                                         float(body.get("t", 0.0)))
+            elif url == "/api/sweep":
+                if body.get("stop") or body.get("clear"):
+                    view.stop_sweep(clear=bool(body.get("clear")))
+                else:
+                    view.start_sweep(str(body["path"]), body["values"])
+                out = view.state()
+            elif url == "/api/locus":
+                values = [float(v) for v in body["values"]][:41]
+                out = view.locus(str(body["path"]), values, float(body.get("t", 0.0)))
+            elif url.startswith("/api/runs/"):
+                rid = int(url.rsplit("/", 1)[1])
+                if body.get("delete"):
+                    view.delete_run(rid)
+                else:
+                    view.set_reference(rid if body.get("reference", True) else None)
+                out = view.state()
+            elif url == "/api/notes":
+                out = notes.add_note(view.model_path, body.get("text", ""), body.get("context"), body.get("image"))
+            elif url.startswith("/api/notes/"):
+                nid = int(url.rsplit("/", 1)[1])
+                if body.get("delete"):
+                    notes.delete_note(view.model_path, nid)
+                    out = {}
+                else:
+                    out = notes.answer_note(view.model_path, nid, done=bool(body.get("done", True)))
+            else:
+                return self._send(b"not found", "text/plain", 404)
+        except (ValueError, KeyError, TypeError, RuntimeError, np.linalg.LinAlgError) as e:
+            return self._send(json.dumps({"error": str(e)}).encode(), "application/json", 400)
+        return self._send(json.dumps(out).encode(), "application/json")
+
+
+def _handler(view):
+    return type("Handler", (ViewHandler,), {"view": view})
 
 
 def serve(view, port=8765, open_browser=True):
