@@ -392,18 +392,19 @@ def check_iss_sources(iss, defines):
     missing = []
     for line in iss.read_text(encoding="utf-8").splitlines():
         m = re.match(r'\s*(?:Source:|LicenseFile=|InfoBeforeFile=|InfoAfterFile=)\s*"?([^";\r\n]+)"?', line)
-        if not m or "skipifsourcedoesntexist" in line:
+        w = re.match(r"\s*Wizard(?:Small)?ImageFile=([^;\r\n]+)", line)  # several files, comma separated
+        if (not m and not w) or "skipifsourcedoesntexist" in line:
             continue
-        raw = m.group(1).strip()
-        path = re.sub(r"\{#(\w+)\}", lambda k: defines.get(k.group(1), k.group(0)), raw).replace("\\", "/")
-        if "{" in path:
-            continue
-        p = Path(path) if Path(path).is_absolute() else iss.parent / path
-        if "*" in p.name:
-            if not p.parent.is_dir():
+        for raw in ([m.group(1).strip()] if m else [r.strip() for r in w.group(1).split(",")]):
+            path = re.sub(r"\{#(\w+)\}", lambda k: defines.get(k.group(1), k.group(0)), raw).replace("\\", "/")
+            if "{" in path:
+                continue
+            p = Path(path) if Path(path).is_absolute() else iss.parent / path
+            if "*" in p.name:
+                if not p.parent.is_dir():
+                    missing.append(raw)
+            elif not p.exists():
                 missing.append(raw)
-        elif not p.exists():
-            missing.append(raw)
     return missing
 
 

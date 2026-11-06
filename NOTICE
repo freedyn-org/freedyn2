@@ -11,6 +11,8 @@ Included third-party components:
   see its LICENSE and NOTICE.
   three.js r170 (MIT), generator/fdgen/view/web/vendor: 3D graphics of the viewer;
   see LICENSE-three.js there.
+  Inter and JetBrains Mono (SIL OFL 1.1), generator/fdgen/view/web/brand/fonts and docs/fonts:
+  the fonts of the app, the viewer and the documentation; see OFL-*.txt / LICENSE-*.txt there.
 
 The wheels (pip install freedyn2) also contain, as shared libraries next to the runtime
 programs (fdgen/bin) with their licenses in fdgen/licenses/suitesparse:
