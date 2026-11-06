@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+# Template (installer/winget/render.py fills {{...}}). One Inno Setup installer for both scopes:
+# per user by default, for all users with /ALLUSERS (it then asks for elevation itself).
+# ProductCode: the AppId of installer/windows/freedyn2.iss with Inno's suffix _is1.
+PackageIdentifier: FreeDynOrg.FreeDyn2
+PackageVersion: "{{VERSION}}"
+MinimumOSVersion: 10.0.17763.0
+InstallerType: inno
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+ProductCode: "{D4AF9686-2D82-4C9F-9F17-CFE1861260DA}_is1"
+ReleaseDate: "{{RELEASE_DATE}}"
+FileExtensions:
+  - fds
+Commands:
+  - freedyn2
+  - freedyn2-gui
+Installers:
+  - Architecture: x64
+    Scope: user
+    InstallerUrl: https://github.com/freedyn-org/freedyn2/releases/download/v{{VERSION}}/FreeDyn2-{{VERSION}}-setup.exe
+    InstallerSha256: "{{SHA256}}"
+    InstallerSwitches:
+      Custom: /CURRENTUSER
+  - Architecture: x64
+    Scope: machine
+    InstallerUrl: https://github.com/freedyn-org/freedyn2/releases/download/v{{VERSION}}/FreeDyn2-{{VERSION}}-setup.exe
+    InstallerSha256: "{{SHA256}}"
+    ElevationRequirement: elevatesSelf
+    InstallerSwitches:
+      Custom: /ALLUSERS
+ManifestType: installer
+ManifestVersion: 1.6.0

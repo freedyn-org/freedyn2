@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration "programs" (vars.SIGNPATH_CONFIG_PROGRAMS): FreeDyn 2.0's own
+     programs before they go into the installer. The GitHub artifact "programs-unsigned"
+     (.github/workflows/wheels.yml, job installer) is a zip with these paths, relative to the
+     installation directory. python.exe and the programs of the bundled packages keep the
+     signatures of their makers (or none) and are not signed as FreeDyn 2.0. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file-set>
+      <!-- the launchers (distlib stub with a zip appended; the signature goes after it) -->
+      <include path="bin/freedyn2.exe" />
+      <include path="bin/freedyn2-gui.exe" />
+      <include path="python/Scripts/freedyn2.exe" />
+      <include path="python/Scripts/freedyn2-gui.exe" />
+      <!-- the solver and the road tool -->
+      <include path="python/Lib/site-packages/fdgen/bin/freedyn2_run.exe" />
+      <include path="python/Lib/site-packages/fdgen/bin/freedyn2_road.exe" />
+      <for-each>
+        <authenticode-sign />
+      </for-each>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>

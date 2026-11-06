@@ -35,6 +35,11 @@ pip install freedyn2              # or with pip, into the current environment
 freedyn2 run model.yaml           # the command line: run, view, check, examples, mcp, compare
 ```
 
+On Windows also with the installer
+[`FreeDyn2-setup.exe`](https://github.com/freedyn-org/freedyn2/releases/latest/download/FreeDyn2-setup.exe)
+(per user, no administrator rights, no Python needed): the app, the command line on the PATH and
+a C compiler for model plugins (docs/releasing.md: how it is built).
+
 For assistants, without installing first (the MCP client starts it): `uvx freedyn2 mcp`, e.g.
 `claude mcp add freedyn2 -- uvx freedyn2 mcp`. Until the first release on PyPI, the wheels are
 the artifacts of the `Wheels` workflow (`pip install freedyn2-*.whl`).

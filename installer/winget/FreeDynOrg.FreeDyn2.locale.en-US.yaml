@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+# Template (installer/winget/render.py fills {{...}}).
+PackageIdentifier: FreeDynOrg.FreeDyn2
+PackageVersion: "{{VERSION}}"
+PackageLocale: en-US
+Publisher: The FreeDyn 2.0 contributors
+PublisherUrl: https://github.com/freedyn-org
+PublisherSupportUrl: https://github.com/freedyn-org/freedyn2/issues
+PackageName: FreeDyn 2.0
+PackageUrl: https://github.com/freedyn-org/freedyn2
+License: Apache-2.0
+LicenseUrl: https://github.com/freedyn-org/freedyn2/blob/main/LICENSE
+Copyright: Copyright 2026 The FreeDyn 2.0 contributors
+ShortDescription: Multibody dynamics with generated code; real-time solver, viewer, MCP server
+Description: |-
+  FreeDyn 2.0 simulates multibody systems (bodies, joints, forces, tires and roads) described in
+  YAML model files or legacy FreeDyn .fds files. The installer contains its own Python, the app
+  window, the 3D viewer, an MCP server for assistants and, optionally, a C compiler (Zig) for
+  model plugins.
+Moniker: freedyn2
+Tags:
+  - multibody
+  - dynamics
+  - simulation
+  - engineering
+  - physics
+  - mcp
+ReleaseNotesUrl: https://github.com/freedyn-org/freedyn2/releases/tag/v{{VERSION}}
+Documentations:
+  - DocumentLabel: Documentation
+    DocumentUrl: https://freedyn-org.github.io/freedyn2/
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
