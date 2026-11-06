@@ -321,13 +321,16 @@ def test_entry_points_and_icon():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert project["gui-scripts"]["freedyn2-gui"] == "fdgen.app:main"
     assert any(d.startswith("pywebview") for d in project["optional-dependencies"]["gui"])
-    from PIL import Image
+    import struct
 
     app_dir = ROOT / "generator" / "fdgen" / "app"
-    with Image.open(app_dir / "freedyn2.ico") as ico:
-        assert {(16, 16), (32, 32), (48, 48), (256, 256)} <= set(ico.info["sizes"])
-    with Image.open(app_dir / "freedyn2.png") as png:
-        assert png.size == (256, 256)
+    ico = (app_dir / "freedyn2.ico").read_bytes()  # ICONDIR, then one 16-byte entry per image
+    reserved, kind, count = struct.unpack_from("<HHH", ico)
+    assert (reserved, kind) == (0, 1)
+    sizes = {(ico[6 + 16 * i] or 256, ico[7 + 16 * i] or 256) for i in range(count)}  # 0 means 256
+    assert {(16, 16), (32, 32), (48, 48), (256, 256)} <= sizes
+    png = (app_dir / "freedyn2.png").read_bytes()  # signature, then IHDR: width, height
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", png[16:24]) == (256, 256)
     assert (app_dir / "freedyn2.svg").read_text(encoding="utf-8").startswith("<svg")
 
 
