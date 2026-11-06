@@ -299,7 +299,7 @@ jobs:
           cat notes.md
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
         with:
-          name: FreeDyn 2 ${{ needs.version.outputs.version }}
+          name: FreeDyn 2 version ${{ needs.version.outputs.version }}
           body_path: notes.md
           generate_release_notes: true
           prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
