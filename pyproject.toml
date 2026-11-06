@@ -6,7 +6,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "freedyn2"
-version = "0.1.0rc2"
+version = "0.1.0rc3"
 description = "freedyn2: multibody dynamics with generated code; real-time solver, viewer, MCP server"
 readme = "README.md"
 requires-python = ">=3.10"
