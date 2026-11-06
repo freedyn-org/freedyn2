@@ -77,7 +77,8 @@ async function reportBrand() {
 }
 
 export class Panels {
-  // v: {static, area, state, viewImage, showMode, stopMode, select, setTime, render, model(), results()}
+  // v: {static, area, state, viewImage, showMode, stopMode, select, setTime, render, model(), results(),
+  //     fileDirty(), saveFile(), discardFile() (the editor of the model file)}
   constructor(v) {
     this.v = v;
     this.overrides = {};  // as the server has them (the values of the current run)
@@ -283,28 +284,36 @@ export class Panels {
     const box = $("state"), s = this.server;
     if (!box || !s || this.v.static) return;
     box.hidden = false;
-    const dirty = this.dirty(), running = s.status === "simulating", failed = s.status === "error";
-    const kind = dirty ? "pending" : running ? "running" : failed ? "failed" : "current";
+    // not computed: tuned values (Enter computes them), or the model file changed in the editor
+    // and not saved (Ctrl+S saves and simulates); the tuned values first
+    const dirty = this.dirty(), file = !dirty && !!(this.v.fileDirty && this.v.fileDirty());
+    const running = s.status === "simulating", failed = s.status === "error";
+    const kind = dirty || file ? "pending" : running ? "running" : failed ? "failed" : "current";
     const was = document.body.className;
-    document.body.classList.toggle("stale", dirty || running);
-    document.body.classList.toggle("running", running && !dirty);
+    document.body.classList.toggle("stale", dirty || file || running);
+    document.body.classList.toggle("running", running && !dirty && !file);
     if (document.body.className !== was) this.v.render();  // the 3D view with its new filter
     $("stale-note").textContent = dirty ? "results of the values before · Enter computes"
-      : "computing … the curves grow";
+      : file ? "results of the saved file · Ctrl+S saves and computes" : "computing … the curves grow";
     const n = dirty ? Object.keys(diff(this.pending, this.overrides)).length : 0;
     const p = s.progress, pct = running && p && p.end > 0 ? Math.min(100, Math.round((100 * p.t) / p.end)) : 0;
-    const key = `${kind}|${n}|${pct}|${!!p}`;
+    const key = `${kind}|${file}|${n}|${pct}|${!!p}`;
     if (this.stateKey === key) return;
     this.stateKey = key;
     box.className = kind;
     box.innerHTML = '<span class="dot"></span>' + (
       dirty ? `<span>${n} change${n > 1 ? "s" : ""} not computed</span><button class="go" title="Enter">Compute ⏎</button>` +
         '<button class="discard" title="back to the values of the current run">discard</button>'
+      : file ? '<span>model file not saved</span><button class="go" title="Ctrl+S">Save &amp; compute</button>' +
+        '<button class="discard" title="back to the saved file">discard</button>'
       : running ? (p ? `<span>computing ${pct} %</span><span class="bar" style="width:${pct}%"></span>` : "<span>preparing model …</span>")
       : failed ? '<span>error</span>' : "<span>up to date</span>");
     if (dirty) {
       box.querySelector(".go").addEventListener("click", () => this.compute());
       box.querySelector(".discard").addEventListener("click", () => this.edit({ ...this.overrides }));
+    } else if (file) {
+      box.querySelector(".go").addEventListener("click", () => this.v.saveFile());
+      box.querySelector(".discard").addEventListener("click", () => this.v.discardFile());
     }
     this.v.area.draw();  // faded or not
   }

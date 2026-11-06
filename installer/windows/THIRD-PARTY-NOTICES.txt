@@ -46,9 +46,12 @@ Python packages
 
 In python\Lib\site-packages; the license texts are in each package's .dist-info directory.
 
-- CasADi: LGPL-3.0-or-later. Symbolic derivatives and code generation. The CasADi package contains
-  further solvers and libraries (IPOPT, MUMPS, CBC/CLP, HiGHS, SUNDIALS, OpenBLAS, the MinGW-w64
-  GCC runtime, ...), each under its own license: casadi\include\licenses.
+- CasADi: LGPL-3.0-or-later. Symbolic derivatives and code generation. Installed is its core
+  (casadi\libcasadi.dll and the Python module, unchanged from the CasADi package on PyPI) with the
+  MinGW-w64 GCC runtime it needs (libstdc++, libgcc: GPL-3.0 with the GCC Runtime Library
+  Exception; libwinpthread: MIT and BSD); the solver plugins of the package (IPOPT, HiGHS, OpenBLAS,
+  ...) are left out, freedyn2 does not use them. Licenses: casadi\include\licenses (CasADi:
+  casadi\include\licenses\casadi\LICENSE).
 - NumPy: BSD-3-Clause (with bundled OpenBLAS: BSD-3-Clause, and others).
 - PyYAML: MIT.
 - jsonschema: MIT.
@@ -66,12 +69,11 @@ C compiler
 Component "C compiler", in python\Lib\site-packages\ziglang.
 
 - Zig (ziglang): MIT. License: ziglang\LICENSE.
-  Zig ships C libraries and headers for its targets under their own licenses: musl (MIT), MinGW-w64
-  (ZPL-2.1, parts public domain, BSD, LGPL), glibc headers (LGPL-2.1 and others), wasi-libc
-  (Apache-2.0 WITH LLVM-exception, MIT), LLVM libc++, libc++abi, libunwind, libtsan (Apache-2.0
-  WITH LLVM-exception), FreeBSD libc headers (BSD). Their licenses: ziglang\lib\libc\*\COPYING,
-  COPYRIGHT, LICENSE*, and ziglang\lib\*\LICENSE.TXT. Model plugins compiled with it link only what
-  the model needs.
+  Installed are its C libraries and headers for Windows (the target of model plugins), under their
+  own licenses: MinGW-w64 (ZPL-2.1, parts public domain, BSD, LGPL), LLVM libc++, libc++abi,
+  libunwind, libtsan (Apache-2.0 WITH LLVM-exception). Their licenses: ziglang\lib\libc\mingw\COPYING
+  and ziglang\lib\*\LICENSE.TXT. Those of the other targets (glibc, musl, wasi-libc, macOS, BSDs)
+  are left out. Model plugins compiled with it link only what the model needs.
 
 Uninstalling
 ------------

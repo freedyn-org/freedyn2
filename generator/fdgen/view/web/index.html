@@ -47,7 +47,7 @@ header .model { color: var(--muted); }
 /* compute state: current (green), values changed but not computed (amber), computing (blue), error (red) */
 :root { --ok: #2b8a3e; --pending: #e67700; --running: var(--fd-accent); --failed: #d9480f; }
 #state { display: flex; align-items: center; gap: 8px; padding: 3px 4px 3px 10px; border-radius: 2px; font-weight: 500;
-  border: 1px solid var(--line); white-space: nowrap; position: relative; overflow: hidden; }
+  border: 1px solid var(--line); white-space: nowrap; position: relative; overflow: hidden; flex: none; }
 #state .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); flex: none; }
 #state.pending { border-color: var(--pending); color: var(--pending); background: color-mix(in srgb, var(--pending) 10%, transparent); }
 #state.pending .dot { background: var(--pending); }

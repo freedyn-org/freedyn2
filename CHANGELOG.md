@@ -18,9 +18,17 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 - The viewer's report (Report) in the brand: ink on paper, JetBrains Mono and the word mark,
   still one HTML file.
+- Windows installer much smaller: CasADi without its solver plugins (IPOPT, HiGHS, OpenBLAS, ...,
+  which freedyn2 never uses) and Zig with the C libraries for Windows only. The core goes from
+  about 380 to 165 MB, the C compiler from about 380 to 320 MB. The build checks that CasADi
+  still generates code and that Zig still compiles a DLL.
 
 ### Fixed
 
+- Viewer: unsaved changes in the editor showed *up to date* in the header. The header now
+  shows *model file not saved* with *Save & compute* and *discard*, and the results fade as for
+  tuned values not computed. The compute state in the header is no longer cut off when the path of
+  the model is long.
 - Windows installer: an upgrade from 0.1.0rc1 or rc2 removes the old start menu folder
   *FreeDyn 2* (with the shortcuts rc2 had put into it) and the old desktop icon; the entries are
   then only in the folder *freedyn2*.

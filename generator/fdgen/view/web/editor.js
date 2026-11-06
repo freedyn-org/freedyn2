@@ -523,7 +523,17 @@ export class ModelEditor {
     this.view.dispatch({ effects: relint.of(null) });
   }
 
+  discard() {
+    // back to the saved text of the file
+    this.setText(this.saved, this.stamp, true);
+    this.status();
+  }
+
   status(text) {
+    if (this.dirty !== this.wasDirty) {  // the viewer's header shows it too (not saved: results stale)
+      this.wasDirty = this.dirty;
+      if (this.o.onDirty) this.o.onDirty(this.dirty);
+    }
     const s = this.o.head;
     s.textContent = text || (!this.editable ? "read-only" : this.dirty ? "● not saved · ctrl+s saves and simulates" : "saved");
     s.classList.toggle("dirty", this.editable && this.dirty && !text);
