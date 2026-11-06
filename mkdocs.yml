@@ -69,6 +69,7 @@ nav:
   - Coming from Adams: from-adams.md
   - Examples: examples.md
   - Command line: cli.md
+  - Python API: python-api.md
   - For developers:
       - How the solver works: how-it-works.md
       - Architecture: architecture.md

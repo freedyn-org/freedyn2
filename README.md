@@ -83,6 +83,18 @@ build/freedyn2_run out/free_body.fdm -o free_body.csv [--alpha A] [--step H] [--
                    [--end-time T] [--linear-solver klu|sparselu|dense] [--step-log FILE]
 ```
 
+## Python API
+
+```python
+import freedyn2
+r = freedyn2.run("examples/forced_oscillator.yaml", end_time=2, params={"k": 400})
+r.t, r["mass.R_z"], r.to_pandas()                    # numpy arrays; pandas if installed
+runs = freedyn2.sweep("examples/forced_oscillator.yaml", "k", [100, 200, 400])
+```
+
+`freedyn2.load`, `run`, `check`, `sweep`, `examples`: the steps of `freedyn2 run`, with
+exceptions instead of messages (`generator/freedyn2`, [`docs/python-api.md`](docs/python-api.md)).
+
 ## Viewer
 
 ```sh
@@ -419,6 +431,7 @@ affected models, not the architecture adapted. CI runs both levels when the repo
 | path | content |
 |---|---|
 | `generator/fdgen/` | generator, `.fds` importer (`fds/`), `freedyn2` command line (`cli.py`), viewer (`view/`) |
+| `generator/freedyn2/` | Python API (`import freedyn2`) |
 | `runtime/` | C++ runtime and `freedyn2_run` |
 | `schema/model.schema.json` | JSON Schema of the YAML input |
 | `examples/` | YAML models; `compare/*.fds` models compared with legacy FreeDyn; `data/` spline tables |
