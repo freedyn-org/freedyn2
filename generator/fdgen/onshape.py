@@ -309,14 +309,32 @@ def _clusters(asm):
     return {p: ("ground" if find(p) == ground else find(p)) for p in asm.parts}
 
 
-def _ident(name, taken):
-    base = IDENT.sub("_", name.split(" / ")[-1]).strip("_").lower() or "part"
-    if base[0].isdigit():
-        base = f"part_{base}"
-    out, k = base, 2
-    while out in taken or out == "ground":
-        out, k = f"{base}_{k}", k + 1
-    taken.add(out)
+def _ident(segments):
+    out = "_".join(x for x in (IDENT.sub("_", seg).strip("_").lower() for seg in segments) if x) or "part"
+    return f"part_{out}" if out[0].isdigit() else out
+
+
+def _names(full_names, reserved=("ground",)):
+    """Identifiers of Onshape names ("sub-assembly <1> / part <2>"): the part's own name where it
+    is unique, the names of its sub-assemblies in front where it is not (arm_assembly_1_upper_arm_1),
+    a number at the end only if even the whole path is not unique."""
+    paths = [n.split(" / ") for n in full_names]
+    depth = [1] * len(paths)
+    while True:
+        names = [_ident(p[-d:]) for p, d in zip(paths, depth)]
+        clash = {n for n in names if names.count(n) > 1 or n in reserved}
+        grow = [k for k, n in enumerate(names) if n in clash and depth[k] < len(paths[k])]
+        if not grow:
+            break
+        for k in grow:
+            depth[k] += 1
+    out, taken = [], set(reserved)
+    for n in names:
+        m, k = n, 2
+        while m in taken:
+            m, k = f"{n}_{k}", k + 1
+        taken.add(m)
+        out.append(m)
     return out
 
 
@@ -349,12 +367,16 @@ def build_model(asm, name="onshape_model", mesh_dir=None):
     members = {}
     for p, c in cluster.items():
         members.setdefault(c, []).append(p)
-    taken, body_of, bodies, groups = set(), {}, {}, {}
+    body_of, bodies, groups = {}, {}, {}
     warnings = [f"{n}: {why}, not imported" for n, why in asm.unsupported]
     massless = []
-    for c, paths in sorted(members.items(), key=lambda kv: (kv[0] != "ground", min(kv[1]))):
+    order = sorted(members.items(), key=lambda kv: (kv[0] != "ground", min(kv[1])))
+    moving = [c for c, _ in order if c != "ground"]  # named after their heaviest part
+    names = dict(zip(moving, _names([max((asm.parts[p] for p in members[c]), key=lambda p: p.mass).name
+                                     for c in moving])), ground="ground")
+    for c, paths in order:
         parts = [asm.parts[p] for p in paths]
-        bname = "ground" if c == "ground" else _ident(max(parts, key=lambda p: p.mass).name, taken)
+        bname = names[c]
         body_of.update((p, bname) for p in paths)
         groups[bname] = paths
         body = bodies[bname] = {}
@@ -371,7 +393,7 @@ def build_model(asm, name="onshape_model", mesh_dir=None):
     if massless:
         raise ModelError("no mass (assign a material in Onshape, or fasten them to a part with mass): "
                          + "; ".join(massless))
-    joints, jtaken = {}, set()
+    joints = []
     for mate in asm.mates:
         if mate.mate_type == RIGID:
             continue
@@ -400,7 +422,8 @@ def build_model(asm, name="onshape_model", mesh_dir=None):
         j["orientation"] = euler_parameters(F[:3, :3]).tolist()
         if fix:
             j["fix"] = fix
-        joints[_ident(mate.name, jtaken)] = j
+        joints.append((mate.name, j))
+    joints = dict(zip(_names([n for n, _ in joints]), (j for _, j in joints)))
     ground = bodies.pop("ground", {})
     model = {"model": name, "gravity": [0.0, 0.0, -9.81], "bodies": bodies}
     if ground.get("shapes"):

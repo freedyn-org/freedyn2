@@ -224,3 +224,11 @@ def test_record(tmp_path):
         onshape.import_onshape(URL, tmp_path, client=Client(asm, mass), record=tmp_path / "rec")
     saved = sorted((tmp_path / "rec").glob("*.json"))
     assert len(saved) == 4 and '"Rod <1>"' in saved[1].read_text()
+
+
+def test_names():
+    """A part name used in several sub-assemblies gets their names in front; unique names stay short."""
+    assert onshape._names(["arm <2> / upper_arm <1>", "arm <3> / upper_arm <1>", "arm <1> / upper_arm <1>",
+                           "tool_base <1>", "Ground", "4 bolt"]) == [
+        "arm_2_upper_arm_1", "arm_3_upper_arm_1", "arm_1_upper_arm_1", "tool_base_1", "ground_2", "part_4_bolt"]
+    assert onshape._names(["x <1>", "a / x <1>"]) == ["x_1", "a_x_1"]
