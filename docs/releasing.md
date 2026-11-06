@@ -67,6 +67,13 @@ version tags: first freedyn2's own programs that go into the installer (`freedyn
 token these steps are skipped and the installer is unsigned. The Inno Setup uninstaller
 (`unins000.exe`) remains unsigned in this setup.
 
+!!! note "Status (November 2026)"
+    Releases are unsigned. The SignPath Foundation declined the first application: the program
+    needs public signals of adoption (stars, forks, contributors, independent references,
+    institutional backing) that freedyn2 does not have yet; a new application is welcome once it
+    has them. Until then: unsigned releases with `SHA256SUMS` (docs/download.md), or a paid signer
+    below (a SignPath subscription uses the same workflow steps).
+
 **SignPath Foundation** ([signpath.org](https://signpath.org)) signs open-source projects free of
 charge with its own certificate; the publisher shown is then "SignPath Foundation", and the
 signature attests that the file was built from the project's repository. Requirements (check
