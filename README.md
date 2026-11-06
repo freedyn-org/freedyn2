@@ -40,9 +40,10 @@ For assistants, without installing first (the MCP client starts it): `uvx freedy
 the artifacts of the `Wheels` workflow (`pip install freedyn2-*.whl`).
 
 Models with expression forces or drivers are compiled into a model plugin: they need a C
-compiler (Linux: gcc or clang; Windows: Visual Studio Build Tools in a developer prompt, or
-MinGW-w64 gcc on the PATH). Library elements (bodies, joints, springs, bushings, tires, ...) need
-none.
+compiler (Linux: gcc or clang; Windows: Visual Studio Build Tools, found without a developer
+prompt, or MinGW-w64 gcc on the PATH; anywhere: `pip install freedyn2[compiler]` brings zig).
+Library elements (bodies, joints, springs, bushings, tires, ...) need none. `freedyn2 doctor`
+shows which compiler is used, `freedyn2 config compiler ...` picks one (docs/cli.md).
 
 ## Build and test
 
@@ -260,6 +261,7 @@ which an assistant builds and examines models: it writes the YAML file and calls
 | `sweep` | variant study: one number over several values, simulated in parallel; a key figure of channels per value |
 | `notes`, `note_image`, `answer_note` | what the person wrote in the viewer (with context and picture); the answer |
 
+Installed: `freedyn2 setup-mcp` registers it with Claude Desktop and Claude Code.
 Claude Code: `claude mcp add freedyn2 -- uvx freedyn2 mcp` (or `-- freedyn2 mcp` if installed).
 Claude Desktop (`claude_desktop_config.json`):
 

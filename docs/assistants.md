@@ -7,6 +7,18 @@ opens the viewer for you and reads the notes you leave there. You check and deci
 
 ## Connect it
 
+With FreeDyn installed, one command registers it with Claude Desktop and Claude Code:
+
+```sh
+freedyn2 setup-mcp                          # both; --client claude-desktop or claude-code for one
+freedyn2 setup-mcp --remove                 # unregister
+```
+
+It adds `freedyn2` to `claude_desktop_config.json` (keeping everything else in it, with a
+backup) and runs `claude mcp add` if Claude Code is on the PATH (else it prints the command).
+Restart Claude Desktop afterwards. `freedyn2 doctor` shows whether it is registered. The
+Windows installer does this for Claude Desktop. By hand:
+
 === "Claude Code"
 
     ```sh

@@ -6,6 +6,8 @@
   freedyn2 mcp                                           (MCP server for assistants, fdgen.mcp_server)
   freedyn2 examples [name [-o dir]]                     (list the examples, copy one)
   freedyn2 compare model.fds ... --legacy <FreeDyn>     (legacy/benchmark.py, see there)
+  freedyn2 setup-mcp [--client claude-desktop|claude-code|all] [--remove] [--dry-run]  (fdgen.mcp_setup)
+  freedyn2 config [key [value]] | freedyn2 doctor     (fdgen.doctor)
 
 `run` imports the model, writes the runtime model file (.fdm) and, for models with expression
 forces or drivers, compiles the model plugin; then it runs the runtime `freedyn2_run`. Building
@@ -213,6 +215,15 @@ def main(argv=None):
     e.add_argument("name", nargs="?")
     e.add_argument("-o", "--output", help="directory to copy it to (default: the current one)")
     sub.add_parser("compare", help="legacy FreeDyn against FreeDyn 2.0 (see freedyn2 compare -h)")
+    s = sub.add_parser("setup-mcp", help="register the MCP server with Claude Desktop / Claude Code")
+    s.add_argument("--client", choices=("claude-desktop", "claude-code", "all"), default="all")
+    s.add_argument("--remove", action="store_true", help="unregister it")
+    s.add_argument("--dry-run", action="store_true", help="only show what would change")
+    g = sub.add_parser("config", help="show or set the user configuration (freedyn2 config compiler zig)")
+    g.add_argument("key", nargs="?")
+    g.add_argument("value", nargs="?")
+    g.add_argument("--unset", action="store_true", help="remove the key")
+    sub.add_parser("doctor", help="what this installation finds: runtime, compiler, directories, MCP")
     k = argv.index("--") if "--" in argv else len(argv)
     args = ap.parse_args(argv[:k])
     args.options = argv[k + 1:]
@@ -221,6 +232,14 @@ def main(argv=None):
             from .mcp_server import serve
 
             return serve(args.workdir)
+        if args.command == "setup-mcp":
+            from .mcp_setup import setup_mcp
+
+            return setup_mcp(args.client, args.remove, args.dry_run)
+        if args.command in ("config", "doctor"):
+            from . import doctor
+
+            return doctor.doctor() if args.command == "doctor" else doctor.config(args.key, args.value, args.unset)
         return {"view": view, "check": check, "examples": examples}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)

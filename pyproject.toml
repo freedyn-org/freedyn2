@@ -26,6 +26,7 @@ freedyn2 = "fdgen.cli:main"
 [project.optional-dependencies]
 test = ["pytest"]
 screenshots = ["playwright"]  # the MCP tool screenshot (also: playwright install chromium)
+compiler = ["ziglang"]  # a C compiler for model plugins (zig cc), found when no other one is (fdgen.plugin)
 
 [tool.scikit-build]
 minimum-version = "build-system.requires"
