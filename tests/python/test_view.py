@@ -209,7 +209,7 @@ def test_server_api_and_reload(tmp_path):
         csv_text = get(base + "api/results.csv").decode()
         assert csv_text.startswith("t,rod.R_x")
         assert b"Three.js Authors" in get(base + "vendor/three.module.min.js")[:200]
-        assert b"FreeDyn 2 Viewer" in get(base)
+        assert b"freedyn2 viewer" in get(base)
         with pytest.raises(urllib.error.HTTPError):
             get(base + "../../model.py")
         time.sleep(0.05)
@@ -238,6 +238,9 @@ def test_export_is_one_file(tmp_path):
     html = page.read_text()
     assert "window.FD_STATIC" in html and "importmap" in html
     assert 'src="./' not in html and "vendor/" not in html.split("window.FD_STATIC")[0]
+    head = html.split("window.FD_STATIC")[0]
+    assert 'href="./' not in head and 'srcset="./' not in head and "url(./" not in head  # styles, fonts, logo inside
+    assert "--fd-ink" in head and "font/woff2" in head and "image/svg+xml" in head
     data = json.loads(html.split("window.FD_STATIC = ", 1)[1].split(";</script>", 1)[0].replace("<\\/", "</"))
     assert data["scene"]["model"] == "p" and data["csv"].startswith("t,rod.R_x")
 
@@ -503,3 +506,20 @@ def test_sweep_in_the_viewer(tmp_path):
             get(base + "api/sweep/0.csv")
     finally:
         httpd.shutdown()
+
+
+def test_brand_files_of_the_viewer_are_the_brand():
+    """The viewer carries copies of brand/ (the wheel has no brand/): the same bytes."""
+    web = server.WEB / "brand"
+    for name in ("tokens.css", "lockup-small-light.svg", "lockup-small-dark.svg", "favicon.svg"):
+        source = ROOT / "brand" / (name if name == "tokens.css" else f"logo/{name}")
+        assert (web / name).read_bytes() == source.read_bytes(), f"{web / name}: copy {source} again"
+
+
+def test_state_names_the_agent(tmp_path):
+    model = tmp_path / "p.yaml"
+    write_pendulum(model)
+    view = server.View(model, run=False)
+    assert view.state()["agent"] is None  # freedyn2 view: no MCP client
+    view.agent = {"name": "claude-code"}
+    assert view.state()["agent"] == {"name": "claude-code"}

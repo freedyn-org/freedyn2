@@ -45,3 +45,10 @@ def test_key_tables_come_from_the_schema():
     for name in markers:
         table = hooks().table(name, schema)
         assert table.startswith("| key |") and table.count("\n") > 2, name
+
+
+def test_brand_files_of_the_docs_are_the_brand():
+    """docs/assets/brand holds copies of brand/ (MkDocs serves only docs/): the same bytes."""
+    for name in ("tokens.css", "lockup-small-dark.svg", "favicon.svg"):
+        source = ROOT / "brand" / (name if name == "tokens.css" else f"logo/{name}")
+        assert (DOCS / "assets" / "brand" / name).read_bytes() == source.read_bytes(), f"copy {source} again"

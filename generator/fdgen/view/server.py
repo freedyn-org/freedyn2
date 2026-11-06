@@ -31,6 +31,7 @@ each value of one tuned number (root locus), likewise about the state of the cur
 import base64
 import json
 import mimetypes
+import re
 import shutil
 import subprocess
 import tempfile
@@ -100,6 +101,7 @@ class View:
         self._lock = threading.Lock()
         self._building = threading.Lock()  # one rebuild at a time
         self._symbolic = threading.Lock()  # CasADi model building: one thread at a time
+        self.agent = None  # {"name": client}: the MCP client whose session serves this viewer (mcp_server)
 
     def road_tool(self):
         if self.runtime is None:
@@ -421,7 +423,7 @@ class View:
                     "model_file": str(self.model_path), "scene": self.scene is not None, "results": self.csv is not None,
                     "runs": runs, "current": self.current, "reference": self.reference,
                     "progress": self.progress() if self.status == "simulating" else None,
-                    "overrides": self.overrides, "notes": notes.stamp(self.model_path),
+                    "overrides": self.overrides, "notes": notes.stamp(self.model_path), "agent": self.agent,
                     "sweep": None if self.sweep is None else {**self.sweep, "results": list(self.sweep["results"])}}
 
     def watch(self, stop):
@@ -580,12 +582,28 @@ def serve(view, port=8765, open_browser=True):
     return 0
 
 
+def _data_uri(path):
+    ctype = {".svg": "image/svg+xml", ".woff2": "font/woff2"}.get(path.suffix, "application/octet-stream")
+    return f"data:{ctype};base64," + base64.b64encode(path.read_bytes()).decode()
+
+
+def inline_assets(html):
+    """The page with its style sheets, fonts and brand images inside (for one HTML file)."""
+    def sheet(m):
+        css = (WEB / m.group(1)).read_text(encoding="utf-8")
+        css = re.sub(r"url\(\./([\w/.-]+)\)", lambda u: f"url({_data_uri(WEB / u.group(1))})", css)
+        return f"<style>\n{css}</style>"
+
+    html = re.sub(r'<link rel="stylesheet" href="\./([\w/.-]+)">', sheet, html)
+    return re.sub(r'(src|srcset|href)="\./(brand/[\w.-]+\.svg)"', lambda m: f'{m.group(1)}="{_data_uri(WEB / m.group(2))}"', html)
+
+
 def export(view, path):
     """One HTML file with the viewer, three.js, the scene, the results and the meshes."""
     view.rebuild()
     if view.error:
         raise RuntimeError(view.error)
-    html = (WEB / "index.html").read_text(encoding="utf-8")
+    html = inline_assets((WEB / "index.html").read_text(encoding="utf-8"))
     data = {"scene": view.scene, "csv": Path(view.csv).read_text(encoding="utf-8") if view.csv else "",
             "meshes": {f"api/mesh/{k}{m.suffix.lower()}": base64.b64encode(m.read_bytes()).decode()
                        for k, m in enumerate(view.meshes)}}
