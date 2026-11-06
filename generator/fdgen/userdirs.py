@@ -1,4 +1,4 @@
-"""Where FreeDyn 2 keeps per-user files, and the user configuration.
+"""Where freedyn2 keeps per-user files, and the user configuration.
 
   config_dir()  settings (config.json)      Windows %APPDATA%\\freedyn2, else $XDG_CONFIG_HOME/freedyn2
   data_dir()    state (recent models, ...)  Windows %LOCALAPPDATA%\\freedyn2, else $XDG_DATA_HOME/freedyn2

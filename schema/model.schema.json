@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/freedyn-org/freedyn2/schema/model.schema.json",
-  "title": "FreeDyn 2 model",
-  "description": "Bodies, joints, forces, measures, drivers, road and solver settings of a FreeDyn 2 model (docs/architecture.md). Shapes are for the viewer only.",
+  "title": "freedyn2 model",
+  "description": "Bodies, joints, forces, measures, drivers, road and solver settings of a freedyn2 model (docs/architecture.md). Shapes are for the viewer only.",
   "type": "object",
   "required": ["model", "bodies", "solver"],
   "additionalProperties": false,

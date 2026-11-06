@@ -1,4 +1,4 @@
-// Acceptance tests of the FreeDyn 2 runtime on generated models.
+// Acceptance tests of the freedyn2 runtime on generated models.
 // Usage: fd_tests <test>. Each test prints "RESULT <test> <metric> <value> tol <tol> ok|FAIL" and
 // fails if any of its metrics exceeds its tolerance.
 

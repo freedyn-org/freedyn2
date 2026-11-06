@@ -1,4 +1,4 @@
-"""FreeDyn 2 for assistants: an MCP server (freedyn2 mcp, stdio).
+"""freedyn2 for assistants: an MCP server (freedyn2 mcp, stdio).
 
 An assistant writes the model file (YAML), and through these tools validates and checks it,
 simulates it, reads and compares results, and looks at it (viewer in the browser for the person,
@@ -31,7 +31,7 @@ MAX_TABLE_POINTS = 500
 NOISE = 1e-10  # absolute differences below this (and below 1e-9 of the values) are round-off
 
 CONVENTIONS = """\
-# FreeDyn 2 models: how to write them
+# freedyn2 models: how to write them
 
 A model is a YAML file (JSON Schema: tool `schema`). Units are SI (m, kg, s, N, rad).
 All geometry is given GLOBALLY AT t = 0: body positions (center of mass), points of forces,
@@ -404,12 +404,12 @@ def serve(workdir=None):
             raise SystemExit("freedyn2 mcp needs the MCP SDK: pip install mcp") from None
     session = Session(workdir)
     mcp = MCPServer("freedyn2", instructions=(
-        "FreeDyn 2 multibody simulation. Call guide first; write models as YAML files; validate, simulate, "
+        "freedyn2 multibody simulation. Call guide first; write models as YAML files; validate, simulate, "
         "check and compare runs; open the viewer for the person (view) or look yourself (screenshot)."))
 
     @mcp.tool()
     def guide() -> str:
-        """How to write a FreeDyn 2 model: conventions, element keys, an example, the workflow. Read first."""
+        """How to write a freedyn2 model: conventions, element keys, an example, the workflow. Read first."""
         return session.guide()
 
     @mcp.tool()

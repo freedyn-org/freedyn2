@@ -45,7 +45,7 @@ DOCS = "https://freedyn-org.github.io/freedyn2/"
 MODEL_SUFFIXES = (".yaml", ".yml", ".fds")
 PREFERRED_PORT = 8767  # a fixed origin keeps the viewer's settings (local storage) between starts
 IDLE_SECONDS = 180  # browser mode: no page asked for so long -> the app ends (tabs closed)
-TITLE = "FreeDyn 2"  # the version: start page, freedyn2 --version
+TITLE = "freedyn2"  # the version: start page, freedyn2 --version
 
 log = logging.getLogger("freedyn2.app")
 
@@ -67,7 +67,7 @@ def documents_dir():
 
 
 def examples_dir():
-    return documents_dir() / "FreeDyn2"
+    return documents_dir() / "freedyn2"
 
 
 def list_examples():
@@ -155,7 +155,7 @@ class App:
     def check_updates(self):
         def found(r):
             self.update = r
-            log.info("FreeDyn 2 version %s is available", r["latest"])
+            log.info("freedyn2 %s is available", r["latest"])
 
         return update.check_in_background(found)
 
@@ -300,8 +300,8 @@ def _handler(app):
         def _page(self):
             """The viewer's page with the app shell: title, icon, shell.js."""
             html = (view_server.WEB / "index.html").read_text(encoding="utf-8")
-            name = self._entry["path"].name if self._entry else "FreeDyn 2"
-            html = html.replace("<title>FreeDyn 2 Viewer</title>", f"<title>{_esc(name)} - {TITLE}</title>", 1)
+            name = self._entry["path"].name if self._entry else "freedyn2"
+            html = html.replace("<title>freedyn2 Viewer</title>", f"<title>{_esc(name)} - {TITLE}</title>", 1)
             html = html.replace('<link rel="icon" href="data:,">', '<link rel="icon" href="/app/freedyn2.png">', 1)
             html = html.replace("</body>", '<script src="/app/shell.js"></script>\n</body>', 1)
             self._send(html.encode("utf-8"), "text/html; charset=utf-8")

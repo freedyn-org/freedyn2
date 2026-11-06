@@ -1,13 +1,13 @@
-FreeDyn 2 for Windows: licenses
+freedyn2 for Windows: licenses
 =================================
 
-FreeDyn 2
-  Copyright 2026 The FreeDyn 2 contributors. Licensed under the Apache License, Version 2.0
+freedyn2
+  Copyright 2026 The freedyn2 contributors. Licensed under the Apache License, Version 2.0
   (LICENSE.txt in the installation directory, https://www.apache.org/licenses/LICENSE-2.0).
-  See NOTICE.txt. Code that FreeDyn 2 generates from your models (C sources and compiled model
+  See NOTICE.txt. Code that freedyn2 generates from your models (C sources and compiled model
   plugins) belongs to you and is not subject to this license.
 
-This installer contains FreeDyn 2 together with a private Python and the components below.
+This installer contains freedyn2 together with a private Python and the components below.
 Each keeps its own license; the license texts are installed with them (paths relative to the
 installation directory). licenses\python-packages.txt lists every bundled Python package with
 its version and license, generated from the packages' metadata when the installer was built.
@@ -19,7 +19,7 @@ Python 3.12 (CPython, build of python-build-standalone)
   The Python build contains further libraries under their own permissive licenses (OpenSSL:
   Apache-2.0, zlib, libffi: MIT, SQLite: public domain, ...), listed in that file.
 
-Components of FreeDyn 2 (in the freedyn2 package, python\Lib\site-packages\fdgen)
+Components of freedyn2 (in the freedyn2 package, python\Lib\site-packages\fdgen)
 --------------------------------------------------------------------------------
 SuiteSparse KLU and BTF            LGPL-2.1-or-later  sparse LU factorization of the solver
 SuiteSparse AMD, COLAMD, config    BSD-3-Clause

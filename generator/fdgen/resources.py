@@ -1,4 +1,4 @@
-"""Data files of FreeDyn 2: in an installed package next to the modules (fdgen/schema,
+"""Data files of freedyn2: in an installed package next to the modules (fdgen/schema,
 fdgen/examples, fdgen/bin: put there by the wheel build), in the repository at its top level."""
 
 from pathlib import Path

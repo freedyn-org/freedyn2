@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SignPath artifact configuration "installer" (vars.SIGNPATH_CONFIG_INSTALLER): the Inno Setup
-     installer FreeDyn2-<version>-setup.exe, the only file of the GitHub artifact "installer-unsigned".
+     installer freedyn2-<version>-setup.exe, the only file of the GitHub artifact "installer-unsigned".
      Its programs were signed before (programs.xml); SignPath cannot look inside an Inno installer. -->
 <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
   <zip-file>
     <pe-file-set>
-      <include path="FreeDyn2-*-setup.exe" />
+      <include path="freedyn2-*-setup.exe" />
       <for-each>
         <authenticode-sign />
       </for-each>

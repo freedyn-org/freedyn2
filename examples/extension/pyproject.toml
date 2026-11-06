@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "freedyn2-drag"
 version = "0.1.0"
-description = "Example extension of FreeDyn 2: air drag at a point"
+description = "Example extension of freedyn2: air drag at a point"
 requires-python = ">=3.10"
 dependencies = ["freedyn2"]
 

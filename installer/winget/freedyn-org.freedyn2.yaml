@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.6.0.schema.json
 # Template (installer/winget/render.py fills {{...}}); the package identifier needs confirmation.
-PackageIdentifier: FreeDynOrg.FreeDyn2
+PackageIdentifier: freedyn-org.freedyn2
 PackageVersion: "{{VERSION}}"
 DefaultLocale: en-US
 ManifestType: version

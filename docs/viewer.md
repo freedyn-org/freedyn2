@@ -18,15 +18,15 @@ editing with the viewer open.
 ## The app
 
 ```sh
-freedyn2-gui                  # the start page (on Windows: the FreeDyn 2 shortcut, no console)
+freedyn2-gui                  # the start page (on Windows: the freedyn2 shortcut, no console)
 freedyn2-gui model.fds        # open a model (also: a double click on a model file)
 freedyn2 gui [model ...]      # the same from a console; --browser: in the web browser
 ```
 
-`freedyn2-gui` is FreeDyn 2 as a desktop program around the same viewer. With
+`freedyn2-gui` is freedyn2 as a desktop program around the same viewer. With
 [pywebview](https://pywebview.flowrl.com/) (`pip install "freedyn2[gui]"`; WebView2 on
 Windows, GTK or Qt on Linux) the start page and every opened model get a window of their own,
-titled *FreeDyn 2*; without it, or with `--browser`, they open in the default web
+titled *freedyn2*; without it, or with `--browser`, they open in the default web
 browser. Closing the last window ends the program (in the browser: *Quit* on the start page, or
 a few minutes after the last tab was closed).
 
@@ -39,7 +39,7 @@ The **start page** offers:
   copy, so files it reads – meshes, roads – must be given with absolute paths).
 - **Recent models**, the newest first (kept in the per-user data folder, `recent.json`).
 - **Examples**: a click copies the example, with the files it reads, into a folder you choose
-  (default `Documents\FreeDyn2`; files already there are kept) and opens your copy.
+  (default `Documents\freedyn2`; files already there are kept) and opens your copy.
 - **Documentation**: links to this site.
 
 Only one app runs per user: a second start – a double click on another model file – hands the
@@ -52,7 +52,7 @@ as `freedyn2 view` does.
 ### Update notice
 
 At start the app asks GitHub, at most once a day and in the background, whether a newer
-release is out. If so, the start page and the viewer windows show a small notice *FreeDyn 2
+release is out. If so, the start page and the viewer windows show a small notice *freedyn2
 X.Y.Z is available* with a link to the
 [release page](https://github.com/freedyn-org/freedyn2/releases/latest). Nothing is downloaded
 or installed; without a network nothing is shown. `freedyn2 update-check` asks right away and

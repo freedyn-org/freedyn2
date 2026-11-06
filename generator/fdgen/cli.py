@@ -192,16 +192,16 @@ def main(argv=None):
             print("freedyn2 compare needs the legacy/ directory of the freedyn2 repository", file=sys.stderr)
             return 2
         return benchmark.main(argv[1:])
-    ap = argparse.ArgumentParser(prog="freedyn2", description="FreeDyn 2: build and simulate a model")
+    ap = argparse.ArgumentParser(prog="freedyn2", description="freedyn2: build and simulate a model")
     from . import __version__
 
-    ap.add_argument("--version", action="version", version=f"FreeDyn 2 (freedyn2 {__version__})")
+    ap.add_argument("--version", action="version", version=f"freedyn2 {__version__}")
     sub = ap.add_subparsers(dest="command", required=True)
     r = sub.add_parser("run", help="import, build and simulate a model (.yaml or .fds)")
     r.add_argument("model")
     r.add_argument("-o", "--output", help="result CSV (default <model>.csv)")
     r.add_argument("--profile", choices=("v2", "legacy"), default="v2",
-                   help=".fds models: FreeDyn 2 methods (default) or the legacy algorithm")
+                   help=".fds models: freedyn2 methods (default) or the legacy algorithm")
     r.add_argument("--workdir", help="keep the model file and plugin here (default: temporary)")
     r.add_argument("--runtime", help="path of freedyn2_run")
     r.epilog = "Runtime options follow after --, e.g. freedyn2 run model.fds -- --step 1e-4 --end-time 2"
@@ -232,8 +232,8 @@ def main(argv=None):
     g.add_argument("--new-instance", action="store_true", help="do not hand the models to a running app")
     g.add_argument("--profile", choices=("v2", "legacy"), default="v2")
     g.add_argument("--runtime", help="path of freedyn2_run")
-    sub.add_parser("update-check", help="ask GitHub whether a newer FreeDyn 2 is released (no download)")
-    sub.add_parser("compare", help="legacy FreeDyn against FreeDyn 2 (see freedyn2 compare -h)")
+    sub.add_parser("update-check", help="ask GitHub whether a newer freedyn2 is released (no download)")
+    sub.add_parser("compare", help="legacy FreeDyn against freedyn2 (see freedyn2 compare -h)")
     s = sub.add_parser("setup-mcp", help="register the MCP server with Claude Desktop / Claude Code")
     s.add_argument("--client", choices=("claude-desktop", "claude-code", "all"), default="all")
     s.add_argument("--remove", action="store_true", help="unregister it")

@@ -1,6 +1,6 @@
 # Privacy policy
 
-FreeDyn 2 does not collect, store or transmit personal data. Models, results, notes and
+freedyn2 does not collect, store or transmit personal data. Models, results, notes and
 settings stay on your computer (in the folders you choose and in `%APPDATA%\freedyn2` and
 `%LOCALAPPDATA%\freedyn2` on Windows, `~/.config`, `~/.local/share` and `~/.cache` below
 `freedyn2` on Linux).

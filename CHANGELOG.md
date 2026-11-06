@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes of FreeDyn 2. Versions follow [semantic versioning](https://semver.org);
+All notable changes of freedyn2. Versions follow [semantic versioning](https://semver.org);
 the section of a version becomes the text of its GitHub Release (docs/releasing.md).
 
 ## [Unreleased]
@@ -15,7 +15,7 @@ release.
 
 - Wheels for Windows (x64) and Linux (x86_64): `pip install freedyn2`, `uv tool install freedyn2`;
   extras `gui` (app window, pywebview) and `compiler` (Zig, a C compiler for model plugins).
-- Windows installer `FreeDyn2-setup.exe`: per user without administrator rights, its own Python,
+- Windows installer `freedyn2-setup.exe`: per user without administrator rights, its own Python,
   the app, the command line, optionally Zig, the .fds association and the Claude Desktop setup.
 - The app `freedyn2-gui` / `freedyn2 gui`: start page (open, recent models, examples), a window
   per model, one instance, an update notice for new releases.
@@ -31,6 +31,6 @@ First release.
 ### Added
 
 - Wheels for Windows (x64) and Linux (x86_64) on PyPI: `pip install freedyn2`, `uv tool install freedyn2`.
-- Windows installer `FreeDyn2-setup.exe` (per user, no administrator rights): its own Python, the
+- Windows installer `freedyn2-setup.exe` (per user, no administrator rights): its own Python, the
   app, the viewer, the MCP server and optionally a C compiler (Zig) for model plugins.
 - ...

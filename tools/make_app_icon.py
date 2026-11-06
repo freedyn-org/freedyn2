@@ -1,4 +1,4 @@
-"""The FreeDyn 2 app icon: a double pendulum on a blue tile.
+"""The freedyn2 app icon: a double pendulum on a blue tile.
 
   python tools/make_app_icon.py      writes generator/fdgen/app/freedyn2.{svg,png,ico}
 
@@ -31,7 +31,7 @@ def svg():
     (jx, jy), jr = JOINT
     (mx, my), mr = MASS
     return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {N} {N}" width="{N}" height="{N}">
-  <title>FreeDyn 2</title>
+  <title>freedyn2</title>
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="{_hex(TILE['top'])}"/>

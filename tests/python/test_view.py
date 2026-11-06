@@ -209,7 +209,7 @@ def test_server_api_and_reload(tmp_path):
         csv_text = get(base + "api/results.csv").decode()
         assert csv_text.startswith("t,rod.R_x")
         assert b"Three.js Authors" in get(base + "vendor/three.module.min.js")[:200]
-        assert b"FreeDyn 2 Viewer" in get(base)
+        assert b"freedyn2 Viewer" in get(base)
         with pytest.raises(urllib.error.HTTPError):
             get(base + "../../model.py")
         time.sleep(0.05)

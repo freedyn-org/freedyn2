@@ -1,6 +1,6 @@
 # Releasing
 
-How a version of FreeDyn 2 gets to its users, and what a maintainer sets up for it. Everything
+How a version of freedyn2 gets to its users, and what a maintainer sets up for it. Everything
 runs in the workflow `Wheels` (`.github/workflows/wheels.yml`) when a version tag `vX.Y.Z` is
 pushed:
 
@@ -10,7 +10,7 @@ pushed:
 | `wheels`, `sdist` | the wheels for Windows x64 and Linux x86_64 (cibuildwheel, tested), the source distribution |
 | `installer` | the Windows installer from the Windows wheel (`installer/windows`), signed if signing is set up, then installed silently, used (`freedyn2 --version`, `doctor`, `run` on an `.fds` and on a model with a plugin compiled by Zig, `setup-mcp --dry-run`) and uninstalled |
 | `publish` | the wheels and the sdist to PyPI (trusted publishing, environment `pypi`) |
-| `release` | the GitHub Release `vX.Y.Z`: wheels, sdist, `FreeDyn2-X.Y.Z-setup.exe`, the same as `FreeDyn2-setup.exe`, `SHA256SUMS`; text from `CHANGELOG.md` plus generated notes |
+| `release` | the GitHub Release `vX.Y.Z`: wheels, sdist, `freedyn2-X.Y.Z-setup.exe`, the same as `freedyn2-setup.exe`, `SHA256SUMS`; text from `CHANGELOG.md` plus generated notes |
 | `winget` | a pull request to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) with the new version (if `WINGET_TOKEN` is set) |
 
 Pull requests that change the packaging (`pyproject.toml`, `CMakeLists.txt`, `tools/`,
@@ -32,7 +32,7 @@ stay on the last stable version), and not sent to winget.
 - Releases are **GitHub Releases with tags `vX.Y.Z`**: the app reads
   `https://api.github.com/repos/freedyn-org/freedyn2/releases/latest` for its update notice, the
   stable link
-  [`https://github.com/freedyn-org/freedyn2/releases/latest/download/FreeDyn2-setup.exe`](https://github.com/freedyn-org/freedyn2/releases/latest/download/FreeDyn2-setup.exe)
+  [`https://github.com/freedyn-org/freedyn2/releases/latest/download/freedyn2-setup.exe`](https://github.com/freedyn-org/freedyn2/releases/latest/download/freedyn2-setup.exe)
   points to the installer of the latest stable release.
 - Settings, Actions, General, Workflow permissions: the default (read) is enough; the release job
   asks for `contents: write` itself.
@@ -62,7 +62,7 @@ computers block unsigned programs. A signature names the publisher; SmartScreen'
 with downloads of signed files.
 
 The workflow signs with **SignPath** when the secret `SIGNPATH_API_TOKEN` exists, and only for
-version tags: first FreeDyn 2's own programs that go into the installer (`freedyn2.exe`,
+version tags: first freedyn2's own programs that go into the installer (`freedyn2.exe`,
 `freedyn2-gui.exe`, `freedyn2_run.exe`, `freedyn2_road.exe`), then the installer. Without the
 token these steps are skipped and the installer is unsigned. The Inno Setup uninstaller
 (`unins000.exe`) remains unsigned in this setup.
@@ -70,7 +70,7 @@ token these steps are skipped and the installer is unsigned. The Inno Setup unin
 **SignPath Foundation** ([signpath.org](https://signpath.org)) signs open-source projects free of
 charge with its own certificate; the publisher shown is then "SignPath Foundation", and the
 signature attests that the file was built from the project's repository. Requirements (check
-the current conditions on [signpath.org](https://signpath.org) before applying), which FreeDyn 2
+the current conditions on [signpath.org](https://signpath.org) before applying), which freedyn2
 meets as set up here:
 
 - an OSI-approved license (Apache-2.0), no proprietary components;
@@ -95,7 +95,7 @@ Steps:
       (slug e.g. `programs`: the zip artifact `programs-unsigned` with the paths of the programs
       relative to the installation directory, each Authenticode-signed) and
       [`installer/windows/signpath/installer.xml`](https://github.com/freedyn-org/freedyn2/blob/main/installer/windows/signpath/installer.xml)
-      (slug e.g. `installer`: the artifact `installer-unsigned` with `FreeDyn2-*-setup.exe`).
+      (slug e.g. `installer`: the artifact `installer-unsigned` with `freedyn2-*-setup.exe`).
       Two requests are needed because SignPath cannot sign inside an Inno Setup installer: the
       programs are signed before Inno Setup packs them;
     - a **signing policy** (e.g. `release-signing`) with the approvers, origin verification
@@ -121,21 +121,21 @@ which read `build/installer/to-sign` and `dist-installer` and write the signed f
 
 ### winget (Windows Package Manager)
 
-Package identifier proposed: **`FreeDynOrg.FreeDyn2`** (to be confirmed before the first
+Package identifier proposed: **`freedyn-org.freedyn2`** (to be confirmed before the first
 submission: it cannot be changed easily afterwards). Templates in
 [`installer/winget`](https://github.com/freedyn-org/freedyn2/tree/main/installer/winget).
 
 1. **First version by hand**, after its GitHub Release exists: on Windows,
-   download the released `FreeDyn2-X.Y.Z-setup.exe`, then
-   `python installer/winget/render.py X.Y.Z FreeDyn2-X.Y.Z-setup.exe` writes the manifests to
-   `build/winget/manifests/f/FreeDynOrg/FreeDyn2/X.Y.Z`;
+   download the released `freedyn2-X.Y.Z-setup.exe`, then
+   `python installer/winget/render.py X.Y.Z freedyn2-X.Y.Z-setup.exe` writes the manifests to
+   `build/winget/manifests/f/FreeDynOrg/freedyn2/X.Y.Z`;
    `winget validate --manifest <that directory>`, `winget install --manifest <that directory>`
    (needs `winget settings --enable LocalManifestFiles` as administrator) to test; then a pull
    request to microsoft/winget-pkgs with that directory (fork, commit, PR; or
    `wingetcreate submit <directory>`). Microsoft's validation runs on the PR; a moderator merges it.
 2. **Later versions automatically**: a GitHub account with a fork of microsoft/winget-pkgs and a
    classic personal access token with scope `public_repo`, as the secret `WINGET_TOKEN`. The job
-   `winget` then runs `wingetcreate update FreeDynOrg.FreeDyn2` with the new installer for both
+   `winget` then runs `wingetcreate update freedyn-org.freedyn2` with the new installer for both
    scopes (user, machine) and opens the pull request.
 
 ### Documentation site
@@ -154,7 +154,7 @@ The documentation link of the installer's Start menu points to
 
     ```sh
     git checkout main && git pull
-    git tag -a v0.2.0 -m "FreeDyn 2 version 0.2.0"
+    git tag -a v0.2.0 -m "freedyn2 0.2.0"
     git push origin v0.2.0
     ```
 
@@ -166,13 +166,13 @@ The documentation link of the installer's Start menu points to
     - [pypi.org/project/freedyn2](https://pypi.org/project/freedyn2/) shows the version;
       `uvx freedyn2@0.2.0 --version` prints it;
     - the release page lists the wheels, the sdist, both installer names and `SHA256SUMS`;
-      `https://github.com/freedyn-org/freedyn2/releases/latest/download/FreeDyn2-setup.exe`
+      `https://github.com/freedyn-org/freedyn2/releases/latest/download/freedyn2-setup.exe`
       downloads the new installer (stable releases only);
-    - on a Windows computer: download, check the hash (`Get-FileHash FreeDyn2-setup.exe`
+    - on a Windows computer: download, check the hash (`Get-FileHash freedyn2-setup.exe`
       against `SHA256SUMS`), right click, Properties, Digital Signatures (if signed), install
-      over the previous version, start "FreeDyn 2" from the Start menu, `freedyn2 doctor` in
-      the "FreeDyn 2 Command Prompt";
-    - later: the winget pull request is merged (`winget show FreeDynOrg.FreeDyn2`).
+      over the previous version, start "freedyn2" from the Start menu, `freedyn2 doctor` in
+      the "freedyn2 Command Prompt";
+    - later: the winget pull request is merged (`winget show freedyn-org.freedyn2`).
 
 If a job fails after PyPI accepted the upload: a version on PyPI cannot be replaced. Fix the
 cause and re-run the failed jobs of the same run (the release and winget jobs can be re-run on
@@ -194,16 +194,16 @@ Setup 6 installed: `python installer/windows/build.py all --wheel-dir wheelhouse
   precompiled; `licenses\python-packages.txt` generated from the packages' metadata.
 
 `installer/windows/freedyn2.iss` (Inno Setup): per user by default
-(`%LOCALAPPDATA%\Programs\FreeDyn2`) or for all users (`C:\Program Files\FreeDyn2`), components
-core, C compiler, examples; tasks PATH, `.fds` association, "Open with FreeDyn 2" for `.yaml`,
+(`%LOCALAPPDATA%\Programs\freedyn2`) or for all users (`C:\Program Files\freedyn2`), components
+core, C compiler, examples; tasks PATH, `.fds` association, "Open with freedyn2" for `.yaml`,
 Claude Desktop registration (`freedyn2 setup-mcp --client claude-desktop`, undone at uninstall),
 desktop icon. A new version installs over the old one. Uninstalling keeps the user data in
 `%APPDATA%\freedyn2` and `%LOCALAPPDATA%\freedyn2`. Silent:
 
 ```bat
-FreeDyn2-setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER /TASKS="path"
-FreeDyn2-setup.exe /VERYSILENT /ALLUSERS /COMPONENTS="core" /TASKS="path,assocfds"
-"%LOCALAPPDATA%\Programs\FreeDyn2\unins000.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+freedyn2-setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER /TASKS="path"
+freedyn2-setup.exe /VERYSILENT /ALLUSERS /COMPONENTS="core" /TASKS="path,assocfds"
+"%LOCALAPPDATA%\Programs\freedyn2\unins000.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 ```
 
 Task names: `path`, `assocfds`, `openyaml`, `claudedesktop`, `desktopicon`; components: `core`,

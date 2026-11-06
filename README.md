@@ -1,5 +1,5 @@
 # freedyn2
-FreeDyn 2: multibody dynamics with CasADi-generated models (offline HHT and real-time export)
+freedyn2: multibody dynamics with CasADi-generated models (offline HHT and real-time export)
 
 Models are described declaratively in YAML (or imported from legacy FreeDyn `.fds` files). A
 Python generator (`generator/fdgen`) builds the Lagrange formulation in CasADi, derives all
@@ -25,8 +25,8 @@ including on the legacy kernel), [`legacy/README.md`](legacy/README.md) (legacy 
 
 ## Install
 
-Windows: the installer `FreeDyn2-setup.exe` (coming with the first release, from
-[GitHub Releases](https://github.com/freedyn-org/freedyn2/releases/latest/download/FreeDyn2-setup.exe)):
+Windows: the installer `freedyn2-setup.exe` (coming with the first release, from
+[GitHub Releases](https://github.com/freedyn-org/freedyn2/releases/latest/download/freedyn2-setup.exe)):
 per user, no administrator rights, its own private Python, next to a legacy FreeDyn; the app
 window, the command line on the PATH, a C compiler (Zig).
 
@@ -292,20 +292,20 @@ Claude Desktop (`claude_desktop_config.json`):
 
 Paths in tool calls are absolute or relative to the directory the server was started in.
 
-## Legacy FreeDyn against FreeDyn 2
+## Legacy FreeDyn against freedyn2
 
 ```sh
 freedyn2 compare examples/compare/*.fds --legacy build/legacy/build/FreeDyn [--markdown report.md]
 ```
 
-Both programs read the same `.fds` and run it as given (FreeDyn 2 with its own methods). The
+Both programs read the same `.fds` and run it as given (freedyn2 with its own methods). The
 accuracy of both is measured against a converged solution that the programs compute themselves
-(step size / 16, tolerance / 256; FreeDyn 2 at two refinements estimates the uncertainty,
+(step size / 16, tolerance / 256; freedyn2 at two refinements estimates the uncertainty,
 legacy FreeDyn cross-checks), so any `.fds` can be compared without model-specific reference
 code. For chaotic motion the report gives how long each program stays accurate. Times: legacy
-FreeDyn as one program run, FreeDyn 2 split into build (once per model) and simulation.
+FreeDyn as one program run, freedyn2 split into build (once per model) and simulation.
 Details in `legacy/benchmark.py`. Result on the comparison models (single thread, this build):
-FreeDyn 2 equal or more accurate on all 14 models, simulation 2.5 to 19x faster.
+freedyn2 equal or more accurate on all 14 models, simulation 2.5 to 19x faster.
 
 ## Scaling: a car on a chassis dynamometer
 
@@ -322,9 +322,9 @@ python examples/scaling/scaling.py --legacy build/legacy/build/FreeDyn --cars 1 
 ```
 
 One car, 5 s, against the converged reference: error legacy 9.7e-5 (position), 2.0 (rotation),
-16 % (velocity), accurate until 0.92 s; FreeDyn 2: 1.3e-5, 5.3e-5, 1e-3, accurate to the end;
+16 % (velocity), accurate until 0.92 s; freedyn2: 1.3e-5, 5.3e-5, 1e-3, accurate to the end;
 13.8x faster. The engine settles at 214.29 rad/s (power balance of engine torque, damping and
-roller load): FreeDyn 2: 214.18 rad/s at 5 s, legacy FreeDyn 180.4 rad/s, the spin loss of
+roller load): freedyn2: 214.18 rad/s at 5 s, legacy FreeDyn 180.4 rad/s, the spin loss of
 Euler parameters under HHT damping (`docs/findings.md`).
 
 | cars | bodies | constraints | legacy [s] | v2 build cold + simulation [s] | v2 per step [us] | speed-up simulation |
@@ -334,8 +334,8 @@ Euler parameters under HHT damping (`docs/findings.md`).
 | 4 | 52 | 240 | 64.6 | 5.2 + 5.1 | 1025 | 12.6x |
 | 8 | 104 | 480 | 134.5 | 8.4 + 10.2 | 2040 | 13.2x |
 
-Both grow linearly in the work per step (FreeDyn 2: the same instruction count per car and
-step for 1 and 8 cars); the remaining excess of the FreeDyn 2 times over linear (181 -> 255
+Both grow linearly in the work per step (freedyn2: the same instruction count per car and
+step for 1 and 8 cars); the remaining excess of the freedyn2 times over linear (181 -> 255
 us per car and step) is the memory hierarchy. The plugin build grows slowly: copies of a law
 share one compiled element type.
 
@@ -410,10 +410,10 @@ Details, accuracy and determinism: [`docs/architecture.md`](docs/architecture.md
 
 ## Comparison with legacy FreeDyn
 
-**Rule: compatibility with the legacy kernel lives only at the edges.** FreeDyn 2 makes its
+**Rule: compatibility with the legacy kernel lives only at the edges.** freedyn2 makes its
 own architecture and method decisions on their merits. Legacy compatibility is limited to
 (a) the `.fds` importer and (b) the `legacy` profile, which selects the legacy variants of
-algorithms that exist in FreeDyn 2 anyway. No core interface exists only to make the
+algorithms that exist in freedyn2 anyway. No core interface exists only to make the
 comparison possible, and features the legacy kernel lacks are verified against analytic or
 high-accuracy references instead.
 
@@ -421,10 +421,10 @@ The `.fds` importer (`python -m fdgen model.fds --profile legacy|v2`) translates
 into the internal model; new models are written in YAML and need no `.fds`. The comparison has
 two levels (`legacy/compare.py --level exact|physics`):
 
-| level | FreeDyn 2 profile | checks | purpose |
+| level | freedyn2 profile | checks | purpose |
 |---|---|---|---|
 | exact | `legacy`: Euler-parameter bodies, Negrut HHT form, legacy Newton rule and step size control, Jacobian and ModifyNewmark options | same steps and Newton iterations, results equal to round-off | verifies generator, assembly and solver implementation |
-| physics | `v2`: Lie group bodies, Arnold–Bruls HHT form, velocity-level Newton criterion, step size control keeping the model's tolerance | both programs against an independent reference (`legacy/references`: RK4 on Euler's equations for free bodies, on the minimal-coordinate (joint angle) equations of motion for revolute joint chains, on the Newton–Euler equations with independently written kinematics and loads for free bodies under expression forces; analytic for the forced oscillator) | FreeDyn 2 may use other methods, must solve the same physics at least as accurately |
+| physics | `v2`: Lie group bodies, Arnold–Bruls HHT form, velocity-level Newton criterion, step size control keeping the model's tolerance | both programs against an independent reference (`legacy/references`: RK4 on Euler's equations for free bodies, on the minimal-coordinate (joint angle) equations of motion for revolute joint chains, on the Newton–Euler equations with independently written kinematics and loads for free bodies under expression forces; analytic for the forced oscillator) | freedyn2 may use other methods, must solve the same physics at least as accurately |
 
 ```sh
 pip install mkl-devel && python legacy/build_legacy.py ../me -o build/legacy   # see legacy/README.md
@@ -452,8 +452,8 @@ affected models, not the architecture adapted. CI runs both levels when the repo
 
 ## Citing and acknowledgements
 
-To cite FreeDyn 2, use the metadata in `CITATION.cff` (GitHub: "Cite this repository").
-FreeDyn 2 succeeds FreeDyn, developed at the University of Applied Sciences Upper Austria,
+To cite freedyn2, use the metadata in `CITATION.cff` (GitHub: "Cite this repository").
+freedyn2 succeeds FreeDyn, developed at the University of Applied Sciences Upper Austria,
 Campus Wels, by Wolfgang Steiner, Wolfgang Witteveen, Karin Nachbagauer, Karim Sherif, Thomas
 Lauss and Stefan Oberpeilsteiner, among others. Its solver served as the reference for every
 step and is reproduced in the legacy profile. Publications on FreeDyn:
@@ -479,5 +479,5 @@ The methods and their sources are in [`docs/theory.md`](docs/theory.md).
 
 ## License
 
-Apache License 2.0 (`LICENSE`, `NOTICE`). Code that FreeDyn 2 generates from your model
+Apache License 2.0 (`LICENSE`, `NOTICE`). Code that freedyn2 generates from your model
 belongs to you.

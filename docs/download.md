@@ -2,11 +2,11 @@
 
 ## Windows
 
-The installer contains everything: FreeDyn 2, its own Python, and optionally a C compiler for
+The installer contains everything: freedyn2, its own Python, and optionally a C compiler for
 models with expression forces or drivers. It installs per user, without administrator rights,
 and runs alongside legacy FreeDyn.
 
-**[Download FreeDyn2-setup.exe](https://github.com/freedyn-org/freedyn2/releases/latest/download/FreeDyn2-setup.exe)**
+**[Download freedyn2-setup.exe](https://github.com/freedyn-org/freedyn2/releases/latest/download/freedyn2-setup.exe)**
 (the latest release; all releases, their notes and SHA256 checksums:
 [GitHub Releases](https://github.com/freedyn-org/freedyn2/releases))
 
@@ -44,4 +44,4 @@ or signed by hand. Each signing request is approved by a person.
 Changes to the main branch go through pull requests with a review. Team members use
 multi-factor authentication for GitHub and SignPath.
 
-FreeDyn 2 sends no data to anyone except as described in the [privacy policy](privacy.md).
+freedyn2 sends no data to anyone except as described in the [privacy policy](privacy.md).
