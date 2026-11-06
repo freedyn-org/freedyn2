@@ -503,3 +503,69 @@ def test_sweep_in_the_viewer(tmp_path):
             get(base + "api/sweep/0.csv")
     finally:
         httpd.shutdown()
+
+
+def test_lint_puts_errors_at_their_lines():
+    """The editor's check (fdgen.view.source.lint): YAML, schema and model errors at the line of
+    the key or the element they concern; a valid model has none."""
+    from fdgen.view.source import lint
+
+    text = (Path(__file__).parents[2] / "examples" / "pendulum.yaml").read_text()
+    lines = text.splitlines()
+    line_of = lambda s: next(i + 1 for i, l in enumerate(lines) if s in l)
+    assert lint(text) == []
+    [d] = lint(text.replace("type: revolute", "type: revolut"))
+    assert d["line"] == line_of("type: revolute") and "revolut" in d["message"]
+    diags = lint(text.replace("mass: 1.0", "mas: 1.0"))
+    assert {d["line"] for d in diags} == {line_of("rod:"), line_of("mass: 1.0")}
+    assert any("unknown key mas" in d["message"] for d in diags)
+    [d] = lint(text.replace("body1: rod", "body1: rodx"))  # a model rule: at the line naming the body
+    assert d["line"] == line_of("body1: rod") and "unknown body rodx" in d["message"]
+    [d] = lint(text.replace("mass: 1.0", "mass: =m2"))  # a formula with an unknown parameter
+    assert d["line"] == line_of("mass: 1.0") and "m2" in d["message"]
+    [d] = lint(text + "extra: [1,\n")
+    assert d["message"].startswith("YAML") and d["line"] >= len(lines)
+    assert lint("- a\n- b\n")[0]["line"] == 1
+
+
+def test_editor_reads_saves_and_refuses_stale_writes(tmp_path):
+    """GET/POST api/source: the model file for the editor; a save is refused (409, with the file
+    as it is) when the file changed since it was read; api/lint checks a text not yet saved."""
+    model = tmp_path / "p.yaml"
+    write_pendulum(model)
+    view = server.View(model, run=False)
+    view.rebuild()
+    httpd, base = serve_view(view)
+    try:
+        src = json.loads(get(base + "api/source"))
+        assert src["text"] == model.read_text() and src["editable"] and src["name"] == "p.yaml"
+        assert view.state()["source"] == src["stamp"]
+        assert "bodies" in json.loads(get(base + "api/schema"))["properties"]
+        text = src["text"].replace("mass: 1.0", "mass: 2.0")
+        assert post(base + "api/lint", {"text": text})["diagnostics"] == []
+        assert post(base + "api/lint", {"text": text.replace("mass:", "mas:")})["diagnostics"]
+        stamp = post(base + "api/source", {"text": text, "stamp": src["stamp"]})["stamp"]
+        assert model.read_text() == text and view.state()["source"] == stamp
+        model.write_text(text.replace("mass: 2.0", "mass: 3.0"))  # someone else saves
+        with pytest.raises(urllib.error.HTTPError) as e:
+            post(base + "api/source", {"text": text, "stamp": stamp})
+        assert e.value.code == 409 and "mass: 3.0" in json.loads(e.value.read())["text"]
+        assert "mass: 3.0" in model.read_text()
+        with pytest.raises(urllib.error.HTTPError) as e:  # only the page of this server writes
+            post(base + "api/source", {"text": "", "stamp": None}, origin="http://evil.example")
+        assert e.value.code == 403
+    finally:
+        httpd.shutdown()
+
+
+def test_editor_keeps_crlf_line_ends(tmp_path):
+    from fdgen.view import source
+
+    model = tmp_path / "m.yaml"
+    model.write_bytes(b"model: m\r\nbodies: {}\r\n")
+    src = source.read(model)
+    assert src["text"] == "model: m\nbodies: {}\n"
+    source.save(model, src["text"] + "gravity: [0, 0, -9.81]\n", src["stamp"])
+    assert model.read_bytes() == b"model: m\r\nbodies: {}\r\ngravity: [0, 0, -9.81]\r\n"
+    with pytest.raises(ValueError):
+        source.save(tmp_path / "m.fds", "x", None)

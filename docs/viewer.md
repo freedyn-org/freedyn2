@@ -75,6 +75,33 @@ variable `FREEDYN2_NO_UPDATE_CHECK=1`.
   findings and its YAML text with the line in the model file. What it is connected to stays,
   the rest fades.
 
+## Edit the model
+
+A click on the model name in the header (or the key **E**) opens the model file in an editor
+beside the 3D view; so does a click on the YAML text in the inspector (at that element) or on an
+error. The editor remembers whether it was open.
+
+- **Ctrl+S** saves and simulates, as a save in any other editor would. Unsaved changes are
+  marked in the editor's header.
+- **Completion** while typing, or with Ctrl+Space: the keys an element can have (required ones
+  first, those already there left out), the values of a key (`type: rev` → `revolute`), the
+  bodies, points, frames, measures and parameters of the file where they fit (`body1:`,
+  `point1:`, `orientation:`, `=` in a formula), the parameters, measures and functions in force
+  expressions.
+- **Templates** instead of menus: under `bodies:`, `joints:` or `forces:`, start typing a new
+  name, e.g. `rev` or `spring`, and pick *revolute joint* or *spring-damper*; Tab goes from one
+  field to the next. An empty model file starts as a pendulum.
+- **Errors while typing**, at their lines: YAML syntax, the schema (unknown keys, missing ones,
+  wrong values) and the model rules (an unknown body); after a save, the findings of the
+  checks at their elements. Hovering a key shows what it means and the values it takes.
+- **Linked to the 3D view:** the element under the cursor is selected in the 3D view and the
+  inspector; an element clicked in the 3D view is shown in the editor.
+- When the file is changed elsewhere (the assistant, another editor), the editor loads it again,
+  or, with unsaved changes, asks whether to load it or to keep yours. A legacy `.fds` file is
+  shown read-only; `freedyn2 convert` makes a YAML model file of it.
+
+![The editor beside the 3D view](img/viewer-editor.png)
+
 ## Plots
 
 Below the 3D view (drag the border to resize, ⤢ for large plots):
@@ -140,6 +167,12 @@ Every simulation is a run in the strip above the plots, labelled with what diffe
 model file (tuned values, *file v2* after an edit). Click a run to show it dashed in the
 plots; ☆ makes it the **reference** (grey bodies in 3D, dashed curves, the base of **Δ
 reference**: every run minus the reference); ⟲ takes its values back into Tune; × removes it.
+
+Runs are compared by the names of their channels, so they stay comparable when the model
+changes between them (a new body, another joint): a channel a run does not have, e.g. that of a
+body added later, is drawn for the runs that have it and left out for the others (also in
+*Δ reference*, where it is shown as it is); bodies missing in the reference run get no grey
+copy. A renamed element is a new channel.
 
 ![Two runs: the reference dashed](img/runs-reference.png)
 

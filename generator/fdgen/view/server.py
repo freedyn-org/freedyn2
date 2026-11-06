@@ -20,8 +20,13 @@ From the page (POST, JSON):
   /api/sweep      {path, values}: one tuned number over several values, simulated in parallel
                   (fdgen.sweep; the fan of curves, key figures over the value) / {stop: true}
                   / {clear: true}; its results: GET /api/sweep/<k>.csv
+  /api/source     {text, stamp}: save the model file from the editor (fdgen.view.source); 409 with
+                  the file as it is now if it changed since the editor read it (stamp)
+  /api/lint       {text}: diagnostics of a text not yet saved, at their lines
   /api/notes      {text, context, image}: a note to the assistant (fdgen.view.notes)
   /api/notes/<id> {done} / {delete}: close, reopen or delete a note
+GET /api/source: the model file for the editor {text, stamp, editable}; GET /api/schema: the
+JSON schema of the model file (completion and hover help in the editor).
 GET /api/modes?t=T: eigenmodes about the results at time T (fdgen.linearize.modes).
 POST /api/modes {t, overrides}: the same for other tuned values, about the state of the current
 run (a preview while a slider moves); POST /api/locus {t, path, values}: the eigenvalues for
@@ -44,7 +49,7 @@ from pathlib import Path
 import numpy as np
 
 from ..checks import check_model, check_references, check_results
-from . import notes
+from . import notes, source
 from .scene import attach_sources, read_results, scene
 
 WEB = Path(__file__).resolve().parent / "web"
@@ -421,8 +426,18 @@ class View:
                     "model_file": str(self.model_path), "scene": self.scene is not None, "results": self.csv is not None,
                     "runs": runs, "current": self.current, "reference": self.reference,
                     "progress": self.progress() if self.status == "simulating" else None,
-                    "overrides": self.overrides, "notes": notes.stamp(self.model_path),
+                    "overrides": self.overrides, "notes": notes.stamp(self.model_path), "source": self.source_stamp(),
                     "sweep": None if self.sweep is None else {**self.sweep, "results": list(self.sweep["results"])}}
+
+    def source_stamp(self):
+        """The stamp of the model file (fdgen.view.source), for the editor: changed by someone else?"""
+        try:
+            mtime = self.model_path.stat().st_mtime_ns
+        except OSError:
+            return None
+        if getattr(self, "_source", (None,))[0] != mtime:
+            self._source = (mtime, source.stamp(self.model_path.read_bytes()))
+        return self._source[1]
 
     def watch(self, stop):
         while not stop.is_set():
@@ -477,6 +492,12 @@ class ViewHandler(BaseHTTPRequestHandler):
             return self._send(json.dumps(view.scene).encode(), "application/json")
         if url == "/api/results.csv":
             return self._file(view.csv) if view.csv else self._send(b"", "text/csv")
+        if url == "/api/source":
+            return self._send(json.dumps(source.read(view.model_path)).encode(), "application/json")
+        if url == "/api/schema":
+            from ..model import load_schema
+
+            return self._send(json.dumps(load_schema()).encode(), "application/json")
         if url == "/api/notes":
             return self._send(json.dumps(notes.read_notes(view.model_path)).encode(), "application/json")
         if url.startswith("/api/notes/") and url.endswith(".png"):
@@ -538,6 +559,14 @@ class ViewHandler(BaseHTTPRequestHandler):
                 else:
                     view.set_reference(rid if body.get("reference", True) else None)
                 out = view.state()
+            elif url == "/api/source":
+                try:
+                    out = {"stamp": source.save(view.model_path, body["text"], body.get("stamp"))}
+                except source.Conflict as e:
+                    return self._send(json.dumps({"error": str(e), **source.read(view.model_path)}).encode(),
+                                      "application/json", 409)
+            elif url == "/api/lint":
+                out = {"diagnostics": source.lint(str(body.get("text", "")), view.model_path.parent)}
             elif url == "/api/notes":
                 out = notes.add_note(view.model_path, body.get("text", ""), body.get("context"), body.get("image"))
             elif url.startswith("/api/notes/"):
@@ -549,7 +578,7 @@ class ViewHandler(BaseHTTPRequestHandler):
                     out = notes.answer_note(view.model_path, nid, done=bool(body.get("done", True)))
             else:
                 return self._send(b"not found", "text/plain", 404)
-        except (ValueError, KeyError, TypeError, RuntimeError, np.linalg.LinAlgError) as e:
+        except (ValueError, KeyError, TypeError, RuntimeError, OSError, np.linalg.LinAlgError) as e:
             return self._send(json.dumps({"error": str(e)}).encode(), "application/json", 400)
         return self._send(json.dumps(out).encode(), "application/json")
 

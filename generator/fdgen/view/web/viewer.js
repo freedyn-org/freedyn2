@@ -502,8 +502,9 @@ function togglePlay() {
   lastFrame = performance.now();
 }
 $("play").addEventListener("click", togglePlay);
+const inEditor = (e) => !!(e.target && e.target.closest && e.target.closest(".cm-editor"));
 window.addEventListener("keydown", (e) => {
-  if (e.target.tagName === "INPUT" && e.target.type !== "range") return;
+  if ((e.target.tagName === "INPUT" && e.target.type !== "range") || inEditor(e)) return;
   if (e.code === "Space") { e.preventDefault(); togglePlay(); }
   if (!results) return;
   const t = results.t, k = index(t, state.time);
@@ -753,11 +754,13 @@ function connectedTo(name) {
   return { bodies: new Set([name, ...els.flatMap((x) => [x.body1, x.body2])]), elements: new Set(els.map((x) => x.name)) };
 }
 
-function select(name) {
+function select(name, from = null) {
+  // from "editor": the cursor moved there (the editor shows it already)
   state.selection = name ? findElement(name) : null;
   highlight();
   showInspector();
   render();
+  if (from !== "editor" && editor) editor.reveal(state.selection ? state.selection.name : null);
 }
 
 function highlight() {
@@ -830,7 +833,8 @@ function showInspector() {
       `${esc(tuneLabel(x.path).split(".").slice(1).join("."))} ${esc(x.formula)}` +
       (x.uses.length ? ` (${x.uses.map((u) => tune(`parameters.${u}`, u)).join(", ")})` : "")).join("<br>")}</div>`;
   }
-  if (d.source) html += `<div style="margin-top:6px;color:var(--muted)">model file, line ${d.source.line ?? "?"}</div><pre>${esc(d.source.yaml)}</pre>`;
+  if (d.source) html += `<div style="margin-top:6px;color:var(--muted)">model file, line ${d.source.line ?? "?"}` +
+    (STATIC ? "" : " · click the text to edit it") + `</div><pre${STATIC ? "" : ' class="editable" title="edit in the model file"'}>${esc(d.source.yaml)}</pre>`;
   box.innerHTML = html;
   box.style.display = "block";
   box.querySelector(".close").addEventListener("click", () => select(null));
@@ -839,6 +843,8 @@ function showInspector() {
   box.querySelectorAll("[data-channel]").forEach((e) => e.addEventListener("click", () => {
     area.addChannel(e.dataset.channel);
   }));
+  const pre = box.querySelector("pre.editable");
+  if (pre) pre.addEventListener("click", () => openEditor({ element: sel.name }));
 }
 
 // a click (not a drag) picks the body, joint or force under the pointer
@@ -860,7 +866,7 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   select(null);
 });
 const isShown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
-window.addEventListener("keydown", (e) => { if (e.code === "Escape") select(null); });
+window.addEventListener("keydown", (e) => { if (e.code === "Escape" && !inEditor(e)) select(null); });
 
 // ---------- camera ----------
 function motionBox() {
@@ -915,7 +921,10 @@ requestAnimationFrame(loop);
 function showError(text) {
   $("error").style.display = text ? "block" : "none";
   $("error").textContent = text || "";
+  $("error").classList.toggle("editable", !STATIC);
+  $("error").title = STATIC ? "" : "click: fix it in the model file";
 }
+$("error").addEventListener("click", () => { if (!STATIC && !getSelection().toString()) openEditor({}); });
 
 function load(scene, csvText, current = null) {
   const first = model === null, before = model && model.model;
@@ -1043,6 +1052,8 @@ async function poll() {
     const busy = s.status === "simulating" || s.status === "loading";
     panels.serverState(s);
     $("status").textContent = s.model_file;
+    if (!$("model").textContent) $("model").textContent = s.model_file.split(/[\\/]/).pop();
+    if (editor) editor.sync(s.source);
     if (s.version !== version && !busy) {
       version = s.version;
       // an error is shown over the last good model (loaded if the page has none yet)
@@ -1054,6 +1065,7 @@ async function poll() {
         ]);
         load(scene, csv, s.current);
       }
+      if (editor) editor.setServerError(s.status === "error" ? s.error : null);  // and the checks of the new results
     }
     if (s.status === "simulating" && results) {  // the run so far, drawn over the faded results
       const run = parseCSV(await fetch("api/running.csv", { cache: "no-store" }).then((r) => r.text()));
@@ -1068,9 +1080,66 @@ async function poll() {
   timer = setTimeout(poll, s && (s.status === "simulating" || (s.sweep && s.sweep.status === "running")) ? 300 : 800);
 }
 
-$("overlay").textContent = "drag: rotate · right drag: pan · wheel: zoom · click: inspect · space: play";
+// ---------- the editor of the model file (fdview/editor.js, loaded when first opened) ----------
+let editor = null, editorLoading = null;
+async function openEditor({ element = null, toggle = false } = {}) {
+  if (STATIC) return;
+  if (toggle && document.body.classList.contains("editing")) { closeEditor(); return; }
+  document.body.classList.add("editing");
+  if (!editor) {
+    editorLoading = editorLoading || (async () => {
+      const [{ ModelEditor }, schema] = await Promise.all([
+        import("fdview/editor.js"), fetch("api/schema", { cache: "no-store" }).then((r) => r.json())]);
+      const ed = new ModelEditor({
+        box: $("ed-body"), head: $("ed-state"), banner: $("ed-banner"),
+        post: async (url, body) => {
+          const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+          return { ok: r.ok, status: r.status, body: await r.json().catch(() => ({})) };
+        },
+        getJSON: (url) => fetch(url, { cache: "no-store" }).then((r) => r.json()),
+        onSelect: (name) => { if (name && findElement(name)) select(name, "editor"); else if (!name && state.selection) select(null, "editor"); },
+        findings: () => (model && model.checks && model.checks.findings) || [],
+        model: () => ({ channels: results ? results.names : [] }),
+      }, schema);
+      await ed.load(false);
+      $("ed-name").textContent = ed.name;
+      editor = ed;
+    })();
+    await editorLoading;
+  }
+  const name = element || (state.selection && state.selection.name);
+  if (name) editor.reveal(name, true); else editor.view.focus();
+  try { localStorage.setItem("fdview.editor", "1"); } catch (x) { /* ok */ }
+}
+function closeEditor() {
+  document.body.classList.remove("editing");
+  try { localStorage.setItem("fdview.editor", "0"); } catch (x) { /* ok */ }
+}
+$("ed-close").addEventListener("click", closeEditor);
+if (!STATIC) {
+  $("model").classList.add("editable");
+  $("model").title = "click: edit the model file (E)";
+  $("model").addEventListener("click", () => openEditor({ toggle: true }));
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "e" || e.ctrlKey || e.metaKey || e.altKey || inEditor(e) || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+    e.preventDefault();
+    openEditor({ toggle: true });
+  });
+  window.addEventListener("beforeunload", (e) => { if (editor && editor.dirty) e.preventDefault(); });
+  let open0 = false;
+  try { open0 = localStorage.getItem("fdview.editor") === "1"; } catch (x) { /* closed */ }
+  if (open0) openEditor({});
+}
+$("editor-split").addEventListener("pointerdown", (e) => {
+  const x0 = e.clientX, w0 = $("editor").getBoundingClientRect().width;
+  const move = (ev) => document.body.style.setProperty("--editor-w", `${Math.max(260, Math.min(window.innerWidth - 560, w0 + ev.clientX - x0))}px`);
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", () => window.removeEventListener("pointermove", move), { once: true });
+});
+
+$("overlay").textContent = "drag: rotate · right drag: pan · wheel: zoom · click: inspect · space: play" + (STATIC ? "" : " · E: edit the model");
 if (STATIC) {
   $("status").textContent = "exported view";
   load(STATIC.scene, STATIC.csv);
 } else poll();
-window.fdViewer = { setTime, select, showReference, showMode, stopMode, panels, viewImage, addChannel: (n) => area.addChannel(n), addFormula, plots: area, state, camera, controls, root, bodies: () => bodies, get model() { return model; }, get results() { return results; } };
+window.fdViewer = { setTime, select, showReference, showMode, stopMode, panels, viewImage, addChannel: (n) => area.addChannel(n), addFormula, plots: area, state, camera, controls, root, bodies: () => bodies, get model() { return model; }, get results() { return results; }, openEditor, get editor() { return editor; } };

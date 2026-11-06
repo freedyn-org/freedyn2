@@ -5,6 +5,15 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Added
+
+- The viewer edits the model file: a click on the file name (or E) opens an editor beside the
+  3D view, with syntax highlighting, completion from the schema and the model (keys, types,
+  bodies, points, parameters), templates for new bodies, joints and forces, help on hover, and
+  errors at their lines while typing. Ctrl+S saves and simulates; a file changed meanwhile by
+  the assistant or another editor is reloaded or, with unsaved changes, not overwritten. The
+  element under the cursor is selected in the 3D view and the other way round.
+
 ## [0.1.0rc1] - 2026-11-06
 
 Release candidate: a test of the release process (PyPI, GitHub Release, Windows installer).

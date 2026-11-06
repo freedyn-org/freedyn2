@@ -11,6 +11,8 @@ Included third-party components:
   see its LICENSE and NOTICE.
   three.js r170 (MIT), generator/fdgen/view/web/vendor: 3D graphics of the viewer;
   see LICENSE-three.js there.
+  CodeMirror 6 with its Lezer parsers (MIT), generator/fdgen/view/web/vendor/codemirror.min.js:
+  the editor of the model file in the viewer; see LICENSE-codemirror there.
 
 The wheels (pip install freedyn2) also contain, as shared libraries next to the runtime
 programs (fdgen/bin) with their licenses in fdgen/licenses/suitesparse:
