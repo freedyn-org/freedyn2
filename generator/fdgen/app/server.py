@@ -156,7 +156,7 @@ class App:
     def check_updates(self):
         def found(r):
             self.update = r
-            log.info("FreeDyn 2 version %s is available", r["latest"])
+            log.info("freedyn2 version %s is available", r["latest"])
 
         return update.check_in_background(found)
 

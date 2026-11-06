@@ -312,7 +312,7 @@ def test_cli_update_check(monkeypatch, capsys):
 
     monkeypatch.setattr(update, "fetch", lambda timeout=None: {"latest": "99.0", "url": update.RELEASE_PAGE})
     assert cli.main(["update-check"]) == 0
-    assert "FreeDyn 2 version 99.0 is available" in capsys.readouterr().out
+    assert "freedyn2 version 99.0 is available" in capsys.readouterr().out
     monkeypatch.setattr(update, "fetch", lambda timeout=None: {"latest": "0.0.1", "url": update.RELEASE_PAGE})
     assert cli.main(["update-check"]) == 0
     assert "is up to date" in capsys.readouterr().out

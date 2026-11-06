@@ -36,13 +36,14 @@ side; each has its own Python.
     | examples | on | the example models |
     | add to PATH | on | `freedyn2` in every command prompt |
     | associate `.fds` | off | double click opens a legacy model in FreeDyn 2 |
-    | "Open with FreeDyn 2" for `.yaml` | off | in the context menu of model files |
+    | "Open with freedyn2" for `.yaml` | off | in the context menu of model files |
     | register with Claude Desktop | off | the [MCP server](assistants.md) for Claude Desktop |
     | desktop icon | off | |
 
-    The start menu then has **FreeDyn 2** (the app window: open a model, recent models,
-    examples, the documentation), **FreeDyn 2 Command Prompt** (a prompt with `freedyn2` on
-    the PATH) and **FreeDyn 2 Documentation**.
+    The start menu then has **freedyn2** (the app window: open a model, recent models,
+    examples, the documentation), **freedyn2 command prompt** (a prompt with `freedyn2` on
+    the PATH) and **freedyn2 documentation**. An upgrade from an earlier version replaces the
+    old entries (*FreeDyn 2 …*) by these.
 
     For rollouts: `FreeDyn2-setup.exe /VERYSILENT /CURRENTUSER` installs without questions.
 
@@ -106,7 +107,7 @@ that off).
 
 | | update | uninstall |
 |---|---|---|
-| Windows installer | download the new `FreeDyn2-setup.exe` and run it over the old installation | Windows Settings > Apps > FreeDyn 2 |
+| Windows installer | download the new `FreeDyn2-setup.exe` and run it over the old installation | Windows Settings > Apps > freedyn2 |
 | uv | `uv tool upgrade freedyn2` | `uv tool uninstall freedyn2` |
 | pip | `pip install -U freedyn2` | `pip uninstall freedyn2` |
 
@@ -168,7 +169,7 @@ old one. That loop, *edit, save, look*, is the whole idea; the [viewer page](vie
 everything else it can do.
 
 `freedyn2 gui pendulum.yaml` shows the same in a window of its own (with the `gui` extra or
-the Windows installer; the start menu entry **FreeDyn 2** opens it with a start page).
+the Windows installer; the start menu entry **freedyn2** opens it with a start page).
 
 ![The pendulum in the viewer](img/pendulum.png)
 

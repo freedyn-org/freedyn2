@@ -94,7 +94,7 @@ def message_box(title, text):
 
 
 def _parser():
-    ap = argparse.ArgumentParser(prog="freedyn2-gui", description=f"FreeDyn 2 (version {__version__}): the app")
+    ap = argparse.ArgumentParser(prog="freedyn2-gui", description=f"freedyn2 (version {__version__}): the app")
     ap.add_argument("models", nargs="*", help="model files to open (.yaml, .fds); none: the start page")
     ap.add_argument("--browser", action="store_true", help="the default web browser instead of an app window")
     ap.add_argument("--port", type=int, help="of the local server (default 8767, else any free one; 0: any)")
@@ -110,7 +110,7 @@ def run(models=(), browser=False, port=None, new_instance=False, profile="v2", r
     from .server import App
 
     logfile = setup_logging()
-    log.info("FreeDyn 2 version %s starting (%s)", __version__, sys.executable)
+    log.info("freedyn2 version %s starting (%s)", __version__, sys.executable)
     if not new_instance and instance.hand_off(models):
         return 0
     from ..cli import find_tool
@@ -134,7 +134,7 @@ def run(models=(), browser=False, port=None, new_instance=False, profile="v2", r
         app.error(f"{kind.__name__}: {value}")
         log.error("unhandled error\n%s", text)
         if native is not None and native.started:
-            native.message("FreeDyn 2: error", f"{kind.__name__}: {value}\n\nLog: {logfile}")
+            native.message("freedyn2: error", f"{kind.__name__}: {value}\n\nLog: {logfile}")
 
     sys.excepthook = excepthook
     threading.excepthook = lambda a: excepthook(a.exc_type, a.exc_value, a.exc_traceback)
@@ -142,7 +142,7 @@ def run(models=(), browser=False, port=None, new_instance=False, profile="v2", r
     try:
         app.start(port)
     except OSError as e:
-        message_box("FreeDyn 2", f"The app could not start its local server: {e}\n\nLog: {logfile}")
+        message_box("freedyn2", f"The app could not start its local server: {e}\n\nLog: {logfile}")
         return 1
     app.check_updates()
     try:
@@ -160,7 +160,7 @@ def run(models=(), browser=False, port=None, new_instance=False, profile="v2", r
                     app.show()
                 native.run()
                 app.shutdown()
-                log.info("FreeDyn 2 ended (last window closed)")
+                log.info("freedyn2 ended (last window closed)")
                 logging.shutdown()
                 os._exit(0)  # the GUI toolkit's threads (Qt WebEngine) can keep the process alive
                 return 0
@@ -181,7 +181,7 @@ def run(models=(), browser=False, port=None, new_instance=False, profile="v2", r
         return 0
     finally:
         app.shutdown()
-        log.info("FreeDyn 2 ended")
+        log.info("freedyn2 ended")
 
 
 def main(argv=None):
@@ -192,5 +192,5 @@ def main(argv=None):
         return run(args.models, args.browser, args.port, args.new_instance, args.profile, args.runtime)
     except Exception as e:  # noqa: BLE001  (no console: a dialog and the log)
         log.exception("the app failed")
-        message_box("FreeDyn 2", f"{type(e).__name__}: {e}\n\nLog: {userdirs.log_dir() / 'freedyn2.log'}")
+        message_box("freedyn2", f"{type(e).__name__}: {e}\n\nLog: {userdirs.log_dir() / 'freedyn2.log'}")
         return 1

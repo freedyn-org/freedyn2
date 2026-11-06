@@ -417,7 +417,7 @@ def serve(workdir=None):
             raise SystemExit("freedyn2 mcp needs the MCP SDK: pip install mcp") from None
     session = Session(workdir)
     mcp = MCPServer("freedyn2", instructions=(
-        "FreeDyn 2 multibody simulation. Call guide first; write models as YAML files; validate, simulate, "
+        "freedyn2: multibody simulation. Call guide first; write models as YAML files; validate, simulate, "
         "check and compare runs; open the viewer for the person (view) or look yourself (screenshot)."))
 
     @mcp.tool()

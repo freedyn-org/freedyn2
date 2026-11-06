@@ -39,7 +39,7 @@ now keeps opening them; switch it on if a double click should open FreeDyn 2.
 ## A first session with an existing model
 
 1. Install FreeDyn 2 ([Getting started](getting-started.md#install)) and open
-   **FreeDyn 2 Command Prompt** from the start menu (or any prompt, if `freedyn2` is on the
+   **freedyn2 command prompt** from the start menu (or any prompt, if `freedyn2` is on the
    PATH).
 2. Go to the folder of your model. FreeDyn 2 does not change the `.fds` file; `run` writes its
    results as a CSV next to it.

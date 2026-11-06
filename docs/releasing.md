@@ -170,8 +170,8 @@ The documentation link of the installer's Start menu points to
       downloads the new installer (stable releases only);
     - on a Windows computer: download, check the hash (`Get-FileHash FreeDyn2-setup.exe`
       against `SHA256SUMS`), right click, Properties, Digital Signatures (if signed), install
-      over the previous version, start "FreeDyn 2" from the Start menu, `freedyn2 doctor` in
-      the "FreeDyn 2 Command Prompt";
+      over the previous version, start "freedyn2" from the Start menu, `freedyn2 doctor` in
+      the "freedyn2 command prompt";
     - later: the winget pull request is merged (`winget show FreeDynOrg.FreeDyn2`).
 
 If a job fails after PyPI accepted the upload: a version on PyPI cannot be replaced. Fix the
@@ -195,7 +195,7 @@ Setup 6 installed: `python installer/windows/build.py all --wheel-dir wheelhouse
 
 `installer/windows/freedyn2.iss` (Inno Setup): per user by default
 (`%LOCALAPPDATA%\Programs\FreeDyn2`) or for all users (`C:\Program Files\FreeDyn2`), components
-core, C compiler, examples; tasks PATH, `.fds` association, "Open with FreeDyn 2" for `.yaml`,
+core, C compiler, examples; tasks PATH, `.fds` association, "Open with freedyn2" for `.yaml`,
 Claude Desktop registration (`freedyn2 setup-mcp --client claude-desktop`, undone at uninstall),
 desktop icon. A new version installs over the old one. Uninstalling keeps the user data in
 `%APPDATA%\freedyn2` and `%LOCALAPPDATA%\freedyn2`. Silent:

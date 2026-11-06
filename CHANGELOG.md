@@ -5,6 +5,14 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Changed
+
+- The look of the brand (brand/): viewer, app start page, report, documentation, app icon.
+- The name is `freedyn2` in the app, the viewer, the command line and the Windows installer:
+  start menu entries *freedyn2*, *freedyn2 command prompt*, *freedyn2 documentation*,
+  *freedyn2 examples* (an upgrade removes the old *FreeDyn 2 …* entries and desktop icon).
+  `freedyn2 --version` prints `freedyn2 <version>`.
+
 ## [0.1.0rc1] - 2026-11-06
 
 Release candidate: a test of the release process (PyPI, GitHub Release, Windows installer).

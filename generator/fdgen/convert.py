@@ -56,7 +56,7 @@ MODEL_KEYS = ("model", "bodies", "joints", "forces", "parameters", "measures", "
               "solver")
 
 PROFILE_NOTE = {
-    "v2": "FreeDyn 2 methods (Lie group bodies, Arnold-Bruls HHT, velocity Newton criterion)\n"
+    "v2": "freedyn2 methods (Lie group bodies, Arnold-Bruls HHT, velocity Newton criterion)\n"
           "with the step size control of legacy FreeDyn (eps: GlobalErrorTolerance, step: SolverMaxTimeStep)",
     "legacy": "the legacy algorithm (Euler-parameter bodies, Negrut HHT, legacy Newton rule, step size\n"
               "control and error norm): the same steps as legacy FreeDyn",
@@ -244,7 +244,7 @@ def _model_text(m, fds_path, yaml_path, profile, header, blocks):
     body = lambda n: "ground" if n == "ground" else body_names[n]
 
     w = _Writer()
-    w.comment(f"{model_name}: converted from {Path(fds_path).name} by freedyn2 convert (FreeDyn 2 "
+    w.comment(f"{model_name}: converted from {Path(fds_path).name} by freedyn2 convert (freedyn2 "
               f"{__version__}), profile {profile}.")
     if header:
         w.comment("From the header of the .fds:")
