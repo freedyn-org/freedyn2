@@ -79,4 +79,5 @@ nav:
       - Theory and algorithms: theory.md
       - Extensions: extensions.md
       - Numerical findings: findings.md
+      - Releasing: releasing.md
   - Privacy policy: privacy.md

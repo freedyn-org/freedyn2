@@ -28,7 +28,7 @@ including on the legacy kernel), [`legacy/README.md`](legacy/README.md) (legacy 
 Windows: the installer `FreeDyn2-setup.exe` (coming with the first release, from
 [GitHub Releases](https://github.com/freedyn-org/freedyn2/releases/latest/download/FreeDyn2-setup.exe)):
 per user, no administrator rights, its own private Python, next to a legacy FreeDyn; the app
-window, the command line, a C compiler (Zig).
+window, the command line on the PATH, a C compiler (Zig).
 
 Python (Windows x64, Linux x86_64, Python 3.10 and newer; one wheel per platform with the
 compiled runtime and its KLU libraries):
@@ -40,10 +40,12 @@ freedyn2 run model.yaml                    # the command line: run, view, gui, c
 ```
 
 Extras: `gui` (pywebview: `freedyn2 gui` in a window of its own), `compiler` (ziglang: a C
-compiler found automatically). Until the first release on PyPI, the wheels are the artifacts
-of the `Wheels` workflow (`pip install freedyn2-*.whl`). For assistants, without installing
-first: `uvx freedyn2 mcp`, e.g. `claude mcp add freedyn2 -- uvx freedyn2 mcp`;
-`freedyn2 setup-mcp` registers an installed FreeDyn with Claude Desktop or Claude Code.
+compiler found automatically). Building the installer: [`docs/releasing.md`](docs/releasing.md). Until the first release,
+the wheels are the artifacts of the `Wheels` workflow (`pip install freedyn2-*.whl`).
+
+For assistants, without installing first (the MCP client starts it): `uvx freedyn2 mcp`, e.g.
+`claude mcp add freedyn2 -- uvx freedyn2 mcp`; `freedyn2 setup-mcp` registers an installed
+FreeDyn with Claude Desktop or Claude Code.
 
 Models with expression forces or drivers are compiled into a model plugin and need a C
 compiler: Zig from the installer or the `compiler` extra, gcc or clang, or on Windows the

@@ -25,7 +25,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
       - name: Lint
-        run: python -m pyflakes generator legacy tests/python examples/extension tools
+        run: python -m pyflakes generator legacy tests/python examples/extension tools installer
       - name: Configure and build
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE="$(which python)"
