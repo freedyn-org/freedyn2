@@ -6,6 +6,8 @@ freedyn2 view model.yaml [result.csv] [--no-run] [--export page.html] [--port N]
 freedyn2 check model.yaml [result.csv | --run] [-- runtime options]
 freedyn2 examples [name [-o DIR]]
 freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]
+freedyn2 gui [model ...] [--browser] [--port N] [--new-instance]
+freedyn2 update-check
 freedyn2 mcp [--workdir DIR]
 freedyn2 setup-mcp [--client claude-desktop|claude-code|all] [--remove] [--dry-run]
 freedyn2 config [KEY [VALUE] | KEY --unset]
@@ -20,6 +22,8 @@ freedyn2 compare model.fds ... --legacy <FreeDyn>
 | `check` | the [checks](reference/checks.md) of the model and its results; exit status 1 on errors or failed references |
 | `examples` | list the example models that come with FreeDyn, or copy one into the current directory |
 | `convert` | write a legacy `.fds` model as a YAML model file ([below](#convert)) |
+| `gui` | the [app](viewer.md#the-app): start page, recent models, examples, a window per model (`freedyn2-gui` is the same without a console); `--browser`: in the web browser; `--new-instance`: do not hand the models to a running app |
+| `update-check` | ask GitHub whether a newer release is out and print the answer (no download); see [update notice](viewer.md#update-notice) |
 | `mcp` | the MCP server for [assistants](assistants.md) (stdio) |
 | `setup-mcp` | register the MCP server with Claude Desktop and Claude Code ([below](#setup-mcp)) |
 | `config` | show or set the user configuration, e.g. `freedyn2 config compiler zig` ([below](#config)) |
@@ -158,3 +162,4 @@ plugin takes some seconds longer (zig builds its C runtime parts once, into its 
 | `FREEDYN2_HOME` | all per-user directories (configuration, data, cache, logs) below this one |
 | `FREEDYN2_RUN` | a `freedyn2_run` to use instead of the installed one |
 | `FREEDYN2_CHROMIUM` | a Chromium for the MCP `screenshot` tool |
+| `FREEDYN2_NO_UPDATE_CHECK` | `1`: the app does not ask GitHub for a newer release |
