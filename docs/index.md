@@ -25,18 +25,23 @@ variants; an AI assistant can build and change the model through the same tools 
   (CasADi) and compiled to plain C; a small C++ runtime integrates them (HHT on a Lie group).
   A car with tires on an OpenCRG road takes about 0.15 ms per step; a fixed
   Newton mode does exactly the same work every step, for real-time use.
-- **Open.** Apache 2.0. The successor of the FreeDyn freeware, with an importer for its
-  `.fds` models.
+- **Open.** Apache 2.0. The successor of the FreeDyn freeware: its `.fds` models run as
+  they are.
+- **Easy to install.** A Windows installer for using it as a program (no Python needed), or
+  `pip install freedyn2` for use from Python, Jupyter and on Linux.
 
 ## Where to start
 
 <div class="grid cards" markdown>
 
-- **[Getting started](getting-started.md)** – install, a first model, the viewer, in ten minutes.
+- **[Getting started](getting-started.md)** – install (Windows installer or pip), a first
+  model, the viewer, in ten minutes.
 - **[Tutorial](tutorial.md)** – tune a quarter car over a bump: sliders, runs, a fan of
   variants, eigenvalues.
 - **[Working with an assistant](assistants.md)** – let Claude or another MCP client build and
   examine models while you check and decide.
+- **[Coming from FreeDyn](from-freedyn.md)** – your `.fds` models in FreeDyn 2.0, side by
+  side with the legacy program.
 - **[Coming from Adams](from-adams.md)** – the concepts side by side.
 - **[Model reference](reference/model-file.md)** – every element and key.
 - **[Examples](examples.md)** – models to open, with live viewers on the page.
