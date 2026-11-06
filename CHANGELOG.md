@@ -14,6 +14,17 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   the assistant or another editor is reloaded or, with unsaved changes, not overwritten. The
   element under the cursor is selected in the 3D view and the other way round.
 
+### Changed
+
+- The viewer's report (Report) in the brand: ink on paper, JetBrains Mono and the word mark,
+  still one HTML file.
+
+### Fixed
+
+- Windows installer: an upgrade from 0.1.0rc1 or rc2 removes the old start menu folder
+  *FreeDyn 2* (with the shortcuts rc2 had put into it) and the old desktop icon; the entries are
+  then only in the folder *freedyn2*.
+
 ## [0.1.0rc2] - 2026-11-06
 
 Release candidate in the brand (brand/README.md). Not signed: Windows SmartScreen warns on the

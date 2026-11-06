@@ -52,6 +52,8 @@ VersionInfoProductName={#AppName}
 VersionInfoDescription={#AppName} Setup
 DefaultDirName={autopf}\freedyn2
 DefaultGroupName={#AppName}
+; the group "freedyn2" of this version, not the folder "FreeDyn 2" of rc1 (removed: InstallDelete)
+UsePreviousGroup=no
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog commandline
@@ -113,6 +115,19 @@ Type: filesandordirs; Name: "{app}\python"
 Type: filesandordirs; Name: "{app}\bin"
 Type: filesandordirs; Name: "{app}\licenses"
 Type: filesandordirs; Name: "{app}\examples"
+; the start menu folder "FreeDyn 2" of 0.1.0rc1, and the desktop icon of that version. An upgrade
+; rc1 -> rc2 kept the old folder (UsePreviousGroup) and put rc2's shortcuts "freedyn2 ..." into it:
+; both sets of names go, then the folder if it is empty (nothing else of the user's)
+Type: files; Name: "{autoprograms}\FreeDyn 2\FreeDyn 2.lnk"
+Type: files; Name: "{autoprograms}\FreeDyn 2\FreeDyn 2 Command Prompt.lnk"
+Type: files; Name: "{autoprograms}\FreeDyn 2\FreeDyn 2 Documentation.url"
+Type: files; Name: "{autoprograms}\FreeDyn 2\FreeDyn 2 Examples.lnk"
+Type: files; Name: "{autoprograms}\FreeDyn 2\freedyn2.lnk"
+Type: files; Name: "{autoprograms}\FreeDyn 2\freedyn2 Command Prompt.lnk"
+Type: files; Name: "{autoprograms}\FreeDyn 2\freedyn2 Documentation.url"
+Type: files; Name: "{autoprograms}\FreeDyn 2\freedyn2 Examples.lnk"
+Type: dirifempty; Name: "{autoprograms}\FreeDyn 2"
+Type: files; Name: "{autodesktop}\FreeDyn 2.lnk"
 
 [Files]
 Source: "{#StageDir}\core\*"; DestDir: "{app}"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs
