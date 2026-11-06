@@ -18,6 +18,10 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 - The viewer's report (Report) in the brand: ink on paper, JetBrains Mono and the word mark,
   still one HTML file.
+- Windows installer much smaller: CasADi without its solver plugins (IPOPT, HiGHS, OpenBLAS, ...,
+  which freedyn2 never uses) and Zig with the C libraries for Windows only. The core goes from
+  about 380 to 165 MB, the C compiler from about 380 to 320 MB. The build checks that CasADi
+  still generates code and that Zig still compiles a DLL.
 
 ### Fixed
 

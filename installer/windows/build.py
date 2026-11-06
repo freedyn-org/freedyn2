@@ -7,7 +7,9 @@
 stage: downloads the pinned python-build-standalone CPython (SHA256 checked), extracts it, downloads
 freedyn2[gui,compiler] and its dependencies as wheels (pip download), installs them offline from
 there into that Python, makes the launchers (freedyn2.exe, freedyn2-gui.exe) relocatable, strips
-caches and tests, precompiles the bytecode and writes three trees for the installer components:
+caches and tests, prunes CasADi to its core (no solver plugins) and Zig to its Windows target,
+precompiles the bytecode, checks that CasADi and Zig still work and writes three trees for the
+installer components:
 
   WORK/stage/core       {app}: python\\ (CPython with everything but Zig), bin\\ (the launchers),
                         licenses\\, freedyn2.ico
@@ -22,8 +24,8 @@ OUT/freedyn2-<version>-setup.exe.
 
 --dry-run (any OS, e.g. Linux): the same downloads and extraction, the dependencies resolved for
 Windows with uv (pip on Linux would evaluate the environment markers for Linux) and installed for
-the win_amd64 platform with pip --target; no launchers, no bytecode, ISCC not run but its inputs
-checked. For testing the logic of this script without Windows.
+the win_amd64 platform with pip --target; no launchers, no bytecode, no smoke test, ISCC not run
+but its inputs checked. For testing the logic of this script without Windows.
 """
 
 import argparse
@@ -34,6 +36,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tarfile
@@ -61,6 +64,19 @@ COMPILER_DISTS = ["ziglang"]  # the packages of the component "compiler" (not in
 STRIP_DIRS = {"tests"}
 STRIP_STDLIB = ["test", "idlelib", "turtledemo"]
 KEEP_TESTS_IN = {"fdgen", *COMPILER_DISTS}
+# CasADi: freedyn2 uses its symbolic core and code generation only (SX, MX, Function,
+# CodeGenerator), never a solver plugin (nlpsol, qpsol, integrator, ...). Kept: the Python files
+# and _casadi.pyd with the DLLs it loads (libcasadi.dll, the MinGW GCC runtime: found from the
+# import tables), the license texts. Removed: the solver plugins (libcasadi_<kind>_<name>.dll)
+# with their libraries (IPOPT, HiGHS, OpenBLAS, ...), solver programs, headers and import
+# libraries: about 210 of 235 MB.
+CASADI_KEEP = {"__init__.py", "casadi.py", "py.typed", "tools", "_casadi.pyd"}
+CASADI_KEEP_SUFFIXES = (".py", ".pyi")
+# Zig: plugins are compiled for x86_64-windows-gnu only (fdgen.plugin._zig_target). Kept of
+# lib/libc: MinGW-w64 (sources, its license) and the Windows headers; removed: the C libraries
+# and headers of the other targets (glibc, musl, wasi, macOS, BSDs): about 90 MB.
+ZIG_LIBC_KEEP = {"mingw"}
+ZIG_LIBC_INCLUDE_KEEP = {"any-windows-any"}
 
 
 def log(*a):
@@ -257,6 +273,133 @@ def split_compiler(core_sp, compiler_sp, dists):
         log(f"{name}: {', '.join(sorted(tops))} -> component compiler")
 
 
+def pe_imports(path):
+    """The DLL names a PE file (.dll, .pyd, .exe) imports, from its import directory."""
+    data = Path(path).read_bytes()
+    pe = struct.unpack_from("<I", data, 0x3C)[0]
+    if data[:2] != b"MZ" or data[pe:pe + 4] != b"PE\0\0":
+        raise ValueError(f"{path}: not a PE file")
+    n_sections, opt_size = struct.unpack_from("<H", data, pe + 6)[0], struct.unpack_from("<H", data, pe + 20)[0]
+    opt = pe + 24
+    magic = struct.unpack_from("<H", data, opt)[0]
+    dirs = opt + (112 if magic == 0x20B else 96)  # PE32+ or PE32: the data directories
+    import_rva = struct.unpack_from("<I", data, dirs + 8)[0]  # directory 1: imports
+    sections = [struct.unpack_from("<IIII", data, opt + opt_size + 40 * i + 8) for i in range(n_sections)]
+
+    def offset(rva):  # (virtual size, virtual address, raw size, raw offset) per section
+        for vsize, vaddr, rsize, roff in sections:
+            if vaddr <= rva < vaddr + max(vsize, rsize):
+                return rva - vaddr + roff
+        raise ValueError(f"{path}: RVA {rva:#x} in no section")
+
+    names, pos = [], offset(import_rva) if import_rva else None
+    while pos is not None:
+        name_rva = struct.unpack_from("<I", data, pos + 12)[0]
+        if not name_rva:
+            break
+        start = offset(name_rva)
+        names.append(data[start:data.index(b"\0", start)].decode("ascii"))
+        pos += 20
+    return names
+
+
+def dll_closure(directory, roots):
+    """The files in directory that roots need: themselves and the DLLs they import from directory,
+    recursively (the others, system DLLs and python3.dll, are found elsewhere)."""
+    local = {f.name.lower(): f for f in directory.iterdir() if f.is_file()}
+    need, todo = set(), [r.lower() for r in roots]
+    while todo:
+        name = todo.pop()
+        if name in need or name not in local:
+            continue
+        need.add(name)
+        todo.extend(d.lower() for d in pe_imports(local[name]))
+    return {local[n].name for n in need}
+
+
+def prune_casadi(sp):
+    """CasADi without its solver plugins (see CASADI_KEEP): only what freedyn2 loads."""
+    ca = sp / "casadi"
+    if not ca.is_dir():
+        log("WARNING: casadi is not installed")
+        return 0
+    keep = {n for n in CASADI_KEEP if (ca / n).exists()} | dll_closure(ca, ["_casadi.pyd"])
+    if "libcasadi.dll" not in {k.lower() for k in keep}:
+        raise SystemExit(f"casadi: libcasadi.dll not among the imports of _casadi.pyd ({sorted(keep)})")
+    removed = 0
+    for p in sorted(ca.iterdir()):
+        if p.name in keep or (p.is_file() and p.suffix in CASADI_KEEP_SUFFIXES):
+            continue
+        if p.name == "include":  # the headers go, the license texts stay
+            for q in sorted(p.iterdir()):
+                if q.name != "licenses":
+                    removed += tree_size(q)
+                    remove(q)
+            continue
+        removed += tree_size(p)
+        remove(p)
+    log(f"casadi: kept {', '.join(sorted(keep))}; removed {removed / 1e6:.0f} MB (solver plugins, headers)")
+    return removed
+
+
+def prune_zig(compiler_sp):
+    """Zig's C libraries for Windows only (see ZIG_LIBC_KEEP)."""
+    libc = compiler_sp / "ziglang" / "lib" / "libc"
+    if not libc.is_dir():
+        log("WARNING: ziglang/lib/libc not found: Zig not pruned")
+        return 0
+    if not all((libc / k).is_dir() for k in ZIG_LIBC_KEEP) or \
+            not all((libc / "include" / k).is_dir() for k in ZIG_LIBC_INCLUDE_KEEP):
+        raise SystemExit(f"ziglang: {ZIG_LIBC_KEEP} or include/{ZIG_LIBC_INCLUDE_KEEP} missing in {libc}")
+    removed = 0
+    for p in sorted(libc.iterdir()):
+        if p.name in ZIG_LIBC_KEEP or not p.is_dir():
+            continue
+        for q in sorted(p.iterdir()) if p.name == "include" else [p]:
+            if p.name == "include" and q.name in ZIG_LIBC_INCLUDE_KEEP:
+                continue
+            removed += tree_size(q)
+            remove(q)
+    log(f"ziglang: removed {removed / 1e6:.0f} MB (C libraries of targets other than Windows)")
+    return removed
+
+
+def tree_size(p):
+    return p.stat().st_size if p.is_file() else sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+
+
+def remove(p):
+    if p.is_dir():
+        shutil.rmtree(p)
+    else:
+        p.unlink()
+
+
+def smoke_test(py, compiler_sp, tmp):
+    """The pruned packages still do what freedyn2 needs: CasADi derives and generates C (in tmp),
+    Zig compiles a DLL for Windows (as fdgen.plugin does: python -m ziglang cc)."""
+    tmp.mkdir(parents=True, exist_ok=True)
+    code = ("import casadi as ca\n"
+            "x = ca.SX.sym('x', 2)\n"
+            "f = ca.Function('f', [x], [ca.jacobian(ca.sin(x[0]) * x[1], x)])\n"
+            "assert f([0, 2]).full().tolist() == [[2.0, 0.0]], f([0, 2])\n"
+            "g = ca.CodeGenerator('smoke.c')\n"
+            "g.add(f)\n"
+            "g.generate()\n")
+    run(py, "-I", "-c", code, cwd=tmp)
+    if not (tmp / "smoke.c").is_file():
+        raise SystemExit("smoke test: CasADi generated no C file")
+    if (compiler_sp / "ziglang").is_dir():
+        (tmp / "zig.c").write_text("#include <math.h>\n__declspec(dllexport) double f(double x) { return sin(x); }\n")
+        # -I: no site of the user; the compiler's site-packages added by hand (as {app} merges both)
+        run(py, "-I", "-c", "import runpy, sys; sys.path.insert(0, sys.argv.pop(1)); sys.argv[0] = 'ziglang'; "
+            "runpy.run_module('ziglang', run_name='__main__', alter_sys=True)",
+            compiler_sp, "cc", "-target", "x86_64-windows-gnu", "-shared", "-O2", "-o", "zig.dll", "zig.c", cwd=tmp)
+        if (tmp / "zig.dll").read_bytes()[:2] != b"MZ":
+            raise SystemExit("smoke test: Zig wrote no DLL")
+    log("smoke test passed (casadi, ziglang)")
+
+
 def strip(pyhome, extra_trees=()):
     removed = 0
     for tree in (pyhome, *extra_trees):
@@ -358,6 +501,8 @@ def stage(args):
         log("dry run: launchers not made (pip --target makes none for Windows)")
     split_compiler(site_packages(pyhome), site_packages(compiler / "python"), dists)
     strip(pyhome, [compiler])
+    prune_casadi(site_packages(pyhome))
+    prune_zig(site_packages(compiler / "python"))
     fdgen = site_packages(pyhome) / "fdgen"
     ex = fdgen / "examples"
     if ex.is_dir():
@@ -372,6 +517,7 @@ def stage(args):
     rows = collect_licenses(core, pyhome, dists)
     if not args.dry_run:
         compile_bytecode(py, [pyhome, compiler])
+        smoke_test(py, site_packages(compiler / "python"), work / "smoke")
     info = {"version": version, "version_numeric": numeric_version(version), "wheel": wheel.name,
             "python": PYTHON_FILE, "packages": {r[0]: r[1] for r in rows}, "dry_run": args.dry_run}
     (st / "buildinfo.json").write_text(json.dumps(info, indent=2))
