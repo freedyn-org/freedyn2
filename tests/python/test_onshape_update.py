@@ -52,7 +52,7 @@ def test_nothing_changed_in_onshape_changes_nothing(tmp_path):
     p = imported(tmp_path, asm, mass)
     first = p.read_text()
     report, _ = again(p, asm, mass)
-    assert p.read_text() == first and report["updated"] == ["rod_1", "revolute_1"]
+    assert p.read_text() == first and report["updated"] == [] and report["unchanged"] == ["rod_1", "revolute_1"]
     edit(p)
     mine = p.read_text()
     report, warnings = again(p, asm, mass)
@@ -68,7 +68,8 @@ def test_changes_in_onshape_and_mine(tmp_path):
     report, warnings = again(p, asm, mass)
     text = p.read_text()
     m = yaml.safe_load(text)
-    assert report["updated"] == ["pendel", "revolute_1"] and report["added"] == ["rod2_1", "revolute_2"]
+    assert report["updated"] == ["pendel"] and report["unchanged"] == ["revolute_1"]
+    assert report["added"] == ["rod2_1", "revolute_2"]
     assert m["bodies"]["pendel"]["mass"] == 2.0 and m["bodies"]["pendel"]["id"] == "onshape:body:I2"
     assert m["bodies"]["rod2_1"]["position"] == pytest.approx([1.5, 0, 0])
     assert m["joints"]["revolute_1"]["body1"] == "pendel"

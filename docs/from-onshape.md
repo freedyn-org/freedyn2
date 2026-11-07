@@ -73,7 +73,8 @@ not by their names:
 - **Everything else** stays as it is: measures, drivers, forces, sensors, outputs, the solver
   settings.
 
-The command lists what it updated, added, removed and kept. A file imported before there were
+The command lists what it updated (values changed), added, removed and kept, and how many
+bodies and joints did not change. A file imported before there were
 ids cannot be matched: import it once with `--force` and copy your additions over; from then on
 `--update` keeps them.
 

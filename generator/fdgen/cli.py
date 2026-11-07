@@ -204,6 +204,8 @@ def import_onshape(args):
         for k in ("updated", "added", "removed", "kept"):
             if report[k]:
                 print(f"{k}: {', '.join(report[k])}")
+        if report["unchanged"]:
+            print(f"unchanged: {len(report['unchanged'])} bodies and joints")
     print(f"{'updated' if report else 'wrote'} {out.resolve()}")
     return 0
 
