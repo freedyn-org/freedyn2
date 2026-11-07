@@ -14,6 +14,13 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   planar, parallel and pin slot mates become joints; other mates are listed, not imported. An
   STL file per part for the viewer, and the Onshape reference of every part in
   `<model>.onshape.json`. See docs/from-onshape.md.
+- Element ids: an optional `id` on bodies, joints, forces, measures, sensors, drivers, splines,
+  frames and shapes, the element's stable identity for tools (references keep using names).
+  Unique in the model. `convert` writes the legacy ids (`fds:body:1`), `import-onshape`
+  Onshape's instance and feature ids (`onshape:body:...`).
+- `freedyn2 rename model.yaml old new` and the assistant's tool `rename`: an element and every
+  reference to it (bodies, points, frames, expressions, formulas, channels in checks), changed
+  only where the name stands; comments and formatting stay.
 
 ## [0.1.0rc3] - 2026-11-06
 

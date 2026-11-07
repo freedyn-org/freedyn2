@@ -11,6 +11,7 @@
   freedyn2 setup-mcp [--client claude-desktop|claude-code|all] [--remove] [--dry-run]  (fdgen.mcp_setup)
   freedyn2 config [key [value]] | freedyn2 doctor     (fdgen.doctor)
   freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]   (fdgen.convert)
+  freedyn2 rename model.yaml old new [--section bodies|joints|...]   (fdgen.rename)
   freedyn2 import-onshape <assembly URL> [-o model.yaml] [--no-meshes] [--force]  (fdgen.onshape)
 
 `run` imports the model, writes the runtime model file (.fdm) and, for models with expression
@@ -183,6 +184,14 @@ def convert(args):
     return 0
 
 
+def rename(args):
+    from .rename import rename as rename_element
+
+    n, section = rename_element(args.model, args.old, args.new, args.section)
+    print(f"renamed {section} {args.old} to {args.new}: {n} place{'s' if n != 1 else ''} in {args.model}")
+    return 0
+
+
 def import_onshape(args):
     from .onshape import import_onshape as read
 
@@ -260,6 +269,11 @@ def main(argv=None):
     cv.add_argument("--profile", choices=("v2", "legacy"), default="v2",
                     help="solver settings and bodies of freedyn2 run --profile (default v2)")
     cv.add_argument("--force", action="store_true", help="overwrite an existing YAML file")
+    rn = sub.add_parser("rename", help="rename an element of a model file and every reference to it")
+    rn.add_argument("model")
+    rn.add_argument("old")
+    rn.add_argument("new")
+    rn.add_argument("--section", help="bodies, joints, ... where the old name is used by several elements")
     io = sub.add_parser("import-onshape", help="write an Onshape assembly as a YAML model file (API keys: "
                         "ONSHAPE_ACCESS_KEY, ONSHAPE_SECRET_KEY)")
     io.add_argument("url", help="the assembly's address in the browser (https://cad.onshape.com/documents/...)")
@@ -292,7 +306,7 @@ def main(argv=None):
 
             return update_check()
         return {"view": view, "check": check, "examples": examples, "convert": convert,
-                "import-onshape": import_onshape}.get(args.command, run)(args)
+                "import-onshape": import_onshape, "rename": rename}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)
         return 1
