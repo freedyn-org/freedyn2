@@ -116,3 +116,29 @@ def test_file_crlf_and_invalid_result(tmp_path):
     assert b"body1: arm" in p.read_bytes() and b"\r\n" in p.read_bytes() and b"\n\n" not in p.read_bytes()
     assert cli.main(["rename", str(p), "hinge", "pivot"]) == 0
     assert "pivot:" in p.read_text()
+
+
+def test_changes_for_the_editor():
+    from fdgen.rename import changes
+
+    edits, n, section = changes(MODEL, "rod", "arm")
+    assert n == 6 and section == "bodies" and all(MODEL[c["from"]:c["to"]] == "rod" for c in edits)
+    text = MODEL
+    for c in reversed(edits):
+        text = text[:c["from"]] + c["insert"] + text[c["to"]:]
+    assert text == rename_text(MODEL, "rod", "arm")[0]
+
+
+def test_renamed_by_hand():
+    """The key of an element with an id changed by hand: the references left are found by the id."""
+    from fdgen.rename import changes, renamed
+
+    before = MODEL.replace("  rod: {mass: 1,", "  rod: {id: onshape:body:M1, mass: 1,")
+    after = before.replace("  rod: {id:", "  arm: {id:")
+    assert renamed(before, after) == [{"section": "bodies", "id": "onshape:body:M1", "old": "rod", "new": "arm",
+                                       "references": 5}]
+    edits, n, _ = changes(after, "rod", "arm", "bodies", references_only=True)
+    assert n == 5
+    assert renamed(before, before) == [] and renamed(before, "not: [yaml") == []
+    # without id nothing can be told: a deleted element and a new one
+    assert renamed(MODEL, MODEL.replace("  rod: {mass", "  arm: {mass")) == []

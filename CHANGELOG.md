@@ -20,7 +20,14 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   Onshape's instance and feature ids (`onshape:body:...`).
 - `freedyn2 rename model.yaml old new` and the assistant's tool `rename`: an element and every
   reference to it (bodies, points, frames, expressions, formulas, channels in checks), changed
-  only where the name stands; comments and formatting stay.
+  only where the name stands; comments and formatting stay. In the viewer's editor: F2. An
+  element with an id renamed by hand (in the editor or another one) is recognized by its id;
+  the editor and the viewer's header offer to update the references left.
+
+### Fixed
+
+- The viewer's editor: Ctrl+Z right after opening a file undid the loading and left the editor
+  empty (a save then wrote an empty file). A loaded file now starts its own undo history.
 
 ## [0.1.0rc3] - 2026-11-06
 

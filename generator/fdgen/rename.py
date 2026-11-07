@@ -110,33 +110,8 @@ def defined_in(root, name):
     return [s for s in SECTIONS if any(k.value == name for k, _ in _items(_get(root, s)[1]))]
 
 
-def rename_text(text, old, new, section=None):
-    """(text with the element old renamed to new and every reference to it, number of places
-    changed, section of the element). section: bodies, joints, ... where old is defined in
-    several."""
-    if not IDENT.match(new or "") or new in RESERVED:
-        raise ModelError(f"{new!r} is not a name for an element (letters, digits, _; not {', '.join(sorted(RESERVED))})")
-    try:
-        root = yaml.compose(text)
-    except yaml.YAMLError as e:
-        raise ModelError(f"the model file is not valid YAML: {e}") from None
-    sections = defined_in(root, old)
-    if section is not None:
-        if section not in sections:
-            raise ModelError(f"no {section} element named {old}")
-        sections = [section]
-    if not sections:
-        raise ModelError(f"no element named {old}")
-    if len(sections) > 1:
-        raise ModelError(f"{old} names elements in {', '.join(sections)}: say which (section)")
-    section = sections[0]
-    taken = defined_in(root, new)
-    if taken:
-        raise ModelError(f"{new} is already used in {', '.join(taken)}")
-    e = _Edits(text, old, new)
-    for k, _ in _items(_get(root, section)[1]):
-        if k.value == old:
-            e.name(k)
+def _references(root, e, section):
+    """The places that refer to the element e.old of section, into e."""
     if section == "bodies":
         for s in ("joints", "forces", "measures", "sensors"):
             for _, el in _items(_get(root, s)[1]):
@@ -187,7 +162,100 @@ def rename_text(text, old, new, section=None):
             for item in items.value if isinstance(items, yaml.SequenceNode) else []:
                 for key in ("channel", "x_channel"):
                     e.channel(_get(item, key)[1])
-    return e.apply(), len(set(e.spans)), section
+
+
+def _spans(text, old, new, section=None):
+    """The edits (an _Edits with .section) of renaming the element old to new."""
+    if not IDENT.match(new or "") or new in RESERVED:
+        raise ModelError(f"{new!r} is not a name for an element (letters, digits, _; not {', '.join(sorted(RESERVED))})")
+    root = _compose(text)
+    sections = defined_in(root, old)
+    if section is not None:
+        if section not in sections:
+            raise ModelError(f"no {section} element named {old}")
+        sections = [section]
+    if not sections:
+        raise ModelError(f"no element named {old}")
+    if len(sections) > 1:
+        raise ModelError(f"{old} names elements in {', '.join(sections)}: say which (section)")
+    section = sections[0]
+    taken = defined_in(root, new)
+    if taken:
+        raise ModelError(f"{new} is already used in {', '.join(taken)}")
+    e = _Edits(text, old, new)
+    e.section = section
+    for k, _ in _items(_get(root, section)[1]):
+        if k.value == old:
+            e.name(k)
+    _references(root, e, section)
+    return e
+
+
+def rename_text(text, old, new, section=None):
+    """(text with the element old renamed to new and every reference to it, number of places
+    changed, section of the element). section: bodies, joints, ... where old is defined in
+    several."""
+    e = _spans(text, old, new, section)
+    return e.apply(), len(set(e.spans)), e.section
+
+
+def _compose(text):
+    try:
+        return yaml.compose(text)
+    except yaml.YAMLError as e:
+        raise ModelError(f"the model file is not valid YAML: {e}") from None
+
+
+def changes(text, old, new, section=None, references_only=False):
+    """The edits of a rename as [{from, to, insert}] (character offsets in text), number of
+    places, section: for the editor, which applies them to its text (undo, cursor). With
+    references_only, the element is already called new (renamed by hand) and only the places
+    that still say old change."""
+    if not references_only:
+        e = _spans(text, old, new, section)
+    else:
+        root = _compose(text)
+        if section not in SECTIONS or new not in [k.value for k, _ in _items(_get(root, section)[1])]:
+            raise ModelError(f"no {section} element named {new}")
+        e = _Edits(text, old, new)
+        e.section = section
+        _references(root, e, section)
+    spans = sorted(set(e.spans))
+    return [{"from": a, "to": b, "insert": ins} for a, b, ins in spans], len(spans), e.section
+
+
+def apply_changes(text, edits):
+    """text with the edits of changes() made."""
+    for c in sorted(edits, key=lambda c: c["from"], reverse=True):
+        text = text[:c["from"]] + c["insert"] + text[c["to"]:]
+    return text
+
+
+def renamed(before, after):
+    """Elements renamed by hand between two texts of a model file: their id is the same, the
+    name not, and references to the old name are left. [{section, id, old, new, references}]."""
+    from .model import ID_SECTIONS
+
+    try:
+        r0, r1 = yaml.compose(before), yaml.compose(after)
+    except yaml.YAMLError:
+        return []
+    out = []
+    for section in ID_SECTIONS:
+        def ids(root):
+            return {v.value: k.value for k, el in _items(_get(root, section)[1])
+                    for kk, v in _items(el) if kk.value == "id" and isinstance(v, yaml.ScalarNode)}
+        i0, i1 = ids(r0), ids(r1)
+        names1 = {k.value for k, _ in _items(_get(r1, section)[1])}
+        for i, old in i0.items():
+            new = i1.get(i)
+            if new is None or new == old or old in names1:
+                continue
+            e = _Edits(after, old, new)
+            _references(r1, e, section)
+            if e.spans:
+                out.append({"section": section, "id": i, "old": old, "new": new, "references": len(set(e.spans))})
+    return out
 
 
 def rename(path, old, new, section=None):

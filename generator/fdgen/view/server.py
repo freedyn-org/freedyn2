@@ -22,7 +22,10 @@ From the page (POST, JSON):
                   / {clear: true}; its results: GET /api/sweep/<k>.csv
   /api/source     {text, stamp}: save the model file from the editor (fdgen.view.source); 409 with
                   the file as it is now if it changed since the editor read it (stamp)
-  /api/lint       {text}: diagnostics of a text not yet saved, at their lines
+  /api/lint       {text, base}: diagnostics of a text not yet saved, at their lines; renames: elements
+                  renamed by hand against base (the saved text), found by their ids
+  /api/rename     {old, new, section, references_only, text}: a rename (fdgen.rename) as edits of text
+                  for the editor; without text, of the model file (renames of the state: offered)
   /api/notes      {text, context, image}: a note to the assistant (fdgen.view.notes)
   /api/notes/<id> {done} / {delete}: close, reopen or delete a note
 GET /api/source: the model file for the editor {text, stamp, editable}; GET /api/schema: the
@@ -111,6 +114,7 @@ class View:
         self._lock = threading.Lock()
         self._building = threading.Lock()  # one rebuild at a time
         self._symbolic = threading.Lock()  # CasADi model building: one thread at a time
+        self.renames, self._last_text = [], None  # elements renamed by hand in the file (fdgen.rename.renamed)
         self.agent = None  # {"name": client}: the MCP client whose session serves this viewer (mcp_server)
 
     def road_tool(self):
@@ -370,10 +374,28 @@ class View:
             t = 0.0
         return {"t": t, "end": prog[1]}
 
+    def _follow_renames(self):
+        """Elements of the model file renamed by hand since the last build (by their ids), with
+        references to the old name left: offered to the person (state renames, POST api/rename)."""
+        from ..rename import renamed
+
+        if self.model_path.suffix.lower() not in (".yaml", ".yml"):
+            return
+        try:
+            text = source.read(self.model_path)["text"]
+        except OSError:
+            return
+        if self._last_text is not None and text != self._last_text:
+            self.renames = renamed(self._last_text, text)
+        elif self._last_text is None:
+            self.renames = []
+        self._last_text = text
+
     def _rebuild(self, gen):
         from ..model import write_fdm
 
         self._stamps = self._watched()
+        self._follow_renames()
         with self._lock:
             self.status = "simulating" if self.run else "loading"
             self.version += 1
@@ -434,7 +456,27 @@ class View:
                     "runs": runs, "current": self.current, "reference": self.reference,
                     "progress": self.progress() if self.status == "simulating" else None,
                     "overrides": self.overrides, "notes": notes.stamp(self.model_path), "agent": self.agent, "source": self.source_stamp(),
+                    "renames": self.renames,
                     "sweep": None if self.sweep is None else {**self.sweep, "results": list(self.sweep["results"])}}
+
+    def rename(self, body):
+        """POST api/rename {old, new, section?, references_only?} with text: the edits of the rename
+        for the editor's text ({changes, count, section}); without text: the model file renamed
+        (the viewer's offer for an element renamed by hand), then rebuilt as after any save."""
+        from ..rename import apply_changes, changes
+
+        args = (str(body["old"]), str(body["new"]), body.get("section") or None, bool(body.get("references_only")))
+        if "text" in body:
+            edits, n, section = changes(str(body["text"]), *args)
+            return {"changes": edits, "count": n, "section": section}
+        src = source.read(self.model_path)
+        edits, n, section = changes(src["text"], *args)
+        try:
+            source.save(self.model_path, apply_changes(src["text"], edits), src["stamp"])
+        except source.Conflict as e:
+            raise ValueError(f"{e}: try again") from None
+        self.renames = [r for r in self.renames if (r["section"], r["old"]) != (section, args[0])]
+        return {"count": n, "section": section}
 
     def source_stamp(self):
         """The stamp of the model file (fdgen.view.source), for the editor: changed by someone else?"""
@@ -573,7 +615,13 @@ class ViewHandler(BaseHTTPRequestHandler):
                     return self._send(json.dumps({"error": str(e), **source.read(view.model_path)}).encode(),
                                       "application/json", 409)
             elif url == "/api/lint":
-                out = {"diagnostics": source.lint(str(body.get("text", "")), view.model_path.parent)}
+                from ..rename import renamed
+
+                text = str(body.get("text", ""))
+                out = {"diagnostics": source.lint(text, view.model_path.parent),
+                       "renames": renamed(str(body["base"]), text) if body.get("base") else []}
+            elif url == "/api/rename":
+                out = view.rename(body)
             elif url == "/api/notes":
                 out = notes.add_note(view.model_path, body.get("text", ""), body.get("context"), body.get("image"))
             elif url.startswith("/api/notes/"):
