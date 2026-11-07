@@ -54,7 +54,7 @@ const S = process.argv[2], ZIP = process.argv[3];
   await viewer(() => window.fdViewer.addChannel('slider.R_x')); await cam();
   await caption(`Network requests while translating and simulating: ${net}.<br>The model never leaves the browser. No server, no install.`);
   await play(0, 3, 6000);
-  await caption('Free. Open source (Apache-2.0).<br>Published and maintained by SevenSim.');
+  await caption('Free. Open source (Apache-2.0).<br>Published and maintained by sevensim.');
   await p.waitForTimeout(4500);
   console.log('network requests during simulate:', net, '| wasm time:', sim);
   await ctx.close(); await b.close();
