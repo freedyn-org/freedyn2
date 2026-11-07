@@ -5,6 +5,36 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Added
+
+- `freedyn2 import-onshape <assembly address>` (prototype): an Onshape assembly as a model file,
+  read with the Onshape REST API and API keys (`ONSHAPE_ACCESS_KEY`, `ONSHAPE_SECRET_KEY`).
+  Parts connected by Fastened mates or mate groups become one body with the added-up mass
+  properties from Onshape; fixed parts become the ground; revolute, slider, cylindrical, ball,
+  planar, parallel and pin slot mates become joints; other mates are listed, not imported. An
+  STL file per part for the viewer, and the Onshape reference of every part in
+  `<model>.onshape.json`. See docs/from-onshape.md.
+- Element ids: an optional `id` on bodies, joints, forces, measures, sensors, drivers, splines,
+  frames and shapes, the element's stable identity for tools (references keep using names);
+  parameters, inputs, outputs and points take the long form `{value: ..., id: ...}`.
+  Unique in the model. `convert` writes the legacy ids (`fds:body:1`), `import-onshape`
+  Onshape's instance and feature ids (`onshape:body:...`).
+- `freedyn2 import-onshape ... --update`: the assembly imported again into a model file worked
+  on since. Bodies and joints are matched by their ids and get Onshape's new values; names,
+  own keys, own shapes, comments and everything without an Onshape id (measures, drivers,
+  forces, solver) stay; new parts and mates are added, deleted ones removed unless still
+  referred to.
+- `freedyn2 rename model.yaml old new` and the assistant's tool `rename`: an element and every
+  reference to it (bodies, points, frames, expressions, formulas, channels in checks), changed
+  only where the name stands; comments and formatting stay. In the viewer's editor: F2. An
+  element with an id renamed by hand (in the editor or another one) is recognized by its id;
+  the editor and the viewer's header offer to update the references left.
+
+### Fixed
+
+- The viewer's editor: Ctrl+Z right after opening a file undid the loading and left the editor
+  empty (a save then wrote an empty file). A loaded file now starts its own undo history.
+
 ## [0.1.0rc3] - 2026-11-06
 
 Release candidate with the model editor in the viewer and a much smaller Windows installer

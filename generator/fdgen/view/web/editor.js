@@ -12,6 +12,10 @@
 //   menu). Hovering a key shows what it means.
 // - The element under the cursor is selected in the 3D view and the inspector; an element
 //   selected there is shown here.
+// - F2 on a name renames the element and every reference to it (POST api/rename: the server's
+//   fdgen.rename gives the edits, made here as one change: ctrl+z undoes it). An element with an
+//   id whose name was changed by hand is found by the id (api/lint, against the saved text): the
+//   editor offers to update the references that still have the old name.
 
 import {
   EditorState, StateEffect, StateField, Compartment, EditorView, keymap, lineNumbers, highlightActiveLine,
@@ -435,29 +439,27 @@ export class ModelEditor {
     this.revealing = false;
     this.selected = null;
     this.serverError = null;
+    this.offered = new Set();  // renames by hand offered and declined: not asked again
     this.readOnly = new Compartment();
     const lintSource = async (view) => this.lint(view);
-    this.view = new EditorView({
-      parent: opts.box,
-      state: EditorState.create({
-        doc: "",
-        extensions: [
-          lineNumbers(), foldGutter(), lintGutter(), highlightActiveLineGutter(), history(), drawSelection(),
-          indentOnInput(), bracketMatching(), closeBrackets(), highlightActiveLine(), highlightSelectionMatches(),
-          indentUnit.of("  "), EditorState.tabSize.of(2), yaml(), indentation, syntaxHighlighting(style), values, theme,
-          elementLines, placeholder("model: ..."), EditorView.lineWrapping,
-          autocompletion({ override: [completions(this.schema, () => this.o.model())], icons: false, activateOnTyping: true }),
-          linter(lintSource, { delay: 500, needsRefresh: (u) => u.transactions.some((t) => t.effects.some((e) => e.is(relint))) }), hover(this.schema),
-          keymap.of([
-            { key: "Mod-s", preventDefault: true, run: () => { this.save(); return true; } },
-            ...closeBracketsKeymap, ...completionKeymap, ...searchKeymap, ...foldKeymap, ...historyKeymap,
-            ...defaultKeymap, indentWithTab,
-          ]),
-          EditorView.updateListener.of((u) => this.updated(u)),
-          this.readOnly.of([]),
-        ],
-      }),
-    });
+    // a file loaded starts a new state: its own undo history (ctrl+z does not undo the loading)
+    this.extensions = [
+      lineNumbers(), foldGutter(), lintGutter(), highlightActiveLineGutter(), history(), drawSelection(),
+      indentOnInput(), bracketMatching(), closeBrackets(), highlightActiveLine(), highlightSelectionMatches(),
+      indentUnit.of("  "), EditorState.tabSize.of(2), yaml(), indentation, syntaxHighlighting(style), values, theme,
+      elementLines, placeholder("model: ..."), EditorView.lineWrapping,
+      autocompletion({ override: [completions(this.schema, () => this.o.model())], icons: false, activateOnTyping: true }),
+      linter(lintSource, { delay: 500, needsRefresh: (u) => u.transactions.some((t) => t.effects.some((e) => e.is(relint))) }), hover(this.schema),
+      keymap.of([
+        { key: "Mod-s", preventDefault: true, run: () => { this.save(); return true; } },
+        { key: "F2", preventDefault: true, run: () => { this.startRename(); return true; } },
+        ...closeBracketsKeymap, ...completionKeymap, ...searchKeymap, ...foldKeymap, ...historyKeymap,
+        ...defaultKeymap, indentWithTab,
+      ]),
+      EditorView.updateListener.of((u) => this.updated(u)),
+      this.readOnly.of([]),
+    ];
+    this.view = new EditorView({ parent: opts.box, state: EditorState.create({ doc: "", extensions: this.extensions }) });
   }
 
   get dirty() { return this.view.state.doc.toString() !== this.saved; }
@@ -477,11 +479,8 @@ export class ModelEditor {
     const line = keepCursor ? this.view.state.doc.lineAt(this.view.state.selection.main.head).number : 1;
     this.saved = text;
     this.stamp = stamp;
-    this.view.dispatch({
-      changes: { from: 0, to: this.view.state.doc.length, insert: text },
-      selection: { anchor: lineStart(text, line) },
-      effects: this.readOnly.reconfigure(this.editable ? [] : [EditorState.readOnly.of(true)]),
-    });
+    this.view.setState(EditorState.create({ doc: text, selection: { anchor: lineStart(text, line) }, extensions: this.extensions }));
+    this.view.dispatch({ effects: this.readOnly.reconfigure(this.editable ? [] : [EditorState.readOnly.of(true)]) });
     this.o.banner.hidden = true;
   }
 
@@ -591,13 +590,90 @@ export class ModelEditor {
     this.view.focus();
   }
 
+  nameAt(pos) {
+    // the name (identifier) at a position of the text, with its section if it is an element's key
+    const line = this.view.state.doc.lineAt(pos), col = pos - line.from;
+    const hash = line.text.search(/(^|\s)#/);  // not in a comment
+    if (hash >= 0 && col > hash) return null;
+    const re = /[A-Za-z_][A-Za-z0-9_]*/g;
+    let m;
+    while ((m = re.exec(line.text))) {
+      if (m.index <= col && col <= m.index + m[0].length && line.text[m.index - 1] !== ".") {
+        const item = outline(this.view.state.doc.toString()).find((x) => x.line === line.number && x.name === m[0]);
+        return { name: m[0], section: item ? item.section : null };
+      }
+    }
+    return null;
+  }
+
+  startRename() {
+    if (!this.editable) return;
+    const at = this.nameAt(this.view.state.selection.main.head);
+    if (!at) { this.status("F2 renames: put the cursor on the name of an element"); return; }
+    const b = this.o.banner;
+    b.hidden = false;
+    b.innerHTML = `rename <b>${at.name}</b> to <input class="ed-rename" spellcheck="false" value="${at.name}"> ` +
+      '<span class="link" data-a="ok">rename</span> · <span class="link" data-a="cancel">cancel</span>';
+    const input = b.querySelector("input");
+    const done = () => { b.hidden = true; this.view.focus(); };
+    const go = () => {
+      const name = input.value.trim();
+      if (!name || name === at.name) { done(); return; }
+      this.rename(at.name, name, at.section, false);
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); go(); }
+      if (e.key === "Escape") { e.preventDefault(); done(); }
+    });
+    b.querySelector('[data-a="ok"]').onclick = go;
+    b.querySelector('[data-a="cancel"]').onclick = done;
+    input.focus();
+    input.select();
+  }
+
+  async rename(old, name, section, referencesOnly) {
+    // the edits of the rename from the server, made as one change of the text (not saved yet)
+    const text = this.view.state.doc.toString();
+    const r = await this.o.post("api/rename", { text, old, new: name, section, references_only: referencesOnly });
+    const b = this.o.banner;
+    if (!r.ok) {
+      b.hidden = false;
+      b.textContent = `not renamed: ${r.body.error || r.status}`;
+      return;
+    }
+    if (this.view.state.doc.toString() !== text) { this.status("typed on meanwhile: F2 again"); return; }
+    this.view.dispatch({ changes: r.body.changes.map((c) => ({ from: c.from, to: c.to, insert: c.insert })), userEvent: "rename" });
+    b.hidden = true;
+    this.view.focus();
+    const n = r.body.count;
+    this.status(`${referencesOnly ? "updated" : "renamed"} ${old} → ${name}: ${n} place${n === 1 ? "" : "s"} · ctrl+s saves · ctrl+z undoes`);
+  }
+
+  offerRenames(renames) {
+    // elements renamed by hand (same id, new name) with references to the old name left
+    const b = this.o.banner, r = (renames || []).find((x) => !this.offered.has(`${x.section}:${x.old}:${x.new}`));
+    if (!r || (!b.hidden && !b.dataset.offer)) return;
+    const key = `${r.section}:${r.old}:${r.new}`;
+    if (b.dataset.offer === key && !b.hidden) return;
+    b.hidden = false;
+    b.dataset.offer = key;
+    const n = r.references;
+    b.innerHTML = `<b>${r.old}</b> is now <b>${r.new}</b> (same id): ${n} reference${n === 1 ? "" : "s"} still ` +
+      `say${n === 1 ? "s" : ""} ${r.old} · <span class="link" data-a="ok">update ${n === 1 ? "it" : "them"}</span> · ` +
+      '<span class="link" data-a="no">leave</span>';
+    const close = () => { b.hidden = true; delete b.dataset.offer; };
+    b.querySelector('[data-a="ok"]').onclick = () => { close(); this.rename(r.old, r.new, r.section, true); };
+    b.querySelector('[data-a="no"]').onclick = () => { this.offered.add(key); close(); };
+  }
+
   async lint(view) {
     const doc = view.state.doc, text = doc.toString();
     const at = (n) => { const l = doc.line(Math.max(1, Math.min(n, doc.lines))); return { from: l.from + Math.max(0, l.text.search(/\S/)), to: l.to }; };
     let diags = [];
     try {
-      const r = await this.o.post("api/lint", { text });
+      const r = await this.o.post("api/lint", { text, base: text !== this.saved ? this.saved : undefined });
       if (view.state.doc.toString() !== text) return [];  // typed on meanwhile: the next run checks
+      this.offerRenames(r.body.renames);
       diags = (r.body.diagnostics || []).map((d) => ({ ...at(d.line), severity: d.severity, message: d.message, source: "model" }));
     } catch (e) { return []; }
     if (!diags.length && this.serverError) {

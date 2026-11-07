@@ -55,6 +55,10 @@ Shared points: `points` (hardpoints: [x, y, z], {mirror: name}, {from: name, off
 x, or orientation); their names stand for the numbers in point
 fields (location, point, point1, point2, position) and frames in orientation fields.
 Geometry for the viewer: `shapes` per body (box, cylinder, sphere, STL/OBJ mesh), `ground.shapes`.
+Names are what references use (body1: rod); an `id` key (optional) is an element's stable
+identity for tools (onshape:..., fds:...): keep ids as they are, never copy one to another
+element. Rename an element with the tool `rename` (all references, comments untouched), not
+by search and replace.
 References for checks: `checks` (total mass, values at times, measured curves over time or
 over another channel, e.g. toe over wheel travel).
 
@@ -155,6 +159,15 @@ class Session:
         except (ModelError, OSError) as e:
             return f"INVALID: {e}"
         return "valid\n" + report_text(check_model(model))
+
+    def rename(self, model_file, old, new, section=None):
+        from .rename import rename
+
+        try:
+            n, section = rename(model_file, old, new, section or None)
+        except (ModelError, OSError) as e:
+            return f"NOT RENAMED: {e}"
+        return f"renamed {section} {old} to {new}: {n} place{'s' if n != 1 else ''} changed (comments untouched)"
 
     def simulate(self, model_file, end_time=None, step=None, options=()):
         options = list(options)
@@ -434,6 +447,13 @@ def serve(workdir=None):
     def validate(model_file: str) -> str:
         """Validate a model file (YAML or legacy .fds) and check it: degrees of freedom, mass, findings."""
         return session.validate(model_file)
+
+    @mcp.tool()
+    def rename(model_file: str, old: str, new: str, section: str = "") -> str:
+        """Rename an element (body, joint, force, measure, parameter, point, ...) and every reference to it:
+        body1/body2, points, frames, expressions, formulas, channels in checks. Use this, not search and
+        replace. section: bodies, joints, ... where the old name is used by several elements."""
+        return session.rename(model_file, old, new, section)
 
     @mcp.tool()
     def simulate(model_file: str, end_time: float | None = None, step: float | None = None,

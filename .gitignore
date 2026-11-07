@@ -1,4 +1,6 @@
 build/
+# Eigen and KLU built by tools/build_deps.py deps
+deps/
 __pycache__/
 *.egg-info/
 .pytest_cache/

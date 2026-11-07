@@ -82,6 +82,7 @@ nav:
   - Switching over:
       - Coming from FreeDyn: from-freedyn.md
       - Coming from Adams: from-adams.md
+      - Coming from Onshape: from-onshape.md
   - For developers:
       - How the solver works: how-it-works.md
       - Architecture: architecture.md

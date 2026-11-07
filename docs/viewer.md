@@ -94,6 +94,13 @@ error. The editor remembers whether it was open.
 - **Errors while typing**, at their lines: YAML syntax, the schema (unknown keys, missing ones,
   wrong values) and the model rules (an unknown body); after a save, the findings of the
   checks at their elements. Hovering a key shows what it means and the values it takes.
+- **F2 renames** the element under the cursor (on its name or on a reference to it) and every
+  reference to it, as [`freedyn2 rename`](cli.md#rename) does: only where the name stands,
+  comments stay. It is one change of the text: Ctrl+Z undoes it, Ctrl+S saves it.
+- **Renamed by hand:** change the name of an element with an [id](reference/model-file.md#ids)
+  (an imported one) and the editor sees by the id that it is the same element; it offers to
+  update the references that still have the old name. A file renamed like that in another
+  editor: the header offers the same (*Update*).
 - **Linked to the 3D view:** the element under the cursor is selected in the 3D view and the
   inspector; an element clicked in the 3D view is shown in the editor.
 - When the file is changed elsewhere (the assistant, another editor), the editor loads it again,
