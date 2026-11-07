@@ -24,14 +24,17 @@ const frame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r,
 const ms = (t0) => `${(performance.now() - t0).toFixed(0)} ms`;
 
 async function boot() {
+  window.freedyn2Started = true;  // the module runs (index.html: the start watchdog)
   const t0 = performance.now();
   const base = new URLSearchParams(location.search).get("pyodide") || PYODIDE_CDN;
+  status(`loading the solver and python from ${new URL(base, location.href).host} ...`, "live");
   const [{ loadPyodide }, examples, fdgenZip, fd] = await Promise.all([
     import(new URL("pyodide.mjs", new URL(base, location.href)).href),
     fetch("./examples.json").then((r) => r.json()),
     fetch("./fdgen.zip").then((r) => r.arrayBuffer()),
     loadFreedyn2(new URL("./freedyn2.wasm", import.meta.url)),
   ]);
+  status("loading python (Pyodide) ...", "live");
   const py = await loadPyodide({ indexURL: new URL(base, location.href).href });
   await py.loadPackage(["numpy", "pyyaml", "jsonschema"]);
   py.unpackArchive(fdgenZip, "zip", { extractDir: "/lib/freedyn2" });

@@ -25,7 +25,7 @@ const r = fd.run(fdmText);  // { names, rows, cols, data (Float64Array, row majo
 
 ```sh
 python tools/build_web_demo.py build-wasm/freedyn2.wasm build-web
-python -m http.server -d build-web 8000               # http://localhost:8000/
+python tools/serve_web_demo.py build-web             # http://localhost:8000/ (right content types)
 ```
 
 A static site (2.1 MB plus Pyodide from its CDN; any static host, e.g. GitHub Pages): pick or

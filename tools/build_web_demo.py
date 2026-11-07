@@ -2,7 +2,7 @@
 
     python tools/build_wasm.py build/generated build-wasm
     python tools/build_web_demo.py build-wasm/freedyn2.wasm site
-    python -m http.server -d site 8000            # then http://localhost:8000/
+    python tools/serve_web_demo.py site            # then http://localhost:8000/
 
 The site: index.html, app.mjs, fd_wasm.mjs, freedyn2.wasm, fdgen.zip (the Python package with the
 viewer and the schema, for Pyodide), examples.json (the examples that run without CasADi, and

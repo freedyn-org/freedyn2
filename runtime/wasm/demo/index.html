@@ -87,6 +87,17 @@ aside.drop { outline: 2px dashed var(--fd-fg); outline-offset: -6px; }
   </aside>
   <section id="view"><div class="empty">the viewer appears here after the first simulation</div></section>
 </main>
-<script type="module" src="./app.mjs"></script>
+<script>
+// Shown when app.mjs does not run (a server with wrong content types: the browser refuses the
+// module) or the start hangs (the Pyodide CDN unreachable). app.mjs sets window.freedyn2Started.
+function fdStartFailed(why) {
+  const s = document.getElementById("status");
+  s.className = "error";
+  s.textContent = why + " Serve the site with: python tools/serve_web_demo.py build-web" +
+    " (python -m http.server can send .mjs with a wrong type on Windows); details: F12, console.";
+}
+setTimeout(() => { if (!window.freedyn2Started) fdStartFailed("The page did not start."); }, 15000);
+</script>
+<script type="module" src="./app.mjs" onerror="fdStartFailed('Cannot load app.mjs.')"></script>
 </body>
 </html>
