@@ -6,7 +6,7 @@
 
 The site: index.html, app.mjs, fd_wasm.mjs, freedyn2.wasm, fdgen.zip (the Python package with the
 viewer and the schema, for Pyodide), examples.json (the examples that run without CasADi, and
-two_links from runtime/wasm/demo/examples with meshes as a CAD export) and the brand files of
+the models of runtime/wasm/demo/examples with meshes as a CAD export) and the brand files of
 the viewer. Pyodide comes from its CDN; --pyodide DIR copies a local Pyodide
 distribution into the site (offline; open the page with ?pyodide=./pyodide/).
 """
@@ -65,12 +65,30 @@ def link_stl(x0, x1, y0, y1, width, segments=24):
     return bytes(out)
 
 
+def box_stl(x0, x1, y0, y1, z0, z1):
+    """Binary STL of a box (millimeters)."""
+    c = [(x, y, z) for x in (x0, x1) for y in (y0, y1) for z in (z0, z1)]  # index 4x + 2y + z
+    faces = [((-1, 0, 0), (0, 1, 3, 2)), ((1, 0, 0), (4, 6, 7, 5)), ((0, -1, 0), (0, 4, 5, 1)),
+             ((0, 1, 0), (2, 3, 7, 6)), ((0, 0, -1), (0, 2, 6, 4)), ((0, 0, 1), (1, 5, 7, 3))]
+    out = bytearray(b"freedyn2 demo box".ljust(80, b" ") + struct.pack("<I", 12))
+    for nrm, (a, b, cc, d) in faces:
+        for tri in ((a, b, cc), (a, cc, d)):
+            out += struct.pack("<12fH", *nrm, *(v for k in tri for v in c[k]), 0)
+    return bytes(out)
+
+
 def demo_examples():
     """The examples of the demo with the files they read: {name: {yaml, files: {path: base64}}}."""
-    files = {"parts/link1.stl": link_stl(0, 500, -5, 5, 40), "parts/link2.stl": link_stl(500, 1000, 5, 15, 40)}
     d = ROOT / "runtime/wasm/demo/examples"
-    return {"two_links": {"yaml": (d / "two_links.yaml").read_text(encoding="utf-8"),
-                          "files": {k: base64.b64encode(v).decode() for k, v in files.items()}}}
+    parts = {
+        "two_links": {"parts/link1.stl": link_stl(0, 500, -5, 5, 40), "parts/link2.stl": link_stl(500, 1000, 5, 15, 40)},
+        "slider_arm": {"parts/arm.stl": link_stl(0, 600, -10, 10, 40),
+                       "parts/slider.stl": box_stl(260, 340, 10, 70, -30, 30),
+                       "parts/base.stl": box_stl(-50, 50, -60, -12, -150, 40)},
+    }
+    return {name: {"yaml": (d / f"{name}.yaml").read_text(encoding="utf-8"),
+                   "files": {k: base64.b64encode(v).decode() for k, v in files.items()}}
+            for name, files in parts.items()}
 
 
 def library_examples():

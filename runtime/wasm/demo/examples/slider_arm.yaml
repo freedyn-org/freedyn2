@@ -1,0 +1,45 @@
+# A swing arm with a slider, as a CAD assembly: a base (ground), an arm on a revolute joint and a
+# slider on a prismatic joint along the arm, pulled towards the pivot by a spring. Meshes as a CAD
+# system exports them: STL in millimeters and in assembly coordinates (scale 0.001, position
+# [0, 0, 0]). The arm starts horizontal and falls; the slider is flung outwards and the spring
+# pulls it back. Mass and inertia are the box values of steel parts.
+model: slider_arm
+gravity: [0, 0, -9.81]
+bodies:
+  arm:   # 600 x 40 x 20 mm, round ends
+    mass: 2.0
+    inertia: [0.000333, 0.0601, 0.0603]
+    position: [0.3, 0, 0]
+    shapes:
+      - {type: mesh, file: parts/arm.stl, scale: 0.001, position: [0, 0, 0], color: "#4e79a7"}
+  slider:   # 80 x 60 x 60 mm, beside the arm
+    mass: 1.0
+    inertia: [0.0006, 0.000833, 0.000833]
+    position: [0.3, 0.04, 0]
+    shapes:
+      - {type: mesh, file: parts/slider.stl, scale: 0.001, position: [0, 0, 0], color: "#e15759"}
+ground:
+  shapes:
+    - {type: mesh, file: parts/base.stl, scale: 0.001, position: [0, 0, 0]}
+joints:
+  pivot:   # Revolute mate: the joint turns about its z axis, here global y
+    type: revolute
+    body1: arm
+    location: [0, 0, 0]
+    orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]
+  slide:   # Slider mate: the joint slides along its z axis, here along the arm (global x)
+    type: prismatic
+    body1: slider
+    body2: arm
+    location: [0.3, 0.04, 0]
+    orientation: [0.7071067811865476, 0, 0.7071067811865476, 0]
+forces:
+  spring:   # from the arm near the pivot to the slider; no force at t = 0
+    type: spring_damper
+    body1: slider
+    body2: arm
+    point1: [0.26, 0.04, 0]
+    point2: [0.05, 0, 0]
+    stiffness: 150
+    damping: 4
+solver: {type: HHT, alpha: -0.1, end_time: 6.0, step: 1.0e-3, output_step: 1.0e-2}
