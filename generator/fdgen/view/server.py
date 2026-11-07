@@ -81,6 +81,8 @@ def apply_overrides(raw, overrides):
         last = keys[-1]
         if isinstance(node, list):
             node[int(last)] = float(value)
+        elif isinstance(node, dict) and isinstance(node.get(last), dict) and "value" in node[last]:
+            node[last]["value"] = float(value)  # the long form {value: ..., id: ...}
         elif isinstance(node, dict):
             node[last] = float(value)
         else:

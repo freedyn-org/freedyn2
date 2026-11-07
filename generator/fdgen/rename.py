@@ -152,7 +152,7 @@ def _references(root, e, section):
                     for item in v.value if isinstance(v, yaml.SequenceNode) else [v]:
                         e.words(item)
         for _, v in _items(_get(root, "outputs")[1]):
-            e.words(v)
+            e.words(_get(v, "value")[1] if isinstance(v, yaml.MappingNode) else v)  # long form {value, id}
     if section == "parameters":
         _formulas(root, e)
     if section in CHANNEL_SECTIONS:

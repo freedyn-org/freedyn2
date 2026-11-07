@@ -1,8 +1,10 @@
 """Read and validate a YAML model, write the runtime model file (.fdm)."""
 
+import copy
 import functools
 import json
 import math
+import re
 import warnings
 from pathlib import Path
 
@@ -216,7 +218,10 @@ def _driver(name, d, measures):
     return dict(d)
 
 
-ID_SECTIONS = ("bodies", "joints", "forces", "measures", "sensors", "drivers", "splines", "frames")
+ID_SECTIONS = ("bodies", "joints", "forces", "measures", "sensors", "drivers", "splines", "frames", "parameters",
+               "inputs", "outputs", "points")
+ID = re.compile(json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))["$defs"]["id"]["pattern"])  # the schema's
+LONG_FORM = ("parameters", "inputs", "outputs", "points")  # {value: ..., id: ...} for a value with an id
 
 
 def element_ids(model):
@@ -226,12 +231,16 @@ def element_ids(model):
     found = {}
 
     def add(i, where):
+        if not isinstance(i, str) or not ID.match(i):
+            raise ModelError(f"{' '.join(map(str, where[:2]))}: id {i!r}: letters, digits and _ . : / + = -, "
+                             "starting with a letter or digit")
         if i in found:
             raise ModelError(f"id {i} used twice: {' '.join(map(str, found[i][:2]))} and {' '.join(map(str, where[:2]))}")
         found[i] = where
 
     for section in ID_SECTIONS:
-        for name, e in (model.get(section) or {}).items():
+        entries = model.get(section)
+        for name, e in (entries.items() if isinstance(entries, dict) else ()):
             if isinstance(e, dict) and "id" in e:
                 add(e["id"], (section, name))
             for k, s in enumerate(e.get("shapes") or [] if isinstance(e, dict) else []):
@@ -243,8 +252,27 @@ def element_ids(model):
     return found
 
 
+def _short_forms(model):
+    """A copy of the model with the long forms {value: ..., id: ...} of parameters, inputs,
+    outputs and points replaced by their values and all ids taken out (the generator does not
+    use them)."""
+    model = copy.deepcopy(model)
+    for section in LONG_FORM:
+        entries = model.get(section)
+        if not isinstance(entries, dict):
+            continue
+        for name, e in entries.items():
+            if isinstance(e, dict) and "value" in e:
+                extra = set(e) - {"value", "id"}
+                if extra:
+                    raise ModelError(f"{section}.{name}: the long form has value and id only, not {', '.join(sorted(extra))}")
+                entries[name] = e["value"]
+    _strip_ids(model)
+    return model
+
+
 def _strip_ids(model):
-    """The ids out of the elements (the generator does not use them); in place."""
+    """The ids out of the elements; in place."""
     for section in ID_SECTIONS:
         for e in (model.get(section) or {}).values():
             if isinstance(e, dict):
@@ -258,6 +286,9 @@ def _strip_ids(model):
 def validate(model, base_dir=None):
     """Validate against the JSON schema and the model rules; fill defaults. base_dir: directory
     relative data files (spline tables, .tir files) are read from (default: the current one)."""
+    ids = {i: list(where) for i, where in element_ids(model).items()} if isinstance(model, dict) else {}
+    if isinstance(model, dict):
+        model = _short_forms(model)  # {value: 5000, id: ...} -> 5000
     model, parameter_refs = formulas.resolve(model)  # "=k_susp" in number fields
     model, point_refs = hardpoints.resolve(model)  # "location: uca_outer" (points, frames)
     try:
@@ -267,8 +298,6 @@ def validate(model, base_dir=None):
     except jsonschema.ValidationError as e:
         hint = ' (empty: a "#" in YAML starts a comment; formulas start with "=")' if e.instance is None else ""
         raise ModelError(f"schema: {e.message} at {list(e.absolute_path)}{hint}") from None
-    ids = {i: list(where) for i, where in element_ids(model).items()}
-    _strip_ids(model)
     solver = _solver(model["solver"])
     section = lambda key: (model.get(key) or {}).items()
     bodies = {name: _body(name, b, base_dir) for name, b in model["bodies"].items()}

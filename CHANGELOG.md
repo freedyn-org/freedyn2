@@ -15,7 +15,8 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   STL file per part for the viewer, and the Onshape reference of every part in
   `<model>.onshape.json`. See docs/from-onshape.md.
 - Element ids: an optional `id` on bodies, joints, forces, measures, sensors, drivers, splines,
-  frames and shapes, the element's stable identity for tools (references keep using names).
+  frames and shapes, the element's stable identity for tools (references keep using names);
+  parameters, inputs, outputs and points take the long form `{value: ..., id: ...}`.
   Unique in the model. `convert` writes the legacy ids (`fds:body:1`), `import-onshape`
   Onshape's instance and feature ids (`onshape:body:...`).
 - `freedyn2 import-onshape ... --update`: the assembly imported again into a model file worked

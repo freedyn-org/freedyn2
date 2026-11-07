@@ -56,7 +56,19 @@ bodies:
 
 - The id is optional and has no effect on the simulation. It is unique in the model: letters,
   digits and `_ . : / + = -`, starting with a letter or digit.
-- Bodies, joints, forces, measures, sensors, drivers, splines, frames and shapes can have one.
+- Bodies, joints, forces, measures, sensors, drivers, splines, frames and shapes have the key
+  `id`. Parameters, inputs, outputs and points are a bare value; for an id they take the long
+  form `{value: ..., id: ...}`, which means the same as the value alone:
+
+  ```yaml
+  parameters:
+    k: {value: 5000, id: fds:parameter:3}       # the same as k: 5000
+  points:
+    pivot: {value: [0, 0, 0], id: onshape:connector:M2}
+    tip: {from: pivot, offset: [1, 0, 0], id: my:tip}   # the other forms of a point: id beside
+  outputs:
+    angle: {value: phi * 180 / pi, id: my:angle}
+  ```
 - The importers write it: `onshape:...` ([Coming from Onshape](../from-onshape.md)), `fds:body:1`
   for the `BodyID` of a legacy model. The re-import finds an element by its id, so an element
   keeps its name in freedyn2 whatever it is called in the CAD system, and a renamed element

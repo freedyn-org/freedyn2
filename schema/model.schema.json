@@ -49,19 +49,19 @@
       "type": "object",
       "description": "Named model parameters, used in force expressions and in formulas: any number of the model may be written as \"=expression\" of the parameters (e.g. stiffness: =k_susp, position: [0, 0, =h + 0.25]); a parameter may itself be a formula of others (fdgen.formulas).",
       "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
-      "additionalProperties": {"type": "number"}
+      "additionalProperties": {"anyOf": [{"type": "number"}, {"type": "object", "required": ["value"], "additionalProperties": false, "description": "Long form, for an id: {value: ..., id: ...}.", "properties": {"value": {"type": ["number", "string"]}, "id": {"$ref": "#/$defs/id"}}}]}
     },
     "outputs": {
       "type": "object",
       "description": "Named output channels: expressions of measures, parameters and inputs (like a force law), written as the channel <name>.value. Measures are not channels themselves; an output makes one (or any law of them) a channel, e.g. for a program that runs the model and reads its outputs. Each expression must use at least one measure.",
       "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
-      "additionalProperties": {"type": "string"}
+      "additionalProperties": {"anyOf": [{"type": "string"}, {"type": "object", "required": ["value"], "additionalProperties": false, "description": "Long form, for an id: {value: ..., id: ...}.", "properties": {"value": {"type": "string"}, "id": {"$ref": "#/$defs/id"}}}]}
     },
     "inputs": {
       "type": "object",
       "description": "Named runtime inputs with their default values, used in force expressions and driver motions like parameters. Unlike a parameter, the program that runs the model may change an input between two steps (fd::System::set_input; freedyn2_run --input, --inputs): a rider's steering torque, a throttle, a brake pressure. Inside a step an input is constant. Not allowed in formulas (they are evaluated when the model is generated).",
       "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
-      "additionalProperties": {"type": "number"}
+      "additionalProperties": {"anyOf": [{"type": "number"}, {"type": "object", "required": ["value"], "additionalProperties": false, "description": "Long form, for an id: {value: ..., id: ...}.", "properties": {"value": {"type": "number"}, "id": {"$ref": "#/$defs/id"}}}]}
     },
     "road": {
       "type": "object",
@@ -174,12 +174,13 @@
     "orientation": {"anyOf": [{"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}, {"type": "string"}], "description": "Euler parameters, global at t = 0, or the name of a frame (frames)."},
     "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/+=-]*$", "description": "Stable identity of the element for tools (re-import, rename, the viewer): unique in the model, not used in references (those name the element). Written by the importers (onshape:..., fds:...) and the editor; optional."},
     "point_definition": {
-      "description": "A point: [x, y, z] (numbers or =formulas), {mirror: name} (y negated: the other side of a vehicle), {from: name, offset: [dx, dy, dz]} or {in: body or frame, local: [x, y, z]} (in the body frame at t = 0: center of mass, principal axes; or in the axes of a frame from its origin).",
+      "description": "A point: [x, y, z] (numbers or =formulas; long form for an id: {value: [x, y, z], id: ...}), {mirror: name} (y negated: the other side of a vehicle), {from: name, offset: [dx, dy, dz]} or {in: body or frame, local: [x, y, z]} (in the body frame at t = 0: center of mass, principal axes; or in the axes of a frame from its origin).",
       "anyOf": [
         {"$ref": "#/$defs/vec3"},
-        {"type": "object", "required": ["mirror"], "additionalProperties": false, "properties": {"mirror": {"type": "string"}}},
-        {"type": "object", "required": ["from", "offset"], "additionalProperties": false, "properties": {"from": {"type": "string"}, "offset": {"$ref": "#/$defs/vec3"}}},
-        {"type": "object", "required": ["in", "local"], "additionalProperties": false, "properties": {"in": {"type": "string"}, "local": {"$ref": "#/$defs/vec3"}}}
+        {"type": "object", "required": ["value"], "additionalProperties": false, "properties": {"value": {"$ref": "#/$defs/vec3"}, "id": {"$ref": "#/$defs/id"}}},
+        {"type": "object", "required": ["mirror"], "additionalProperties": false, "properties": {"mirror": {"type": "string"}, "id": {"$ref": "#/$defs/id"}}},
+        {"type": "object", "required": ["from", "offset"], "additionalProperties": false, "properties": {"from": {"type": "string"}, "offset": {"$ref": "#/$defs/vec3"}, "id": {"$ref": "#/$defs/id"}}},
+        {"type": "object", "required": ["in", "local"], "additionalProperties": false, "properties": {"in": {"type": "string"}, "local": {"$ref": "#/$defs/vec3"}, "id": {"$ref": "#/$defs/id"}}}
       ]
     },
     "frame_definition": {

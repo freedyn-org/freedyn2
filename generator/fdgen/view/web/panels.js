@@ -26,8 +26,9 @@ async function post(url, body) {
 }
 
 export function tuneLabel(path) {
-  // parameters.k -> k; bodies.rod.position.2 -> rod.position.z; bodies.rod.inertia.0 -> rod.inertia.I1
-  if (path.startsWith("parameters.")) return path.slice(11);
+  // parameters.k -> k (long form parameters.k.value too); bodies.rod.position.2 -> rod.position.z;
+  // bodies.rod.inertia.0 -> rod.inertia.I1
+  if (path.startsWith("parameters.")) return path.slice(11).replace(/\.value$/, "");
   const k = path.split(".").slice(1), i = k[k.length - 1];
   if (/^\d$/.test(i)) k[k.length - 1] = k[k.length - 2] === "inertia" ? `I${+i + 1}` : "xyzw"[+i];
   return k.join(".");
