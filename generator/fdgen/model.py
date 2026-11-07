@@ -216,6 +216,45 @@ def _driver(name, d, measures):
     return dict(d)
 
 
+ID_SECTIONS = ("bodies", "joints", "forces", "measures", "sensors", "drivers", "splines", "frames")
+
+
+def element_ids(model):
+    """{id: (section, name)} of the elements of a (raw or resolved) model with an id; shapes as
+    (section, name, index) and the ground's as ("ground", None, index). An id used twice is an
+    error naming both elements."""
+    found = {}
+
+    def add(i, where):
+        if i in found:
+            raise ModelError(f"id {i} used twice: {' '.join(map(str, found[i][:2]))} and {' '.join(map(str, where[:2]))}")
+        found[i] = where
+
+    for section in ID_SECTIONS:
+        for name, e in (model.get(section) or {}).items():
+            if isinstance(e, dict) and "id" in e:
+                add(e["id"], (section, name))
+            for k, s in enumerate(e.get("shapes") or [] if isinstance(e, dict) else []):
+                if isinstance(s, dict) and "id" in s:
+                    add(s["id"], (section, name, k))
+    for k, s in enumerate((model.get("ground") or {}).get("shapes") or []):
+        if isinstance(s, dict) and "id" in s:
+            add(s["id"], ("ground", None, k))
+    return found
+
+
+def _strip_ids(model):
+    """The ids out of the elements (the generator does not use them); in place."""
+    for section in ID_SECTIONS:
+        for e in (model.get(section) or {}).values():
+            if isinstance(e, dict):
+                e.pop("id", None)
+                for s in e.get("shapes") or []:
+                    s.pop("id", None)
+    for s in (model.get("ground") or {}).get("shapes") or []:
+        s.pop("id", None)
+
+
 def validate(model, base_dir=None):
     """Validate against the JSON schema and the model rules; fill defaults. base_dir: directory
     relative data files (spline tables, .tir files) are read from (default: the current one)."""
@@ -228,6 +267,8 @@ def validate(model, base_dir=None):
     except jsonschema.ValidationError as e:
         hint = ' (empty: a "#" in YAML starts a comment; formulas start with "=")' if e.instance is None else ""
         raise ModelError(f"schema: {e.message} at {list(e.absolute_path)}{hint}") from None
+    ids = {i: list(where) for i, where in element_ids(model).items()}
+    _strip_ids(model)
     solver = _solver(model["solver"])
     section = lambda key: (model.get(key) or {}).items()
     bodies = {name: _body(name, b, base_dir) for name, b in model["bodies"].items()}
@@ -257,7 +298,7 @@ def validate(model, base_dir=None):
             "gravity": list(model.get("gravity", [0, 0, 0])), "solver": solver, "road": road,
             "ground_shapes": ground, "checks": _checks(model.get("checks"), base_dir),
             "parameter_refs": sorted(parameter_refs), "points": dict(model.get("points") or {}),
-            "frames": dict(model.get("frames") or {}), "point_refs": point_refs}
+            "frames": dict(model.get("frames") or {}), "point_refs": point_refs, "ids": ids}
 
 
 def _fmt(values):

@@ -41,6 +41,27 @@ solver: {type: HHT, end_time: 2.0, step: 0.001, output_step: 0.01}
 - **Names** of bodies, joints, forces, measures, parameters, inputs and splines are identifiers
   (letters, digits, `_`); they are the prefixes of the result channels (`rod.R_z`).
 
+## Ids
+
+Names are for people: the model refers to an element by its name (`body1: rod`). An element can
+also carry an **id**, its stable identity for tools:
+
+```yaml
+bodies:
+  upper_arm:
+    id: onshape:MqRDHdI8Ht5vR9KbS/MLzm6Pj1fYoxiC1T6
+    mass: 1.39
+    ...
+```
+
+- The id is optional and has no effect on the simulation. It is unique in the model: letters,
+  digits and `_ . : / -`, starting with a letter or digit.
+- Bodies, joints, forces, measures, sensors, drivers, splines, frames and shapes can have one.
+- The importers write it: `onshape:...` ([Coming from Onshape](../from-onshape.md)), `fds:body:1`
+  for the `BodyID` of a legacy model. The re-import finds an element by its id, so an element
+  keeps its name in freedyn2 whatever it is called in the CAD system, and a renamed element
+  keeps its id.
+
 ## Orientations
 
 Orientations – of bodies (their principal axes), joint frames, bushing frames, shapes – are

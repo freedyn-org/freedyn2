@@ -105,6 +105,7 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "id": {"$ref": "#/$defs/id"},
           "file": {"type": "string", "description": "Text table with the data instead of x / y (relative to the model file): columns separated by spaces, as the legacy spline data files."},
           "header_lines": {"type": "integer", "minimum": 0, "description": "file: lines to skip. Default 0."},
           "columns": {"type": "array", "items": {"type": "integer", "minimum": 0}, "minItems": 2, "maxItems": 2, "description": "file: column indices (from 0) of x and y. Default [0, 1]."},
@@ -123,6 +124,7 @@
         "required": ["measure", "motion"],
         "additionalProperties": false,
         "properties": {
+          "id": {"$ref": "#/$defs/id"},
           "measure": {"type": "string"},
           "motion": {"type": "string", "description": "Expression of t, parameters and splines, e.g. '0.1 * sin(2 * pi * t)'."},
           "ramp": {"type": "number", "minimum": 0, "description": "Activation time Ta: for t < Ta a 7th order polynomial from the initial measure value at rest joins the motion C2 at Ta (legacy TimeMotion ActivationPeriod). Default 0: the motion must start at the initial configuration."}
@@ -170,6 +172,7 @@
     "vec3": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
     "point": {"anyOf": [{"$ref": "#/$defs/vec3"}, {"type": "string"}], "description": "[x, y, z] global at t = 0, or the name of a point (points) or frame (frames: its origin)."},
     "orientation": {"anyOf": [{"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}, {"type": "string"}], "description": "Euler parameters, global at t = 0, or the name of a frame (frames)."},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/-]*$", "description": "Stable identity of the element for tools (re-import, rename, the viewer): unique in the model, not used in references (those name the element). Written by the importers (onshape:..., fds:...) and the editor; optional."},
     "point_definition": {
       "description": "A point: [x, y, z] (numbers or =formulas), {mirror: name} (y negated: the other side of a vehicle), {from: name, offset: [dx, dy, dz]} or {in: body or frame, local: [x, y, z]} (in the body frame at t = 0: center of mass, principal axes; or in the axes of a frame from its origin).",
       "anyOf": [
@@ -183,6 +186,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "id": {"$ref": "#/$defs/id"},
         "in": {"type": "string", "description": "A body or frame: origin, orientation and [x, y, z] directions are then in its frame (a body: center of mass, principal axes at t = 0); point names stay global."},
         "origin": {"$ref": "#/$defs/point", "description": "Origin. Default [0, 0, 0]."},
         "orientation": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4, "description": "Euler parameters, global. Default [1, 0, 0, 0], or from z (and x)."},
@@ -195,6 +199,7 @@
       "required": ["mass", "inertia"],
       "additionalProperties": false,
       "properties": {
+        "id": {"$ref": "#/$defs/id"},
         "mass": {"type": "number", "exclusiveMinimum": 0},
         "inertia": {
           "description": "Principal moments of inertia about the center of mass, body frame.",
@@ -223,6 +228,7 @@
       "required": ["type"],
       "additionalProperties": false,
       "properties": {
+        "id": {"$ref": "#/$defs/id"},
         "type": {"enum": ["box", "cylinder", "sphere", "mesh"], "description": "box: edge lengths size along the shape axes. cylinder: radius and length, axis along the shape z axis. sphere: radius. mesh: an STL or OBJ file (relative to the model file), vertices in shape coordinates, times scale."},
         "size": {"$ref": "#/$defs/vec3", "description": "box: edge lengths [m]."},
         "radius": {"type": "number", "exclusiveMinimum": 0, "description": "cylinder, sphere [m]."},
@@ -241,6 +247,7 @@
       "required": ["type", "body1"],
       "additionalProperties": false,
       "properties": {
+        "id": {"$ref": "#/$defs/id"},
         "type": {
           "enum": ["spring_damper", "force", "torque", "torsion_spring", "bushing", "expression_force", "expression_torque", "tire"],
           "description": "spring_damper: line of sight between point1 (body1) and point2 (body2 or ground), s = k (l - l0) + d ldot + f0, tension > 0. force / torque: constant vector on body1. torsion_spring: about the z axis of the frame (orientation) fixed on body2 or the ground, tau = -k (phi - phi0) - d phidot + tau0 on body1. expression_force / expression_torque: magnitude from an expression of t, parameters and measures (compiled into the model plugin), along direction / axis on body1 and opposite on body2."
@@ -277,6 +284,7 @@
       "required": ["body1"],
       "additionalProperties": false,
       "properties": {
+        "id": {"$ref": "#/$defs/id"},
         "body1": {"type": "string", "description": "The body that carries the sensor."},
         "point": {"$ref": "#/$defs/point", "description": "Position, global, at t = 0. Default the center of mass of body1."},
         "orientation": {"$ref": "#/$defs/orientation", "description": "Axes of the sensor frame as Euler parameters, global at t = 0, then fixed in body1. Default [1, 0, 0, 0]: the global axes at t = 0 (e.g. x forward, z up in a vehicle model)."}
@@ -287,6 +295,7 @@
       "required": ["type", "body1"],
       "additionalProperties": false,
       "properties": {
+        "id": {"$ref": "#/$defs/id"},
         "type": {
           "enum": ["displacement", "velocity", "distance", "distance_rate", "angle", "angular_rate", "direction", "angular_velocity"],
           "description": "displacement / velocity: component of P1 - P2 / V1 - V2 in frame; distance: |P1 - P2| and its rate; angle: rotation of body1 about the z axis of orientation fixed on body2 (as torsion_spring) and its rate; direction: component of the global vector in the frame (default body1), e.g. the vertical in a vehicle frame (lean); angular_velocity: component of omega1 - omega2 in frame (global or a body)."
@@ -310,6 +319,7 @@
       "required": ["type", "body1"],
       "additionalProperties": false,
       "properties": {
+        "id": {"$ref": "#/$defs/id"},
         "type": {
           "enum": ["fixed", "spherical", "revolute", "cylindrical", "prismatic", "generic"],
           "description": "Presets fix directions of the joint frame (joint axis z): revolute about z, prismatic and cylindrical along z. generic: the fix list."
