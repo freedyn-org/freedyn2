@@ -172,7 +172,7 @@
     "vec3": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
     "point": {"anyOf": [{"$ref": "#/$defs/vec3"}, {"type": "string"}], "description": "[x, y, z] global at t = 0, or the name of a point (points) or frame (frames: its origin)."},
     "orientation": {"anyOf": [{"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}, {"type": "string"}], "description": "Euler parameters, global at t = 0, or the name of a frame (frames)."},
-    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/-]*$", "description": "Stable identity of the element for tools (re-import, rename, the viewer): unique in the model, not used in references (those name the element). Written by the importers (onshape:..., fds:...) and the editor; optional."},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/+=-]*$", "description": "Stable identity of the element for tools (re-import, rename, the viewer): unique in the model, not used in references (those name the element). Written by the importers (onshape:..., fds:...) and the editor; optional."},
     "point_definition": {
       "description": "A point: [x, y, z] (numbers or =formulas), {mirror: name} (y negated: the other side of a vehicle), {from: name, offset: [dx, dy, dz]} or {in: body or frame, local: [x, y, z]} (in the body frame at t = 0: center of mass, principal axes; or in the axes of a frame from its origin).",
       "anyOf": [

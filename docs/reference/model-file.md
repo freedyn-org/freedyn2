@@ -55,7 +55,7 @@ bodies:
 ```
 
 - The id is optional and has no effect on the simulation. It is unique in the model: letters,
-  digits and `_ . : / -`, starting with a letter or digit.
+  digits and `_ . : / + = -`, starting with a letter or digit.
 - Bodies, joints, forces, measures, sensors, drivers, splines, frames and shapes can have one.
 - The importers write it: `onshape:...` ([Coming from Onshape](../from-onshape.md)), `fds:body:1`
   for the `BodyID` of a legacy model. The re-import finds an element by its id, so an element

@@ -121,6 +121,9 @@ def test_pendulum(tmp_path):
     assert np.asarray(Aj)[:, 2] == pytest.approx([0, 1, 0])
     assert len(m["ground"]["shapes"]) == 1 and len(rod["shapes"]) == 1
     assert all((tmp_path / s["file"]).is_file() for s in rod["shapes"])
+    # ids from Onshape's instance and feature ids, stable when the assembly changes
+    assert rod["id"] == "onshape:body:I2" and rod["shapes"][0]["id"] == "onshape:part:I2"
+    assert hinge["id"] == "onshape:mate:F1" and m["ground"]["shapes"][0]["id"] == "onshape:part:I1"
     refs = (tmp_path / "pendulum.onshape.json").read_text()
     assert '"partId": "JR"' in refs and DID in refs
     validate(m, tmp_path)
@@ -191,6 +194,9 @@ def test_mechanism(tmp_path):
     assert j["revolute_1"]["body1"] == "crank_1" and j["revolute_1"]["location"] == pytest.approx([0, 0, 1])
     assert j["slider_1"]["type"] == "prismatic" and j["slider_1"]["body1"] == "carriage_1"
     assert j["slider_1"]["location"] == pytest.approx([1, 0, 0])
+    assert crank["id"] == "onshape:body:I2" and j["slider_1"]["id"] == "onshape:mate:F3"
+    assert carriage["id"] in ("onshape:body:I4/S1", "onshape:body:I4/S2")
+    assert {s["id"] for s in carriage["shapes"]} == {"onshape:part:I4/S1", "onshape:part:I4/S2"}
     assert any("Tangent 1" in w for w in warnings) and any("Gear 1" in w for w in warnings)
     text = out.read_text()
     assert "Tangent 1" in text and "Screw <1>" in text  # listed in the file

@@ -70,6 +70,9 @@ It writes three things next to each other:
   has a material is an error naming the parts: assign a material in Onshape, or fasten the part
   to one with mass. Massless parts in a body with mass (screws, standard content) are fine.
 - Sub-assemblies are flattened: their mates become joints between their parts.
+- Every body, joint and shape gets an [id](reference/model-file.md#ids) from Onshape's instance
+  and feature ids (`onshape:body:...`, `onshape:part:...`, `onshape:mate:...`). They stay the
+  same when the assembly changes, so a re-import finds the elements again under any name.
 - Bodies are named after their heaviest part, joints after their mates. A name used in several
   sub-assemblies gets the sub-assembly's name in front: `upper_arm <1>` in `arm assembly <2>`
   becomes `arm_assembly_2_upper_arm_1`; unique names stay short (`tool_base_1`).

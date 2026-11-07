@@ -154,6 +154,7 @@ class Mate:
     name: str
     mate_type: str
     entities: list  # [(occurrence path, 4x4 frame in the occurrence's coordinates)]
+    path: tuple = ()  # the sub-assembly occurrence and the feature id: its id in the model
 
 
 @dataclass
@@ -244,7 +245,7 @@ def _features(asm, features, prefix, names):
             if len(ents) != 2:
                 asm.unsupported.append((name, f"mate with {len(ents)} entities"))
             else:
-                asm.mates.append(Mate(name, data.get("mateType", "?"), ents))
+                asm.mates.append(Mate(name, data.get("mateType", "?"), ents, (*prefix, f.get("id", name))))
         elif kind == "mateGroup":
             occs = [tuple(prefix) + tuple(o.get("occurrence", [])) for o in data.get("occurrences", [])]
             asm.groups.append((name, [o for o in occs if len(o) > len(prefix)]))
@@ -384,11 +385,13 @@ def build_model(asm, name="onshape_model", mesh_dir=None):
             if sum(p.mass for p in parts) <= 0:
                 massless.append(" + ".join(p.name for p in parts))
                 continue
+            body["id"] = element_id("body", max(parts, key=lambda p: p.mass).path)
             M, com, moments, axes = _combine(parts)
             body.update(mass=M, inertia=[max(float(x), 1e-12) for x in moments], position=com.tolist(),
                         orientation=euler_parameters(axes).tolist())
         if mesh_dir is not None:
-            body["shapes"] = [{"type": "mesh", "file": f"{mesh_dir}/{mesh_name(p)}", "position": p.T[:3, 3].tolist(),
+            body["shapes"] = [{"id": element_id("part", p.path), "type": "mesh", "file": f"{mesh_dir}/{mesh_name(p)}",
+                               "position": p.T[:3, 3].tolist(),
                                "orientation": euler_parameters(p.T[:3, :3]).tolist()} for p in parts]
     if massless:
         raise ModelError("no mass (assign a material in Onshape, or fasten them to a part with mass): "
@@ -415,7 +418,7 @@ def build_model(asm, name="onshape_model", mesh_dir=None):
         F, body1, body2 = ends[k][1], ends[k][0], ends[1 - k][0]
         if body1 == "ground":
             body1, body2 = body2, body1
-        j = {"type": jtype, "body1": body1}
+        j = {"id": element_id("mate", mate.path), "type": jtype, "body1": body1}
         if body2 != "ground":
             j["body2"] = body2
         j["location"] = F[:3, 3].tolist()
@@ -432,6 +435,13 @@ def build_model(asm, name="onshape_model", mesh_dir=None):
         model["joints"] = joints
     model["solver"] = dict(DEFAULT_SOLVER)
     return model, {b: [asm.parts[p] for p in ps] for b, ps in groups.items()}, warnings
+
+
+def element_id(kind, path):
+    """The id of an imported element: onshape:<kind>:<occurrence ids or feature id, /-separated>
+    (kind body, part, mate); Onshape's instance and feature ids stay the same when the assembly
+    changes."""
+    return f"onshape:{kind}:" + "/".join(re.sub(r"[^A-Za-z0-9_.+=-]", "_", str(x)) for x in path)
 
 
 def mesh_name(part):
@@ -459,7 +469,7 @@ def model_text(model, groups, source, warnings):
     for b, d in model["bodies"].items():
         w.lines.append(f"  {b}:")
         w.comment("parts: " + ", ".join(p.name for p in groups[b]), "    ")
-        for k in ("mass", "inertia", "position", "orientation"):
+        for k in ("id", "mass", "inertia", "position", "orientation"):
             w.key(k, d[k], indent="    ")
         if d.get("shapes"):
             w.lines.append("    shapes:  # for the viewer (freedyn2 view) only")
