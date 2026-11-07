@@ -20,7 +20,7 @@ offset: initial subtracts the initial value (displacement, distance, angle), a n
 that number.
 """
 
-import casadi as ca
+from ._casadi import ca
 import numpy as np
 
 from .geometry import local_axis, local_point, rotation_matrix

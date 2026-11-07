@@ -9,7 +9,7 @@ The law is an expression of t, model parameters, runtime inputs, measures and sp
 (fdgen.expressions).
 """
 
-import casadi as ca
+from ._casadi import ca
 
 from .custom_element import CustomElement, PluginElement
 from .geometry import local_axis, local_point

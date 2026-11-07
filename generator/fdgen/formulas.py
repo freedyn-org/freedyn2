@@ -14,7 +14,7 @@ so everything after it sees numbers only.
 
 import copy
 
-import casadi as ca
+from ._casadi import ca
 
 from .errors import ModelError
 from .expressions import ExpressionError, names_in, translate

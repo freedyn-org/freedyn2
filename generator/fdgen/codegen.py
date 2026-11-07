@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-import casadi as ca
+from ._casadi import ca
 
 from . import forces, joints, rigid_body
 from .lagrange import ROLES as FUNCTION_ROLES

@@ -1,6 +1,6 @@
 """Drivers (model plugin): prescribed motion of a measure, Phi = m(q) - f(t) = 0."""
 
-import casadi as ca
+from ._casadi import ca
 
 from .custom_element import CustomElement, PluginElement
 from .measures import POSITION_MEASURES

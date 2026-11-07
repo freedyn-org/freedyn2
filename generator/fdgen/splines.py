@@ -12,7 +12,7 @@ are computed here with the operation order of the legacy code, so the values agr
 
 import re
 
-import casadi as ca
+from ._casadi import ca
 
 TYPES = ("akima", "zcc")
 

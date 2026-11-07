@@ -89,6 +89,26 @@ class Cancelled(Exception):
     """A rebuild overtaken by a newer request (new tuned values, a save of the model)."""
 
 
+def build_scene(model, results=None, model_path=None, road_tool=None):
+    """The viewer's scene of a validated model with its checks, the YAML source of its elements
+    (model_path: a YAML file) and the meshes it shows: (scene, [mesh paths]), the shapes of
+    scene carrying the url of their mesh (api/mesh/<k>.<ext>)."""
+    s = scene(model, results, road_tool)
+    s["checks"] = check_model(model)
+    if results is not None:
+        s["checks"]["findings"] += check_results(model, results)["findings"]
+        s["checks"]["references"] = check_references(model, results)
+    if model_path is not None and Path(model_path).suffix.lower() in (".yaml", ".yml"):
+        attach_sources(s, model_path)
+    meshes = []
+    for b in s["bodies"] + [{"shapes": s["ground_shapes"]}]:
+        for shape in b["shapes"]:
+            if shape["type"] == "mesh":
+                shape["url"] = f"api/mesh/{len(meshes)}{Path(shape['file']).suffix.lower()}"
+                meshes.append(Path(shape["file"]))
+    return s, meshes
+
+
 class View:
     """Model, results and scene of the viewer; rebuilt when one of the watched files changes or
     tuned values arrive. Every simulation is a run (self.runs): the page compares runs with each
@@ -398,19 +418,7 @@ class View:
                 csv_path = self.workdir / "given.csv"
                 shutil.copyfile(self.results_path, csv_path)
             results = read_results(csv_path) if csv_path else None
-            s = scene(model, results, self.road_tool())
-            s["checks"] = check_model(model)
-            if results is not None:
-                s["checks"]["findings"] += check_results(model, results)["findings"]
-                s["checks"]["references"] = check_references(model, results)
-            if self.model_path.suffix.lower() in (".yaml", ".yml"):
-                attach_sources(s, self.model_path)
-            meshes = []
-            for b in s["bodies"] + [{"shapes": s["ground_shapes"]}]:
-                for shape in b["shapes"]:
-                    if shape["type"] == "mesh":
-                        shape["url"] = f"api/mesh/{len(meshes)}{Path(shape['file']).suffix.lower()}"
-                        meshes.append(Path(shape["file"]))
+            s, meshes = build_scene(model, results, self.model_path, self.road_tool())
             with self._lock:
                 if csv_path is not None:
                     self.current, csv_path = self._new_run(csv_path, seconds)
@@ -632,15 +640,13 @@ def inline_assets(html):
     return re.sub(r'(src|srcset|href)="\./(brand/[\w.-]+\.svg)"', lambda m: f'{m.group(1)}="{_data_uri(WEB / m.group(2))}"', html)
 
 
-def export(view, path):
-    """One HTML file with the viewer, three.js, the scene, the results and the meshes."""
-    view.rebuild()
-    if view.error:
-        raise RuntimeError(view.error)
+def static_page(scene_data, csv_text, meshes):
+    """One HTML page with the viewer, three.js, the scene, the results (CSV text) and the meshes
+    (paths, in the order of the scene's mesh urls): needs no server."""
     html = inline_assets((WEB / "index.html").read_text(encoding="utf-8"))
-    data = {"scene": view.scene, "csv": Path(view.csv).read_text(encoding="utf-8") if view.csv else "",
-            "meshes": {f"api/mesh/{k}{m.suffix.lower()}": base64.b64encode(m.read_bytes()).decode()
-                       for k, m in enumerate(view.meshes)}}
+    data = {"scene": scene_data, "csv": csv_text or "",
+            "meshes": {f"api/mesh/{k}{Path(m).suffix.lower()}": base64.b64encode(Path(m).read_bytes()).decode()
+                       for k, m in enumerate(meshes)}}
     modules = {name: (WEB / rel).read_text(encoding="utf-8") for name, rel in
                (("three", "vendor/three.module.min.js"), ("three/addons/OrbitControls.js", "vendor/OrbitControls.js"),
                 ("three/addons/STLLoader.js", "vendor/STLLoader.js"), ("three/addons/OBJLoader.js", "vendor/OBJLoader.js"),
@@ -655,6 +661,15 @@ def export(view, path):
             "const v = document.createElement('script'); v.type = 'module'; v.src = map['./viewer.js'];"
             "document.body.appendChild(v);})();</script>")
     start, end = html.index("<!-- modules -->"), html.index("<!-- /modules -->") + len("<!-- /modules -->")
-    Path(path).write_text(html[:start] + boot + html[end:], encoding="utf-8")
+    return html[:start] + boot + html[end:]
+
+
+def export(view, path):
+    """One HTML file with the viewer, three.js, the scene, the results and the meshes."""
+    view.rebuild()
+    if view.error:
+        raise RuntimeError(view.error)
+    csv_text = Path(view.csv).read_text(encoding="utf-8") if view.csv else ""
+    Path(path).write_text(static_page(view.scene, csv_text, view.meshes), encoding="utf-8")
     shutil.rmtree(view.workdir, ignore_errors=True)
     return Path(path)

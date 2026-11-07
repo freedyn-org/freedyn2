@@ -20,7 +20,7 @@ Euler-parameter bodies (rigid_body_euler, legacy profile). Joints own no coordin
 coordinates and velocity dofs are those of the connected bodies.
 """
 
-import casadi as ca
+from ._casadi import ca
 import numpy as np
 
 from .geometry import body_frame

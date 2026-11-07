@@ -14,7 +14,7 @@ the expressions (ELEMENT_CACHE): building the same model again with other parame
 import hashlib
 from collections import OrderedDict
 
-import casadi as ca
+from ._casadi import ca
 import numpy as np
 
 from . import splines as spl

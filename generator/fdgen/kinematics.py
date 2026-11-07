@@ -11,7 +11,7 @@ Accelerations (outputs only: sensors, body channels) use a_k, the accelerations 
 dofs that HHT solves for: [Rddot; omegadot_bar] on the Lie group, d(qd_k)/dt for Euler parameters.
 """
 
-import casadi as ca
+from ._casadi import ca
 
 from . import rigid_body as rb
 from .lagrange import Chain, expand, group_element, lagrange_element
@@ -83,7 +83,9 @@ class Ground:
     def axis(self, b):
         return b
 
-    omega = ca.SX(3, 1)
+    @property
+    def omega(self):
+        return ca.SX(3, 1)
 
 
 class Connector:

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>freedyn2 in the browser</title>
+<link rel="icon" href="./brand/favicon.svg">
+<link rel="stylesheet" href="./brand/tokens.css">
+<link rel="stylesheet" href="./fonts.css">
+<style>
+/* The brand (brand/README.md): ink and paper, hairlines, JetBrains Mono; the cursor color
+   (--fd-accent) marks only what is live (running). Errors keep the viewer's functional red. */
+:root { --line: var(--fd-line-soft); --error: #b42318; }
+@media (prefers-color-scheme: dark) { :root { --error: #ff8a80; } }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--fd-bg); color: var(--fd-fg); font: var(--fd-size-sm)/1.5 var(--fd-font-mono);
+  display: grid; grid-template-rows: auto 1fr; }
+header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: var(--fd-hairline) solid var(--line); }
+header img { height: 22px; display: block; }
+header .claim { color: var(--fd-fg-muted); }
+header .claim b { color: var(--fd-accent); font-weight: inherit; }
+main { display: grid; grid-template-columns: minmax(320px, 34%) 1fr; min-height: 0; }
+aside { display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; border-right: var(--fd-hairline) solid var(--line); min-height: 0; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+label { color: var(--fd-fg-muted); }
+select, button, textarea { font: inherit; color: inherit; background: var(--fd-surface);
+  border: var(--fd-hairline) solid var(--line); border-radius: 0; }
+select, button { padding: 4px 10px; }
+button { cursor: pointer; }
+button.primary { background: var(--fd-fg); color: var(--fd-bg); border-color: var(--fd-fg); }
+button:disabled { opacity: 0.5; cursor: default; }
+textarea { flex: 1; min-height: 200px; width: 100%; padding: 8px; resize: none; line-height: 1.45; tab-size: 2; white-space: pre; }
+#status { min-height: 1.5em; }
+#status.live::before { content: ""; display: inline-block; width: 0.52em; height: 0.86em; margin-right: 0.5em;
+  vertical-align: -0.1em; background: var(--fd-accent); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+#status.error { color: var(--error); white-space: pre-wrap; }
+#timings { color: var(--fd-fg-muted); font-size: var(--fd-size-xs); white-space: pre; }
+.note { color: var(--fd-fg-muted); font-size: var(--fd-size-xs); }
+#view { position: relative; min-height: 0; }
+#view iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+#view .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fd-fg-muted); padding: 16px; text-align: center; }
+@media (max-width: 760px) {
+  body { display: block; height: auto; }
+  main { grid-template-columns: 1fr; grid-template-rows: auto 75vh; }
+  aside { border-right: 0; border-bottom: var(--fd-hairline) solid var(--line); }
+  textarea { flex: none; height: 240px; }
+  header .claim { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./brand/lockup-small-dark.svg">
+    <img src="./brand/lockup-small-light.svg" alt="freedyn2">
+  </picture>
+  <span class="claim">ai-first multibody dynamics<b>.</b></span>
+</header>
+<main>
+  <aside>
+    <div class="row">
+      <label for="example">example</label>
+      <select id="example"></select>
+    </div>
+    <textarea id="yaml" spellcheck="false" aria-label="model (YAML)"></textarea>
+    <div class="row">
+      <button id="run" class="primary" disabled>simulate</button>
+      <button id="download" disabled>download yaml</button>
+    </div>
+    <div id="status" class="live">loading python and the solver ...</div>
+    <div id="timings"></div>
+    <p class="note">Everything runs in this browser tab: the model is translated by freedyn2's
+      Python generator in Pyodide and simulated by the freedyn2 runtime compiled to WebAssembly.
+      Nothing is sent to a server. Library elements only (bodies, joints, springs, bushings,
+      loads); expression forces and drivers need the desktop freedyn2.</p>
+  </aside>
+  <section id="view"><div class="empty">the viewer appears here after the first simulation</div></section>
+</main>
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>

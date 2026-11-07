@@ -19,6 +19,24 @@ const r = fd.run(fdmText);  // { names, rows, cols, data (Float64Array, row majo
 - `fd_wasm.cpp`: the C interface (`fd_run` on the text of a `.fdm` file, results in memory).
 - `fd_wasm.mjs`: loader, the WASI functions the module calls (no file system), `run`.
 - `compare.mjs`: the same models with `freedyn2.wasm` and the native `freedyn2_run`.
+- `demo/`: a page that runs everything in the browser (below).
+
+## The browser demo
+
+```sh
+python tools/build_web_demo.py build-wasm/freedyn2.wasm build-web
+python -m http.server -d build-web 8000               # http://localhost:8000/
+```
+
+A static site (2.1 MB plus Pyodide from its CDN; any static host, e.g. GitHub Pages): pick or
+edit a YAML model, *simulate*, and the freedyn2 viewer shows the results, as `freedyn2 view`
+does. The YAML is translated by `fdgen.web` in Pyodide (fdgen without CasADi: `fdgen._casadi`
+imports it on first use), simulated by `freedyn2.wasm`, and shown by the viewer's static page
+(`fdgen.view.server.static_page`, the same as `--export`). Nothing leaves the browser.
+
+Measured in headless Chromium (double pendulum, 10 s, 10 000 steps): start 3.3 to 3.8 s (Pyodide,
+numpy, pyyaml, jsonschema; cached afterwards), YAML to `.fdm` 0.15 to 0.18 s, simulation 0.4 to
+0.5 s, viewer page 0.4 to 0.5 s.
 
 ## Results (November 2026, Zig 0.17.1, Node 22)
 
@@ -34,7 +52,8 @@ const r = fd.run(fdmText);  // { names, rows, cols, data (Float64Array, row majo
 - YAML to `.fdm` (`fdgen.model`) needs CasADi only at import time for library-element models:
   with a stand-in module that fails on any use after the imports, the `.fdm` files of all
   library examples are byte-identical. Expression forces and drivers need CasADi
-  (`fdgen.expressions`). Not yet run in Pyodide.
+  (`fdgen.expressions`). The CasADi imports are lazy now (`fdgen._casadi`): in Pyodide the
+  `.fdm` file of the double pendulum is identical to the native build's.
 
 ## Limits and next steps
 
@@ -42,6 +61,5 @@ const r = fd.run(fdmText);  // { names, rows, cols, data (Float64Array, row majo
 - No files: splines from data files and OpenCRG roads would need a file system (or the data
   passed in).
 - No KLU yet (SuiteSparse builds with the same toolchain; SparseLU is fine for small models).
-- Make the CasADi imports of `fdgen` lazy, so that Pyodide can load the YAML path without it.
 - Exceptions use WebAssembly exception handling (legacy encoding); Zig's libc++abi for WASI has
   none, so `tools/build_wasm.py` compiles the parts from the sources Zig ships.

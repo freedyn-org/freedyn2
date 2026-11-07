@@ -30,7 +30,7 @@ The force F = Fx e_x + Fy e_y + Fz n acts at P: on the wheel as F at C and the m
 (P - C) x F + Mz n + My a (same virtual power). No relaxation lengths (no tire states).
 """
 
-import casadi as ca
+from ._casadi import ca
 import numpy as np
 
 NH = 16  # road harmonics

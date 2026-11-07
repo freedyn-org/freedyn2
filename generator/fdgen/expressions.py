@@ -15,9 +15,10 @@ exactly (the legacy kernel differentiates its expressions numerically).
 """
 
 import ast
+from collections.abc import Mapping
 import math
 
-import casadi as ca
+from ._casadi import ca
 
 
 class ExpressionError(ValueError):
@@ -38,12 +39,30 @@ def step(x, x0, y0, x1, y1, mode="polynomial"):
     return ca.if_else(x >= x1, y1, ca.if_else(x >= x0, y0 + (y1 - y0) * s, y0))
 
 
-FUNCTIONS = {
-    "sin": ca.sin, "cos": ca.cos, "tan": ca.tan, "asin": ca.asin, "acos": ca.acos, "atan": ca.atan,
-    "atan2": ca.atan2, "sinh": ca.sinh, "cosh": ca.cosh, "tanh": ca.tanh, "exp": ca.exp, "log": ca.log,
-    "sqrt": ca.sqrt, "abs": ca.fabs, "sign": ca.sign, "min": ca.fmin, "max": ca.fmax,
-    "step": step, "if_else": ca.if_else,
-}
+class _Functions(Mapping):
+    """The built-in functions of expressions by name; the CasADi functions are looked up when
+    first used, so that the names are known without CasADi (fdgen._casadi)."""
+
+    _CASADI = {"sin": "sin", "cos": "cos", "tan": "tan", "asin": "asin", "acos": "acos", "atan": "atan",
+               "atan2": "atan2", "sinh": "sinh", "cosh": "cosh", "tanh": "tanh", "exp": "exp", "log": "log",
+               "sqrt": "sqrt", "abs": "fabs", "sign": "sign", "min": "fmin", "max": "fmax",
+               "if_else": "if_else"}
+    _NAMES = ("sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", "exp", "log",
+              "sqrt", "abs", "sign", "min", "max", "step", "if_else")
+
+    def __getitem__(self, name):
+        if name == "step":
+            return step
+        return getattr(ca, self._CASADI[name])
+
+    def __iter__(self):
+        return iter(self._NAMES)
+
+    def __len__(self):
+        return len(self._NAMES)
+
+
+FUNCTIONS = _Functions()
 _BINOPS = {ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b, ast.Mult: lambda a, b: a * b,
            ast.Div: lambda a, b: a / b, ast.Pow: lambda a, b: a**b, ast.BitXor: lambda a, b: a**b}
 _CMPOPS = {ast.Lt: lambda a, b: a < b, ast.LtE: lambda a, b: a <= b, ast.Gt: lambda a, b: a > b,

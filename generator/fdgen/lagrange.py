@@ -19,7 +19,7 @@ Local unknown vector of an element: x = [vd (nv); lam (nc)], local residual rows
 the runtime. All res / iter / ic functions have the input signature STD_INPUTS.
 """
 
-import casadi as ca
+from ._casadi import ca
 
 # Order of the integration coefficients in the `coef` input.
 COEF_NAMES = ("alpha", "beta", "gamma", "h")

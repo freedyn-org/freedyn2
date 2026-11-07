@@ -17,7 +17,7 @@ Conventions (see docs/architecture.md):
 - User velocity input u = [v (3, global); omega (3, global)].
 """
 
-import casadi as ca
+from ._casadi import ca
 
 from .lagrange import ElementFunctions, group_element, lagrange_element
 

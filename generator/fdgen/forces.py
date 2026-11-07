@@ -44,7 +44,7 @@ spring_damper: length, velocity (ldot), force (s); torsion: angle, rate, torque 
 bushing: displacement (d), rotation (psi), force (s, in K2), torque (m, in K2).
 """
 
-import casadi as ca
+from ._casadi import ca
 import numpy as np
 
 from .errors import ModelError

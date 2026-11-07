@@ -10,7 +10,7 @@ step. Measures are not result channels themselves; an output makes one of them (
 them) a channel, for a program that reads the outputs at run time (fd::System::outputs).
 """
 
-import casadi as ca
+from ._casadi import ca
 
 from .custom_element import CustomElement, PluginElement
 from .expressions import names_in
