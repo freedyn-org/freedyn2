@@ -34,6 +34,13 @@ does. The YAML is translated by `fdgen.web` in Pyodide (fdgen without CasADi: `f
 imports it on first use), simulated by `freedyn2.wasm`, and shown by the viewer's static page
 (`fdgen.view.server.static_page`, the same as `--export`). Nothing leaves the browser.
 
+Meshes: *open files* (or drop onto the left panel) takes a YAML model with the STL and OBJ files
+it reads, or one zip with all of them (also with a folder around them, as an export); meshes
+alone are added to the model in the editor. They go to Pyodide's file system next to the model
+(`fdgen.web.add_file`), so paths in the YAML are relative to it as on disk. *download* gives the
+YAML, or a zip with the model and its meshes. The example `two_links` (`demo/examples`) has two
+parts as a CAD system exports them: STL in millimeters, in assembly coordinates.
+
 Measured in headless Chromium (double pendulum, 10 s, 10 000 steps): start 3.3 to 3.8 s (Pyodide,
 numpy, pyyaml, jsonschema; cached afterwards), YAML to `.fdm` 0.15 to 0.18 s, simulation 0.4 to
 0.5 s, viewer page 0.4 to 0.5 s.

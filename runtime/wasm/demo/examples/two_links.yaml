@@ -1,0 +1,36 @@
+# Two steel links hinged in a chain, shown with meshes as a CAD system exports them: STL files
+# in millimeters and in assembly coordinates (scale 0.001, position [0, 0, 0]), so that each part
+# sits where it was in the assembly. Links 500 mm between the pins, 40 x 10 mm, about 1.6 kg.
+# Mass and inertia are the box values; parts/link1.stl and parts/link2.stl are the outlines with
+# round ends (tools/build_web_demo.py writes them).
+model: two_links
+gravity: [0, 0, -9.81]
+bodies:
+  link1:
+    mass: 1.57
+    inertia: [0.000222, 0.0329, 0.0329]   # along body x: m (w^2 + t^2) / 12, m (L^2 + w^2) / 12
+    position: [0.25, 0, 0]
+    shapes:
+      - {type: mesh, file: parts/link1.stl, scale: 0.001, position: [0, 0, 0], color: "#4e79a7"}
+  link2:
+    mass: 1.57
+    inertia: [0.000222, 0.0329, 0.0329]
+    position: [0.75, 0, 0]
+    shapes:
+      - {type: mesh, file: parts/link2.stl, scale: 0.001, position: [0, 0, 0], color: "#e15759"}
+ground:
+  shapes:
+    - {type: box, size: [0.1, 0.06, 0.1], position: [0, -0.04, 0]}
+joints:
+  pin1:
+    type: revolute
+    body1: link1
+    location: [0, 0, 0]
+    orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]   # joint z onto global y
+  pin2:
+    type: revolute
+    body1: link2
+    body2: link1
+    location: [0.5, 0, 0]
+    orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]
+solver: {type: HHT, alpha: -0.1, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}
