@@ -12,7 +12,7 @@
   freedyn2 config [key [value]] | freedyn2 doctor     (fdgen.doctor)
   freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]   (fdgen.convert)
   freedyn2 rename model.yaml old new [--section bodies|joints|...]   (fdgen.rename)
-  freedyn2 import-onshape <assembly URL> [-o model.yaml] [--no-meshes] [--force]  (fdgen.onshape)
+  freedyn2 import-onshape <assembly URL> [-o model.yaml] [--no-meshes] [--force | --update]  (fdgen.onshape)
 
 `run` imports the model, writes the runtime model file (.fdm) and, for models with expression
 forces or drivers, compiles the model plugin; then it runs the runtime `freedyn2_run`. Building
@@ -195,10 +195,16 @@ def rename(args):
 def import_onshape(args):
     from .onshape import import_onshape as read
 
-    out, warnings = read(args.url, args.output, meshes=not args.no_meshes, force=args.force, record=args.record)
+    report = {}
+    out, warnings = read(args.url, args.output, meshes=not args.no_meshes, force=args.force, record=args.record,
+                         update=args.update, report=report)
     for w in warnings:
         print(f"warning: {w}", file=sys.stderr)
-    print(f"wrote {out.resolve()}")
+    if report:
+        for k in ("updated", "added", "removed", "kept"):
+            if report[k]:
+                print(f"{k}: {', '.join(report[k])}")
+    print(f"{'updated' if report else 'wrote'} {out.resolve()}")
     return 0
 
 
@@ -280,6 +286,8 @@ def main(argv=None):
     io.add_argument("-o", "--output", help="YAML file or directory (default: <assembly name>.yaml here)")
     io.add_argument("--no-meshes", action="store_true", help="no STL files of the parts for the viewer")
     io.add_argument("--force", action="store_true", help="overwrite an existing YAML file")
+    io.add_argument("--update", action="store_true", help="import again into a file imported before: matched by the "
+                    "ids, your changes (names, measures, drivers, forces, comments) kept")
     io.add_argument("--record", metavar="DIR", help="save the API responses in DIR (for bug reports)")
     k = argv.index("--") if "--" in argv else len(argv)
     args = ap.parse_args(argv[:k])

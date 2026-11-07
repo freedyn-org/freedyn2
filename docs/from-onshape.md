@@ -35,6 +35,7 @@ freedyn2 import-onshape "<address>" -o models/crank.yaml --force
 |---|---|
 | `-o FILE` | the YAML file, or a directory for `<assembly name>.yaml` in it (default: the current directory) |
 | `--no-meshes` | no STL files of the parts (the viewer then draws the inertia boxes) |
+| `--update` | import again into a file imported before, keeping your changes ([below](#importing-again)) |
 | `--force` | overwrite an existing file (without it, `import-onshape` stops) |
 | `--record DIR` | save the API responses in `DIR`, also when the import fails (for bug reports; they contain names and geometry of the document, no API keys) |
 
@@ -48,6 +49,33 @@ It writes three things next to each other:
 - `crank_meshes/`, an STL file per part (in meters), placed at the part in the assembly.
 - `crank.onshape.json`, the Onshape reference of every part (document, microversion, element,
   part id, configuration), to fetch the exact geometry again later.
+
+## Importing again
+
+The CAD model changes: a longer arm, another material, a new part. Import it again into the
+model file you have worked on since:
+
+```sh
+freedyn2 import-onshape "<address>" -o models/crank.yaml --update
+```
+
+The elements of the file and of the assembly are matched by their [ids](reference/model-file.md#ids),
+not by their names:
+
+- **Bodies and joints from Onshape** get the new values: mass, inertia, position, orientation
+  and the meshes of a body; type, bodies, location, orientation and fixed directions of a
+  joint. Their names stay, whether you renamed them in freedyn2 or someone renamed the parts in
+  Onshape; so do your own keys (an initial velocity), your own shapes and your comments.
+- **New parts and mates** are added at the end of `bodies` and `joints`, named as by a first
+  import.
+- **Parts and mates deleted in Onshape** are removed from the file, unless something of yours
+  still refers to them (a measure, a spring): then they stay, and a warning says where.
+- **Everything else** stays as it is: measures, drivers, forces, sensors, outputs, the solver
+  settings.
+
+The command lists what it updated, added, removed and kept. A file imported before there were
+ids cannot be matched: import it once with `--force` and copy your additions over; from then on
+`--update` keeps them.
 
 ## What becomes what
 

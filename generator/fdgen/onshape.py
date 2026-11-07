@@ -450,6 +450,25 @@ def mesh_name(part):
     return f"{base}_{hashlib.sha1(repr(_ref_key(part.ref)).encode()).hexdigest()[:6]}.stl"
 
 
+def body_lines(name, d, parts, indent="  "):
+    """The lines of a body as model_text writes it (indent: of the element)."""
+    w = _Writer()
+    w.lines.append(f"{indent}{name}:")
+    w.comment("parts: " + ", ".join(p.name for p in parts), indent + "  ")
+    for k in ("id", "mass", "inertia", "position", "orientation"):
+        w.key(k, d[k], indent=indent + "  ")
+    if d.get("shapes"):
+        w.lines.append(f"{indent}  shapes:  # for the viewer (freedyn2 view) only")
+        w.lines += [f"{indent}    - {value(s)}" for s in d["shapes"]]
+    return w.lines
+
+
+def joint_lines(name, d, indent="  "):
+    w = _Writer()
+    w.element(name, [(k, v, "") for k, v in d.items()], indent=indent)
+    return w.lines
+
+
 def model_text(model, groups, source, warnings):
     """The model as YAML, with comments naming the Onshape parts and mates behind it."""
     w = _Writer()
@@ -467,24 +486,20 @@ def model_text(model, groups, source, warnings):
             w.lines.append(f"    - {value(s)}")
     w.lines.append("bodies:")
     for b, d in model["bodies"].items():
-        w.lines.append(f"  {b}:")
-        w.comment("parts: " + ", ".join(p.name for p in groups[b]), "    ")
-        for k in ("id", "mass", "inertia", "position", "orientation"):
-            w.key(k, d[k], indent="    ")
-        if d.get("shapes"):
-            w.lines.append("    shapes:  # for the viewer (freedyn2 view) only")
-            for s in d["shapes"]:
-                w.lines.append(f"      - {value(s)}")
+        w.lines += body_lines(b, d, groups[b])
     if model.get("joints"):
         w.lines.append("joints:")
         for j, d in model["joints"].items():
-            w.element(j, [(k, v, "") for k, v in d.items()])
+            w.lines += joint_lines(j, d)
     w.key("solver", model["solver"])
     return w.text()
 
 
-def import_onshape(url, output=None, client=None, meshes=True, force=False, name=None, record=None):
+def import_onshape(url, output=None, client=None, meshes=True, force=False, name=None, record=None, update=False,
+                   report=None):
     """Write the Onshape assembly at url as a YAML model file; (its path, warnings).
+    update: an existing file imported before is updated (fdgen.onshape_update: matched by the
+    ids, the person's changes kept); report: a dict that gets {updated, added, removed, kept}.
     output: the YAML file (default: <assembly name>.yaml in the current directory); meshes: STL
     files of the parts in <model>_meshes/ for the viewer; client: OnshapeClient (default: from the
     environment variables ONSHAPE_ACCESS_KEY, ONSHAPE_SECRET_KEY); record: a directory to save the
@@ -507,12 +522,25 @@ def import_onshape(url, output=None, client=None, meshes=True, force=False, name
         out = out / f"{model_name}.yaml"
     if out.suffix.lower() not in (".yaml", ".yml"):
         raise ModelError(f"{out}: model files end in .yaml (or .yml)")
-    if out.exists() and not force:
-        raise ModelError(f"{out} exists (--force / force=True overwrites it)")
+    update = update and out.exists()
+    if out.exists() and not (force or update):
+        raise ModelError(f"{out} exists (--update merges the assembly into it and keeps your changes, "
+                         "--force overwrites it)")
     asm = read_assembly(client, did, wvm, wvmid, eid, configuration)
     mesh_dir = f"{out.stem}_meshes" if meshes else None
     model, groups, warnings = build_model(asm, model_name, mesh_dir)
-    text = model_text(model, groups, url, warnings)
+    if update:
+        from .onshape_update import update_text
+
+        raw = out.read_bytes().decode("utf-8")
+        text, merged, more = update_text(raw.replace("\r\n", "\n"), model, groups)
+        warnings += more
+        if report is not None:
+            report.update(merged)
+        groups = {merged["names"].get(b, b): ps for b, ps in groups.items()}  # the names in the file
+    else:
+        raw = ""
+        text = model_text(model, groups, url, warnings)
     out.parent.mkdir(parents=True, exist_ok=True)
     if meshes:
         d = out.parent / mesh_dir
@@ -531,7 +559,7 @@ def import_onshape(url, output=None, client=None, meshes=True, force=False, name
         validate(yaml.safe_load(text), out.resolve().parent)
     except ModelError as e:
         raise ModelError(f"the imported model is not a valid model: {e}") from None
-    out.write_text(text, encoding="utf-8", newline="\n")
+    out.write_bytes((text.replace("\n", "\r\n") if "\r\n" in raw else text).encode("utf-8"))
     refs = {"source": url, "document": did, wvm: wvmid, "element": eid, "configuration": configuration,
             "bodies": {b: [{"name": p.name, "occurrence": list(p.path), **{k: v for k, v in p.ref.items() if v}}
                            for p in ps] for b, ps in groups.items()}}

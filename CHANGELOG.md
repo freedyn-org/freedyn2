@@ -18,6 +18,11 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   frames and shapes, the element's stable identity for tools (references keep using names).
   Unique in the model. `convert` writes the legacy ids (`fds:body:1`), `import-onshape`
   Onshape's instance and feature ids (`onshape:body:...`).
+- `freedyn2 import-onshape ... --update`: the assembly imported again into a model file worked
+  on since. Bodies and joints are matched by their ids and get Onshape's new values; names,
+  own keys, own shapes, comments and everything without an Onshape id (measures, drivers,
+  forces, solver) stay; new parts and mates are added, deleted ones removed unless still
+  referred to.
 - `freedyn2 rename model.yaml old new` and the assistant's tool `rename`: an element and every
   reference to it (bodies, points, frames, expressions, formulas, channels in checks), changed
   only where the name stands; comments and formatting stay. In the viewer's editor: F2. An

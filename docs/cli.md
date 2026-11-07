@@ -7,7 +7,7 @@ freedyn2 check model.yaml [result.csv | --run] [-- runtime options]
 freedyn2 examples [name [-o DIR]]
 freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]
 freedyn2 rename model.yaml OLD NEW [--section SECTION]
-freedyn2 import-onshape <assembly address> [-o model.yaml] [--no-meshes] [--force] [--record DIR]
+freedyn2 import-onshape <assembly address> [-o model.yaml] [--no-meshes] [--force | --update] [--record DIR]
 freedyn2 gui [model ...] [--browser] [--port N] [--new-instance]
 freedyn2 update-check
 freedyn2 mcp [--workdir DIR]
