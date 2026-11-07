@@ -151,7 +151,8 @@ def _referenced(text, root, section, name, removed_spans):
 
 
 def update_text(text, model, groups):
-    """(the model file's text with the new import merged in, report {updated, added, removed, kept},
+    """(the model file's text with the new import merged in, report {updated (values changed),
+    unchanged, added, removed, kept, names},
     warnings). model, groups: of fdgen.onshape.build_model."""
     from .onshape import body_lines, element_id, joint_lines
 
@@ -167,7 +168,7 @@ def update_text(text, model, groups):
         raise ModelError("the model file has no Onshape ids (imported before there were ids): --update cannot "
                          "match its elements; import it once with --force and copy your additions over")
     taken = {n for s in SECTIONS for n in (data.get(s) or {})} | {"ground"}
-    warnings, report = [], {"updated": [], "added": [], "removed": [], "kept": [], "names": {}}
+    warnings, report = [], {"updated": [], "unchanged": [], "added": [], "removed": [], "kept": [], "names": {}}
 
     # bodies: by the body id, else by the parts of the shapes
     by_id = {b["id"]: n for n, b in old_bodies.items() if _imported(b)}
@@ -230,15 +231,18 @@ def update_text(text, model, groups):
         element = nodes["bodies"][name][1]
         if not isinstance(element, yaml.MappingNode):
             raise ModelError(f"body {name}: not a mapping in the model file")
+        changed = False
         for key in BODY_KEYS:
             if old_bodies[name].get(key) != b[key]:
                 _set(t, element, key, b[key])
+                changed = True
         if "shapes" in b:
             own = [s for s in old_bodies[name].get("shapes") or [] if not _imported(s)]
             shapes = own + b["shapes"]
             if (old_bodies[name].get("shapes") or []) != shapes:
                 _set(t, element, "shapes", shapes, block_shapes=True)
-        report["updated"].append(name)
+                changed = True
+        report["updated" if changed else "unchanged"].append(name)
     if added:
         _append(t, root, "bodies", [line for n, b, parts in added for line in body_lines(n, b, parts)],
                 [(n, b) for n, b, _ in added])
@@ -258,10 +262,12 @@ def update_text(text, model, groups):
         element = nodes["joints"][old][1]
         if not isinstance(element, yaml.MappingNode):
             raise ModelError(f"joint {old}: not a mapping in the model file")
+        changed = False
         for key in JOINT_KEYS:
             if old_joints[old].get(key) != j.get(key):
                 _set(t, element, key, j.get(key))
-        report["updated"].append(old)
+                changed = True
+        report["updated" if changed else "unchanged"].append(old)
     if added:
         _append(t, root, "joints", [line for n, j in added for line in joint_lines(n, j)], added)
         report["added"] += [n for n, _ in added]

@@ -5,6 +5,12 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+## [0.1.0rc4] - 2026-11-07
+
+Release candidate with the Onshape import, element ids and renaming that follows every
+reference. Not signed: Windows SmartScreen warns on the first start; check the download against
+SHA256SUMS.
+
 ### Added
 
 - `freedyn2 import-onshape <assembly address>` (prototype): an Onshape assembly as a model file,
