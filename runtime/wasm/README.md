@@ -25,6 +25,10 @@ const r = fd.run(fdmText);  // { names, rows, cols, data (Float64Array, row majo
 - Size 1.35 MB, 0.44 MB gzip; imports 13 WASI functions.
 - All example models without a plugin: largest relative difference to native (both with Eigen
   SparseLU) 5.6e-14, most 1e-16; the same steps and rows. Time about the native one.
+- Windows (MSVC runtime): the same, except the models that amplify last-bit differences of the
+  math library: double pendulum 3.4e-5, pendulum 4.5e-9 (same steps and rows). The module's
+  results are bit-identical on Linux and Windows (fingerprints of `compare.mjs`): the
+  difference is the native MSVC `sin`/`cos`/`atan`, not WebAssembly.
 - Errors (model file, missing plugin) reach JavaScript as exceptions with the runtime's
   message; the module keeps working.
 - YAML to `.fdm` (`fdgen.model`) needs CasADi only at import time for library-element models:
