@@ -74,6 +74,7 @@ aside.drop { outline: 2px dashed var(--fd-fg); outline-offset: -6px; }
     <div class="row">
       <button id="run" class="primary" disabled>simulate</button>
       <button id="download" disabled>download</button>
+      <button id="link" disabled title="copy a link that carries this model">link</button>
     </div>
     <div id="status" class="live">loading python and the solver ...</div>
     <div id="timings"></div>
@@ -84,6 +85,8 @@ aside.drop { outline: 2px dashed var(--fd-fg); outline-offset: -6px; }
     <p class="note">Your own model: open (or drop here) its YAML file with the meshes it reads
       (STL, OBJ), or one zip with all of them; paths in the YAML are relative to it. Meshes alone
       are added to the model in the editor.</p>
+    <p class="note">A link carries the model in the editor (<em>link</em> copies it): the part
+      after # stays in your browser. Meshes are not in the link.</p>
   </aside>
   <section id="view"><div class="empty">the viewer appears here after the first simulation</div></section>
 </main>

@@ -78,6 +78,7 @@ here: a tire force that cannot pull – and `answer_note`s; you see the answer u
 | `modes`, `locus` | eigenfrequencies and damping about the state of a run; the same for several values of one number |
 | `view` | the viewer in your browser, reloading on every save |
 | `screenshot` | a picture of the viewer, for the assistant itself (needs `pip install playwright` and `playwright install chromium`) |
+| `link` | a link to the browser demo that carries the model, for someone without freedyn2 (see [link](cli.md#link)) |
 | `notes`, `note_image`, `answer_note` | what you wrote in the viewer, with its context and picture; the answer |
 
 ## Good to know

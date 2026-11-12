@@ -6,15 +6,21 @@
 // Files next to this page (tools/build_web_demo.py): fd_wasm.mjs, freedyn2.wasm, fdgen.zip (the
 // Python package fdgen with the viewer and the schema), examples.json. Pyodide from its CDN, or
 // from ?pyodide=<url of a Pyodide distribution directory>.
+//
+// A model from the address (link.mjs): #model=..., #yaml=... or ?src=<url>; the link button writes
+// #model= for the model in the editor.
 
 import { loadFreedyn2 } from "./fd_wasm.mjs";
+import { linkFor, modelFrom } from "./link.mjs";
 
 const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
 const $ = (id) => document.getElementById(id);
 const ui = { example: $("example"), yaml: $("yaml"), run: $("run"), download: $("download"),
-  open: $("open"), file: $("file"), files: $("files"), status: $("status"), timings: $("timings"),
+  open: $("open"), link: $("link"), file: $("file"), files: $("files"), status: $("status"), timings: $("timings"),
   view: $("view"), aside: document.querySelector("aside") };
 const OWN = "(your files)";
+const LINKED = "(from the link)";
+const LONG = 8000;  // characters; longer links may be cut off by chat programs and mail clients (fdgen.share)
 
 function status(text, kind = "") {
   ui.status.textContent = text;
@@ -90,6 +96,59 @@ async function boot() {
       status(String(e.message || e).trim().split("\n").filter(Boolean).pop(), "error");
     }
   }
+  // A model from the address: in the hash (stays in the browser) or a file to fetch (?src=).
+  const own = (label) => {
+    if (![...ui.example.options].some((o) => o.value === label)) ui.example.add(new Option(label, label), 0);
+    ui.example.value = label;
+  };
+  async function fromAddress() {
+    let m;
+    try {
+      m = await modelFrom(location.href);
+    } catch (e) {
+      status(e.message, "error");
+      return true;  // the link was meant: not the default example instead
+    }
+    if (!m) return false;
+    if (m.yaml !== undefined) {
+      web.clear_files();
+      ui.yaml.value = m.yaml;
+      own(LINKED);
+      showFiles();
+      ui.run.click();
+      return true;
+    }
+    status(`loading ${m.src} ...`, "live");
+    try {
+      const r = await fetch(m.src);
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      const name = decodeURIComponent(new URL(r.url || m.src).pathname.split("/").pop() || "model.yaml");
+      await openFiles([new File([await r.blob()], /\.(ya?ml|zip)$/i.test(name) ? name : `${name}.yaml`)]);
+    } catch (e) {
+      status(`cannot load ${m.src}: ${e.message || e} (the server must allow it: CORS)`, "error");
+    }
+    return true;
+  }
+  window.addEventListener("hashchange", fromAddress);
+
+  ui.link.addEventListener("click", async () => {
+    const base = new URL(location.href);
+    base.searchParams.delete("src");
+    const url = await linkFor(ui.yaml.value, base.href);
+    history.replaceState(null, "", url);  // a reload keeps the model
+    const extra = [];
+    const n = web.files().toJs().length;
+    if (n) extra.push(`without the ${n} file(s) next to the model (meshes): download a zip for those`);
+    if (url.length > LONG) extra.push(`${url.length} characters: chat programs and mail may cut it off`);
+    try {
+      await navigator.clipboard.writeText(url);
+      status(`link copied${extra.length ? `; ${extra.join("; ")}` : ""}`);
+    } catch {
+      window.prompt("the link to this model", url);
+      if (extra.length) status(extra.join("; "));
+    }
+  });
+
   ui.open.addEventListener("click", () => ui.file.click());
   ui.file.addEventListener("change", () => { openFiles(ui.file.files); ui.file.value = ""; });
   ui.aside.addEventListener("dragover", (e) => { e.preventDefault(); ui.aside.classList.add("drop"); });
@@ -147,9 +206,9 @@ async function boot() {
     }
   });
 
-  ui.run.disabled = ui.download.disabled = ui.open.disabled = false;
+  ui.run.disabled = ui.download.disabled = ui.open.disabled = ui.link.disabled = false;
   status(`ready (${boot})`);
-  ui.run.click();  // the first example right away
+  if (!(await fromAddress())) ui.run.click();  // the model of the link, or the first example right away
   window.freedyn2Demo = { py, web, fd };  // for the console and tests
 }
 

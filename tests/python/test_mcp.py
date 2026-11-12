@@ -139,7 +139,7 @@ def test_stdio_protocol(tmp_path):
         tools = {t["name"] for t in call("tools/list", {}, id=2)["result"]["tools"]}
         assert tools == {"guide", "schema", "validate", "simulate", "channels", "results", "compare", "check",
                          "view", "screenshot", "modes", "locus", "sweep", "notes", "note_image", "answer_note",
-                         "rename"}
+                         "rename", "link"}
         r = call("tools/call", {"name": "simulate", "arguments": {"model_file": PENDULUM, "end_time": 0.5}}, id=3)
         assert r["result"]["content"][0]["text"].startswith("run r1: double_pendulum")
         r = call("tools/call", {"name": "results", "arguments": {"run_id": "r1", "channels": ["rod1.R_x"],

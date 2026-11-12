@@ -192,6 +192,19 @@ def rename(args):
     return 0
 
 
+def link(args):
+    from pathlib import Path
+
+    from .share import DEMO_URL, link as demo_link, notes
+
+    text = Path(args.model).read_text(encoding="utf-8")
+    url = demo_link(text, args.base or DEMO_URL)
+    print(url)
+    for n in notes(text, url):
+        print(f"note: {n}", file=sys.stderr)
+    return 0
+
+
 def import_onshape(args):
     from .onshape import import_onshape as read
 
@@ -280,6 +293,10 @@ def main(argv=None):
     rn.add_argument("old")
     rn.add_argument("new")
     rn.add_argument("--section", help="bodies, joints, ... where the old name is used by several elements")
+    lk = sub.add_parser("link", help="a link to the browser demo that carries the model: open it, it simulates "
+                        "in the browser (no install, nothing sent to a server)")
+    lk.add_argument("model", help="the YAML model file")
+    lk.add_argument("--base", help="address of the demo page (default: the one on the freedyn2 site)")
     io = sub.add_parser("import-onshape", help="write an Onshape assembly as a YAML model file (API keys: "
                         "ONSHAPE_ACCESS_KEY, ONSHAPE_SECRET_KEY)")
     io.add_argument("url", help="the assembly's address in the browser (https://cad.onshape.com/documents/...)")
@@ -314,7 +331,7 @@ def main(argv=None):
 
             return update_check()
         return {"view": view, "check": check, "examples": examples, "convert": convert,
-                "import-onshape": import_onshape, "rename": rename}.get(args.command, run)(args)
+                "import-onshape": import_onshape, "rename": rename, "link": link}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)
         return 1

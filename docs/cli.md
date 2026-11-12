@@ -7,6 +7,7 @@ freedyn2 check model.yaml [result.csv | --run] [-- runtime options]
 freedyn2 examples [name [-o DIR]]
 freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]
 freedyn2 rename model.yaml OLD NEW [--section SECTION]
+freedyn2 link model.yaml [--base URL]
 freedyn2 import-onshape <assembly address> [-o model.yaml] [--no-meshes] [--force | --update] [--record DIR]
 freedyn2 gui [model ...] [--browser] [--port N] [--new-instance]
 freedyn2 update-check
@@ -88,6 +89,31 @@ name is not touched. The file is written only if the renamed model is valid.
 `wheel_center`). The new name must be an identifier that no element uses yet.
 
 Result files of earlier runs keep the old channel names.
+
+## link
+
+```sh
+freedyn2 link quarter_car.yaml          # prints https://freedyn-org.github.io/freedyn2/demo/#model=...
+```
+
+prints a link to the browser demo that carries the model. Whoever opens it sees the model
+simulated and in the viewer, in their browser tab, without installing anything. The model is
+in the part after `#`, which the browser does not send to the server of the page: it stays with
+whoever has the link. The page has a *link* button that does the same for the model in its
+editor.
+
+- The demo runs models of library elements (bodies, joints, springs, bushings, loads); expression
+  forces, drivers and splines need the desktop freedyn2.
+- Meshes and data files are not in the link (a note says so); for a model with its meshes, send
+  the zip of the page's *download* button.
+- Links longer than about 8000 characters may be cut off by chat programs and mail (a note
+  says so).
+- `--base` is the address of another copy of the demo, e.g. `http://localhost:8000/` for
+  `python tools/serve_web_demo.py build-web`.
+
+The page also opens `#yaml=<the YAML, percent-encoded>` (readable, easy to write by hand) and
+`?src=<URL of a YAML file or a zip>` (the server of the file must allow it: CORS, as GitHub's
+raw files and gists do).
 
 ## Runtime options
 

@@ -4,7 +4,7 @@
     python tools/build_web_demo.py build-wasm/freedyn2.wasm site
     python tools/serve_web_demo.py site            # then http://localhost:8000/
 
-The site: index.html, app.mjs, fd_wasm.mjs, freedyn2.wasm, fdgen.zip (the Python package with the
+The site: index.html, app.mjs, link.mjs, fd_wasm.mjs, freedyn2.wasm, fdgen.zip (the Python package with the
 viewer and the schema, for Pyodide), examples.json (the examples that run without CasADi, and
 the models of runtime/wasm/demo/examples with meshes as a CAD export) and the brand files of
 the viewer. Pyodide comes from its CDN; --pyodide DIR copies a local Pyodide
@@ -124,7 +124,7 @@ def main(argv=None):
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    for f in ("index.html", "app.mjs"):
+    for f in ("index.html", "app.mjs", "link.mjs"):
         shutil.copy(ROOT / "runtime/wasm/demo" / f, out / f)
     shutil.copy(ROOT / "runtime/wasm/fd_wasm.mjs", out / "fd_wasm.mjs")
     shutil.copy(args.wasm, out / "freedyn2.wasm")

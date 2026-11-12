@@ -169,6 +169,16 @@ class Session:
             return f"NOT RENAMED: {e}"
         return f"renamed {section} {old} to {new}: {n} place{'s' if n != 1 else ''} changed (comments untouched)"
 
+    def link(self, model_file):
+        from .share import link, notes
+
+        try:
+            text = Path(model_file).read_text(encoding="utf-8")
+        except OSError as e:
+            return f"NO LINK: {e}"
+        url = link(text)
+        return "\n".join([url, *(f"note: {n}" for n in notes(text, url))])
+
     def simulate(self, model_file, end_time=None, step=None, options=()):
         options = list(options)
         if end_time is not None:
@@ -454,6 +464,15 @@ def serve(workdir=None):
         body1/body2, points, frames, expressions, formulas, channels in checks. Use this, not search and
         replace. section: bodies, joints, ... where the old name is used by several elements."""
         return session.rename(model_file, old, new, section)
+
+    @mcp.tool()
+    def link(model_file: str) -> str:
+        """A link to the freedyn2 browser demo that carries this model: whoever opens it sees the model
+        simulated in their browser, without installing anything; the model stays in the link (after '#'),
+        it is not sent to a server. Library elements only (bodies, joints, springs, bushings, loads):
+        expression forces, drivers and splines need the desktop freedyn2; meshes are not in the link.
+        Give the link to the user as it is (do not shorten it)."""
+        return session.link(model_file)
 
     @mcp.tool()
     def simulate(model_file: str, end_time: float | None = None, step: float | None = None,

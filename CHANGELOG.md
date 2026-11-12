@@ -7,6 +7,11 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- Links that carry a model: `freedyn2 link model.yaml` (and the MCP tool `link`) prints a link
+  to the browser demo with the model in the part after `#`; opened, it simulates in the browser
+  tab, nothing installed and nothing sent to a server. The demo page reads `#model=`
+  (compressed), `#yaml=` (percent-encoded, by hand) and `?src=<url>`, and its *link* button
+  copies the link of the model in the editor. See docs/cli.md#link.
 - `freedyn2 import-onshape <assembly address>` (prototype): an Onshape assembly as a model file,
   read with the Onshape REST API and API keys (`ONSHAPE_ACCESS_KEY`, `ONSHAPE_SECRET_KEY`).
   Parts connected by Fastened mates or mate groups become one body with the added-up mass
