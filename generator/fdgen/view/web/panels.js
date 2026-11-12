@@ -26,8 +26,9 @@ async function post(url, body) {
 }
 
 export function tuneLabel(path) {
-  // parameters.k -> k; bodies.rod.position.2 -> rod.position.z; bodies.rod.inertia.0 -> rod.inertia.I1
-  if (path.startsWith("parameters.")) return path.slice(11);
+  // parameters.k -> k (long form parameters.k.value too); bodies.rod.position.2 -> rod.position.z;
+  // bodies.rod.inertia.0 -> rod.inertia.I1
+  if (path.startsWith("parameters.")) return path.slice(11).replace(/\.value$/, "");
   const k = path.split(".").slice(1), i = k[k.length - 1];
   if (/^\d$/.test(i)) k[k.length - 1] = k[k.length - 2] === "inertia" ? `I${+i + 1}` : "xyzw"[+i];
   return k.join(".");
@@ -297,7 +298,9 @@ export class Panels {
       : file ? "results of the saved file · Ctrl+S saves and computes" : "computing … the curves grow";
     const n = dirty ? Object.keys(diff(this.pending, this.overrides)).length : 0;
     const p = s.progress, pct = running && p && p.end > 0 ? Math.min(100, Math.round((100 * p.t) / p.end)) : 0;
-    const key = `${kind}|${file}|${n}|${pct}|${!!p}`;
+    // an element renamed by hand in the file (found by its id), references to the old name left
+    const ren = !dirty && !file && !running && (s.renames || [])[0];
+    const key = `${kind}|${file}|${n}|${pct}|${!!p}|${ren ? `${ren.section}:${ren.old}:${ren.new}` : ""}`;
     if (this.stateKey === key) return;
     this.stateKey = key;
     box.className = kind;
@@ -307,10 +310,16 @@ export class Panels {
       : file ? '<span>model file not saved</span><button class="go" title="Ctrl+S">Save &amp; compute</button>' +
         '<button class="discard" title="back to the saved file">discard</button>'
       : running ? (p ? `<span>computing ${pct} %</span><span class="bar" style="width:${pct}%"></span>` : "<span>preparing model …</span>")
+      : ren ? `<span>${esc(ren.old)} is now ${esc(ren.new)}: ${ren.references} reference${ren.references === 1 ? "" : "s"} left</span>` +
+        `<button class="go" title="the references to ${esc(ren.old)} in the model file">Update</button>`
       : failed ? '<span>error</span>' : "<span>up to date</span>");
     if (dirty) {
       box.querySelector(".go").addEventListener("click", () => this.compute());
       box.querySelector(".discard").addEventListener("click", () => this.edit({ ...this.overrides }));
+    } else if (ren) {
+      box.querySelector(".go").addEventListener("click", () =>
+        post("api/rename", { old: ren.old, new: ren.new, section: ren.section, references_only: true })
+          .catch((e) => { box.querySelector("span:not(.dot)").textContent = `not updated: ${e.message}`; }));
     } else if (file) {
       box.querySelector(".go").addEventListener("click", () => this.v.saveFile());
       box.querySelector(".discard").addEventListener("click", () => this.v.discardFile());

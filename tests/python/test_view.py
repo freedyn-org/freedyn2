@@ -589,3 +589,44 @@ def test_editor_keeps_crlf_line_ends(tmp_path):
     assert model.read_bytes() == b"model: m\r\nbodies: {}\r\ngravity: [0, 0, -9.81]\r\n"
     with pytest.raises(ValueError):
         source.save(tmp_path / "m.fds", "x", None)
+
+
+def test_rename_in_the_editor_and_by_hand(tmp_path):
+    """POST api/rename: the edits for the editor's text; lint finds an element renamed by hand
+    (by its id) and the viewer offers to update the references left, in the file."""
+    from fdgen.rename import apply_changes
+
+    model = tmp_path / "p.yaml"
+    model.write_text((ROOT / "examples" / "pendulum.yaml").read_text().replace(
+        "  rod:\n", "  rod:\n    id: onshape:body:M1\n"))
+    view = server.View(model, run=False)
+    view.rebuild()
+    httpd, base = serve_view(view)
+    try:
+        text = json.loads(get(base + "api/source"))["text"]
+        r = post(base + "api/rename", {"text": text, "old": "rod", "new": "arm"})
+        assert r["count"] == 2 and r["section"] == "bodies"
+        assert "body1: arm" in apply_changes(text, r["changes"]) and model.read_text() == text  # not saved
+        by_hand = text.replace("  rod:\n", "  arm:\n")
+        lint = post(base + "api/lint", {"text": by_hand, "base": text})
+        assert lint["renames"] == [{"section": "bodies", "id": "onshape:body:M1", "old": "rod", "new": "arm",
+                                    "references": 1}]
+        r = post(base + "api/rename", {"text": by_hand, "old": "rod", "new": "arm", "section": "bodies",
+                                       "references_only": True})
+        assert apply_changes(by_hand, r["changes"]) == apply_changes(text, post(base + "api/rename", {
+            "text": text, "old": "rod", "new": "arm"})["changes"])
+        model.write_text(by_hand)  # renamed by hand in another editor: the model is broken now
+        view.rebuild()
+        state = json.loads(get(base + "api/state"))
+        assert state["status"] == "error" and state["renames"][0]["old"] == "rod"
+        assert post(base + "api/rename", {"old": "rod", "new": "arm", "section": "bodies",
+                                          "references_only": True})["count"] == 1
+        assert "body1: arm" in model.read_text() and "# Compound pendulum" in model.read_text()
+        view.rebuild()
+        state = json.loads(get(base + "api/state"))
+        assert state["status"] == "ready" and state["renames"] == []
+        with pytest.raises(urllib.error.HTTPError) as e:
+            post(base + "api/rename", {"text": text, "old": "nope", "new": "x"})
+        assert e.value.code == 400 and "no element named nope" in json.loads(e.value.read())["error"]
+    finally:
+        httpd.shutdown()

@@ -138,7 +138,8 @@ def test_stdio_protocol(tmp_path):
         call("notifications/initialized")
         tools = {t["name"] for t in call("tools/list", {}, id=2)["result"]["tools"]}
         assert tools == {"guide", "schema", "validate", "simulate", "channels", "results", "compare", "check",
-                         "view", "screenshot", "modes", "locus", "sweep", "notes", "note_image", "answer_note"}
+                         "view", "screenshot", "modes", "locus", "sweep", "notes", "note_image", "answer_note",
+                         "rename"}
         r = call("tools/call", {"name": "simulate", "arguments": {"model_file": PENDULUM, "end_time": 0.5}}, id=3)
         assert r["result"]["content"][0]["text"].startswith("run r1: double_pendulum")
         r = call("tools/call", {"name": "results", "arguments": {"run_id": "r1", "channels": ["rod1.R_x"],
@@ -147,3 +148,14 @@ def test_stdio_protocol(tmp_path):
     finally:
         p.stdin.close()
         p.wait(timeout=30)
+
+
+def test_rename_tool(tmp_path):
+    from fdgen.mcp_server import Session
+
+    p = tmp_path / "m.yaml"
+    p.write_text((ROOT / "examples" / "pendulum.yaml").read_text())
+    s = Session(tmp_path)
+    assert s.rename(str(p), "rod", "arm").startswith("renamed bodies rod to arm: 2 places")
+    assert s.rename(str(p), "nope", "x").startswith("NOT RENAMED: no element named nope")
+    s.close()

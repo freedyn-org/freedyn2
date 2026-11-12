@@ -6,6 +6,8 @@ freedyn2 view model.yaml [result.csv] [--no-run] [--export page.html] [--port N]
 freedyn2 check model.yaml [result.csv | --run] [-- runtime options]
 freedyn2 examples [name [-o DIR]]
 freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]
+freedyn2 rename model.yaml OLD NEW [--section SECTION]
+freedyn2 import-onshape <assembly address> [-o model.yaml] [--no-meshes] [--force | --update] [--record DIR]
 freedyn2 gui [model ...] [--browser] [--port N] [--new-instance]
 freedyn2 update-check
 freedyn2 mcp [--workdir DIR]
@@ -22,6 +24,8 @@ freedyn2 compare model.fds ... --legacy <FreeDyn>
 | `check` | the [checks](reference/checks.md) of the model and its results; exit status 1 on errors or failed references |
 | `examples` | list the example models that come with FreeDyn, or copy one into the current directory |
 | `convert` | write a legacy `.fds` model as a YAML model file ([below](#convert)) |
+| `rename` | rename an element and every reference to it ([below](#rename)) |
+| `import-onshape` | write an Onshape assembly as a YAML model file ([Coming from Onshape](from-onshape.md)) |
 | `gui` | the [app](viewer.md#the-app): start page, recent models, examples, a window per model (`freedyn2-gui` is the same without a console); `--browser`: in the web browser; `--new-instance`: do not hand the models to a running app |
 | `update-check` | ask GitHub whether a newer release is out and print the answer (no download); see [update notice](viewer.md#update-notice) |
 | `mcp` | the MCP server for [assistants](assistants.md) (stdio) |
@@ -65,6 +69,25 @@ gives the results of `freedyn2 run crank.fds --profile v2` (with `--profile lega
 - Joint frames become quaternions and are turned back into rotation matrices when the YAML is
   read, and body orientations are normalized again: in the comparison models the results agree
   with the `.fds` bitwise or to 1e-12 (round-off).
+
+## rename
+
+```sh
+freedyn2 rename crank.yaml rod1 crank_arm
+freedyn2 rename car.yaml wheel_center hub_point --section points   # a sensor has the name too
+```
+
+renames an element (body, joint, force, sensor, driver, output, measure, parameter, input,
+spline, point, frame) and every reference to it: `body1`/`body2`, the `frame` of measures,
+point and orientation fields, `mirror`, `from`, `in`, the expressions of forces, drivers and
+outputs, formulas (`=2 * k`), the channels of `checks` (`rod1.R_z`). Only these places change:
+comments, formatting and order stay as they are, and a word in a comment that happens to be the
+name is not touched. The file is written only if the renamed model is valid.
+
+`--section` says which element is meant where several have the name (a point and a sensor
+`wheel_center`). The new name must be an identifier that no element uses yet.
+
+Result files of earlier runs keep the old channel names.
 
 ## Runtime options
 

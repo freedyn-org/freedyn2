@@ -144,3 +144,19 @@ def test_python_api(tmp_path):
         m.to_yaml(tmp_path / "b.yaml")
     with pytest.raises(freedyn2.ModelError, match="YAML model already"):
         freedyn2.load(out).to_yaml(tmp_path / "c.yaml")
+
+
+def test_legacy_ids_become_element_ids(tmp_path):
+    """BodyID, ConstraintID, ... are written as the elements' ids (fds:body:1); an id the .fds
+    uses twice is left out."""
+    from fdgen.convert import _FdsIds
+    from fdgen.model import load_yaml, validate
+
+    out = convert(ROOT / "examples" / "compare" / "double_pendulum.fds", tmp_path / "dp.yaml")
+    ids = validate(load_yaml(out), tmp_path)["ids"]
+    assert ids["fds:body:1"] == ["bodies", "rod1"] and ids["fds:constraint:2"][0] == "joints"
+    blocks = {k: [] for k in ("bodies", "joints", "motions", "forces", "measures")}
+    blocks["measures"] = [("Measure", "Rotational", {"MeasureID": "4"}), ("Measure", "Rotational", {"MeasureID": "4"}),
+                          ("Measure", "Rotational", {"MeasureID": "5"})]
+    f = _FdsIds(blocks)
+    assert [f.entry(b, "measure") for b in blocks["measures"]] == [[], [], [("id", "fds:measure:5", "")]]

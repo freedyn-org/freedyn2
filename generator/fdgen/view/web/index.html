@@ -218,6 +218,8 @@ body.editing aside { grid-column: 3; }
 #editor .ed-banner { padding: 6px 10px; background: color-mix(in srgb, var(--pending) 12%, transparent); color: var(--text);
   border-bottom: 1px solid var(--pending); font-size: 12px; }
 #editor .ed-banner[hidden] { display: none; }
+#editor .ed-banner .ed-rename { font: inherit; width: 14em; padding: 1px 4px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text); }
 #editor .ed-body { flex: 1; min-height: 0; }
 #editor .ed-help { padding: 3px 10px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); }
 #editor-split { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: ew-resize; z-index: 4; }
@@ -254,7 +256,7 @@ header .model.editable:hover { color: var(--accent); border-color: var(--accent)
     <button class="close" id="ed-close" title="close the editor (E)">×</button></div>
   <div class="ed-banner" id="ed-banner" hidden></div>
   <div class="ed-body" id="ed-body"></div>
-  <div class="ed-help">ctrl+s: save and simulate · ctrl+space: what can come here · under joints:, forces: … a name: templates</div>
+  <div class="ed-help">ctrl+s: save and simulate · ctrl+space: what can come here · F2: rename · under joints:, forces: … a name: templates</div>
   <div id="editor-split" title="drag: width of the editor"></div>
 </section>
 <div id="view"><div id="stale-note">results of the values before · not the current ones</div><div id="error"></div><div id="inspector"></div><div id="overlay"></div></div>

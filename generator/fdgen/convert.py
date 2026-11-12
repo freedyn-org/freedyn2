@@ -179,6 +179,32 @@ def _spline_sources(blocks, model_dir):
     return out
 
 
+class _FdsIds:
+    """The ids of the converted elements from the legacy ids: fds:body:3 (BodyID), fds:constraint:1
+    (ConstraintID of joints and drivers), fds:force:2, fds:measure:4. An id that the .fds uses twice
+    is left out (legacy FreeDyn did not insist on unique ids)."""
+
+    def __init__(self, blocks):
+        self.count = {}
+        for kind, key, names in (("body", "BodyID", ("bodies",)), ("constraint", "ConstraintID", ("joints", "motions")),
+                                 ("force", "ForceID", ("forces",)), ("measure", "MeasureID", ("measures",))):
+            for n in names:
+                for b in blocks[n]:
+                    i = self._raw(b, kind, key)
+                    if i:
+                        self.count[i] = self.count.get(i, 0) + 1
+        self.keys = {"body": "BodyID", "constraint": "ConstraintID", "force": "ForceID", "measure": "MeasureID"}
+
+    @staticmethod
+    def _raw(b, kind, key):
+        v = (b[2].get(key) or b[2].get("ID") or "").strip()
+        return f"fds:{kind}:{v}" if re.fullmatch(r"[A-Za-z0-9_.-]+", v) else None
+
+    def entry(self, b, kind):
+        i = self._raw(b, kind, self.keys[kind])
+        return [("id", i, "")] if i and self.count[i] == 1 else []
+
+
 def _ids(b, *keys):
     return ", ".join(f"{k} {b[2][k]}" for k in keys if b[2].get(k))
 
@@ -243,6 +269,7 @@ def _model_text(m, fds_path, yaml_path, profile, header, blocks):
     model_name = _rename([m["model"]], "model")[m["model"]]
     body = lambda n: "ground" if n == "ground" else body_names[n]
 
+    fds_ids = _FdsIds(blocks)
     w = _Writer()
     w.comment(f"{model_name}: converted from {Path(fds_path).name} by freedyn2 convert (freedyn2 "
               f"{__version__}), profile {profile}.")
@@ -279,7 +306,8 @@ def _model_text(m, fds_path, yaml_path, profile, header, blocks):
     w.lines.append("bodies:")
     for (name, b), blk in zip(m["bodies"].items(), blocks["bodies"]):
         _unknown(f"body {name}", b, BODY_KEYS)
-        entries = [(k, b[k], "") for k in BODY_KEYS if k in b and not (k in BODY_DEFAULTS and b[k] == BODY_DEFAULTS[k])]
+        entries = fds_ids.entry(blk, "body") + [
+            (k, b[k], "") for k in BODY_KEYS if k in b and not (k in BODY_DEFAULTS and b[k] == BODY_DEFAULTS[k])]
         note = _ids(blk, "BodyID", "ID")
         if body_names[name] != name:
             note = f"BodyName {name!r}, " + note
@@ -292,7 +320,7 @@ def _model_text(m, fds_path, yaml_path, profile, header, blocks):
         preset = next((t for t, fix in PRESETS.items() if fix == j["fix"]), None)
         K = np.asarray(j["frame"], dtype=float)
         q = euler_parameters(j["frame"])
-        entries = [("type", preset or "generic", ""), ("body1", body(j["body1"]), "")]
+        entries = fds_ids.entry(blk, "constraint") + [("type", preset or "generic", ""), ("body1", body(j["body1"]), "")]
         if j["body2"] != "ground":
             entries.append(("body2", body(j["body2"]), ""))
         entries.append(("location", j["location"], ""))
@@ -309,7 +337,7 @@ def _model_text(m, fds_path, yaml_path, profile, header, blocks):
         by_name = {measure_name(blk): blk for blk in blocks["measures"]}
         for name, ms in m["measures"].items():
             _unknown(f"measure {name}", ms, MEASURE_KEYS)
-            entries = []
+            entries = fds_ids.entry(by_name[name], "measure")
             for k in MEASURE_KEYS:
                 if k not in ms or (k == "body2" and ms[k] == "ground") or MEASURE_DEFAULTS.get(k, ()) == ms[k]:
                     continue
@@ -326,7 +354,7 @@ def _model_text(m, fds_path, yaml_path, profile, header, blocks):
         w.lines.append("forces:")
     for f, blk in zip(m["forces"], blocks["forces"]):
         _unknown(f"force {f['name']}", {k: v for k, v in f.items() if k != "name"}, FORCE_KEYS)
-        entries = []
+        entries = fds_ids.entry(blk, "force")
         for k in FORCE_KEYS:
             if k not in f or (k == "body2" and f[k] == "ground"):
                 continue
@@ -346,7 +374,7 @@ def _model_text(m, fds_path, yaml_path, profile, header, blocks):
         for name, d in m["drivers"].items():
             blk = motions[name]
             _unknown(f"driver {name}", d, DRIVER_KEYS)
-            entries = [(k, d[k], "") for k in DRIVER_KEYS if k in d]
+            entries = fds_ids.entry(blk, "constraint") + [(k, d[k], "") for k in DRIVER_KEYS if k in d]
             w.element(driver_names[name], entries,
                       f"Constraint TimeMotion, {_ids(blk, 'Name', 'ConstraintID')}; ramp = ActivationPeriod")
 

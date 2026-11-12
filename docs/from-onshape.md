@@ -1,0 +1,107 @@
+# Coming from Onshape
+
+`freedyn2 import-onshape` reads an Onshape assembly with the Onshape REST API and writes it as
+a [model file](reference/model-file.md): bodies with Onshape's mass properties, joints from
+the mates, the parts' geometry for the [viewer](viewer.md). Springs, forces, drivers and solver
+settings are added in the YAML afterwards.
+
+!!! note "Prototype"
+    The importer is new. Revolute, slider, cylindrical, ball, planar, parallel and pin slot
+    mates are imported; the others are listed in the file, not imported.
+
+## API keys
+
+Create a pair of API keys at [dev-portal.onshape.com/keys](https://dev-portal.onshape.com/keys)
+(read access is enough) and set them as environment variables:
+
+```sh
+export ONSHAPE_ACCESS_KEY=...   # Windows: set ONSHAPE_ACCESS_KEY=...
+export ONSHAPE_SECRET_KEY=...
+```
+
+The keys see every document your Onshape account sees. Keep them out of model files and
+repositories.
+
+## Importing
+
+Open the assembly in the browser and copy its address:
+
+```sh
+freedyn2 import-onshape "https://cad.onshape.com/documents/<document>/w/<workspace>/e/<element>"
+freedyn2 import-onshape "<address>" -o models/crank.yaml --force
+```
+
+| option | |
+|---|---|
+| `-o FILE` | the YAML file, or a directory for `<assembly name>.yaml` in it (default: the current directory) |
+| `--no-meshes` | no STL files of the parts (the viewer then draws the inertia boxes) |
+| `--update` | import again into a file imported before, keeping your changes ([below](#importing-again)) |
+| `--force` | overwrite an existing file (without it, `import-onshape` stops) |
+| `--record DIR` | save the API responses in `DIR`, also when the import fails (for bug reports; they contain names and geometry of the document, no API keys) |
+
+A version (`/v/...`) or a configuration (`?configuration=...`) in the address is imported as
+it is. Enterprise addresses (`https://<company>.onshape.com/...`) work the same way.
+
+It writes three things next to each other:
+
+- `crank.yaml`, the model. Comments name the Onshape parts of every body and list what was not
+  imported.
+- `crank_meshes/`, an STL file per part (in meters), placed at the part in the assembly.
+- `crank.onshape.json`, the Onshape reference of every part (document, microversion, element,
+  part id, configuration), to fetch the exact geometry again later.
+
+## Importing again
+
+The CAD model changes: a longer arm, another material, a new part. Import it again into the
+model file you have worked on since:
+
+```sh
+freedyn2 import-onshape "<address>" -o models/crank.yaml --update
+```
+
+The elements of the file and of the assembly are matched by their [ids](reference/model-file.md#ids),
+not by their names:
+
+- **Bodies and joints from Onshape** get the new values: mass, inertia, position, orientation
+  and the meshes of a body; type, bodies, location, orientation and fixed directions of a
+  joint. Their names stay, whether you renamed them in freedyn2 or someone renamed the parts in
+  Onshape; so do your own keys (an initial velocity), your own shapes and your comments.
+- **New parts and mates** are added at the end of `bodies` and `joints`, named as by a first
+  import.
+- **Parts and mates deleted in Onshape** are removed from the file, unless something of yours
+  still refers to them (a measure, a spring): then they stay, and a warning says where.
+- **Everything else** stays as it is: measures, drivers, forces, sensors, outputs, the solver
+  settings.
+
+The command lists what it updated, added, removed and kept. A file imported before there were
+ids cannot be matched: import it once with `--force` and copy your additions over; from then on
+`--update` keeps them.
+
+## What becomes what
+
+| Onshape | freedyn2 |
+|---|---|
+| parts connected by Fastened mates or a mate group | one body: masses, centers of mass and inertia tensors added up, its principal axes are the body frame |
+| fixed parts (and what is fastened to them) | the ground (shapes only) |
+| Revolute | `revolute` |
+| Slider | `prismatic` |
+| Cylindrical | `cylindrical` |
+| Ball | `spherical` |
+| Planar | `generic`, `fix: [dz, ax, ay]` |
+| Parallel | `generic`, `fix: [ax, ay]` |
+| Pin slot | `generic`, `fix: [dy, dz, ax, ay]` in the frame of the slot |
+| Tangent, Width, mate relations (gear, rack and pinion, screw, linear) | not imported, listed in the file and as warnings |
+
+- The joint frame is the mate connector of the first mated entity (joint axis z, as in
+  Onshape) at the assembly's current position, which is t = 0 of the simulation.
+- Mass properties are Onshape's, computed on the exact geometry. A body none of whose parts
+  has a material is an error naming the parts: assign a material in Onshape, or fasten the part
+  to one with mass. Massless parts in a body with mass (screws, standard content) are fine.
+- Sub-assemblies are flattened: their mates become joints between their parts.
+- Every body, joint and shape gets an [id](reference/model-file.md#ids) from Onshape's instance
+  and feature ids (`onshape:body:...`, `onshape:part:...`, `onshape:mate:...`). They stay the
+  same when the assembly changes, so a re-import finds the elements again under any name.
+- Bodies are named after their heaviest part, joints after their mates. A name used in several
+  sub-assemblies gets the sub-assembly's name in front: `upper_arm <1>` in `arm assembly <2>`
+  becomes `arm_assembly_2_upper_arm_1`; unique names stay short (`tool_base_1`).
+- The geometry is for the viewer only; the simulation does not use it.

@@ -163,7 +163,7 @@ def unused_parameters(model):
             for v in x:
                 collect(v)
 
-    collect({k: v for k, v in model.items() if k not in ("parameters", "parameter_refs", "point_refs")})
+    collect({k: v for k, v in model.items() if k not in ("parameters", "parameter_refs", "point_refs", "ids")})
     texts += model.get("parameter_refs", [])
     words = set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", " ".join(texts)))
     return [p for p in model.get("parameters", {}) if p not in words]
