@@ -637,7 +637,7 @@ function showChannels() {
     if (f) d.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       formulas = formulas.filter((x) => x.name !== n);
-      for (const p of area.panes) p.series = p.series.filter((s) => s.name !== n);
+      for (const p of area.allPanes()) p.series = p.series.filter((s) => s.name !== n);
       area.build();
     });
     box.appendChild(d);
@@ -670,7 +670,8 @@ $("plot-add-xy").addEventListener("click", () => ask("x channel, e.g. wheel_fl1.
 }));
 $("plot-formula").addEventListener("click", () => ask("name = formula, e.g. v_kmh = chassis1.Rdot_x * 3.6;  der(), int(), hypot(), deg()", addFormula));
 $("plot-measure").addEventListener("click", (e) => { e.currentTarget.classList.toggle("on"); area.setMeasure(e.currentTarget.classList.contains("on")); });
-$("plot-reset").addEventListener("click", () => { area.xRange = null; for (const p of area.panes) p.view = null; area.draw(); });
+$("plot-reset").addEventListener("click", () => { area.xRange = null; for (const p of area.allPanes()) p.view = null; area.draw(); });
+$("plot-add-page").addEventListener("click", () => area.addPage());
 function download(name, href) { const a = document.createElement("a"); a.href = href; a.download = name; a.click(); }
 $("plot-png").addEventListener("click", () => { const u = area.png(); if (u) download(`${model.model}_plots.png`, u); });
 $("plot-csv").addEventListener("click", () => download(`${model.model}_plots.csv`, URL.createObjectURL(new Blob([area.csv()], { type: "text/csv" }))));
@@ -1036,11 +1037,15 @@ async function post(url, body) {
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
   return r.json();
 }
-const strip = new RunStrip($("runs"), {
+const strip = new RunStrip($("runs"), $("run-table"), {
   toggle: (id) => { if (shown.has(id)) shown.delete(id); else shown.add(id); pollSoon(); },
+  show: (ids, on) => { for (const id of ids) if (on) shown.add(id); else shown.delete(id); pollSoon(); },
   reference: (id) => post(`api/runs/${id ?? referenceRun}`, { reference: id !== null }).then(pollSoon),
   restore: (run) => panels.restore(run.overrides),
   remove: (id) => post(`api/runs/${id}`, { delete: true }).then(pollSoon),
+  removeMany: async (ids) => { for (const id of ids) await post(`api/runs/${id}`, { delete: true }).catch(() => null); pollSoon(); },
+  keep: (id, on) => post(`api/runs/${id}`, { keep: on }).then(pollSoon),
+  label: (id, text) => post(`api/runs/${id}`, { label: text }).then(pollSoon),
   dash: runDash,
   sweepShown: () => { if (sweep) { sweep.shown = !sweep.shown; pollSoon(); } },
   sweepStop: () => post("api/sweep", { clear: true }).then(pollSoon),

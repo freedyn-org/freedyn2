@@ -356,6 +356,36 @@ def test_tuned_values_are_simulated(tmp_path):
         httpd.shutdown()
 
 
+def test_runs_kept_and_named(tmp_path):
+    """Of the runs, the oldest of more than MAX_RUNS go, but not the reference and not those
+    marked to keep; a run has a name (label), blanks folded."""
+    model = tmp_path / "p.yaml"
+    write_pendulum(model, stiffness=10.0)
+    view = server.View(model, run=False)
+
+    def run():
+        csv = tmp_path / "r.csv"
+        csv.write_text("t\n0\n")
+        return view._new_run(csv, 0.1)[0]
+
+    for _ in range(3):
+        run()
+    view.set_reference(1)
+    view.mark_run(2, keep=True, label="  soft   spring ")
+    for _ in range(server.MAX_RUNS + 5):
+        run()
+    ids = [r["id"] for r in view.runs]
+    assert ids[:2] == [1, 2] and len(ids) == server.MAX_RUNS + 2 and ids[-1] == server.MAX_RUNS + 8
+    assert view.runs[1]["label"] == "soft spring" and view.runs[1]["keep"] and view.runs[1]["csv"].is_file()
+    assert not (view.workdir / "run_3.csv").exists()  # dropped with its file
+    view.mark_run(2, keep=False)
+    run()  # now the oldest one that may go
+    assert [r["id"] for r in view.runs][0] == 1 and 2 not in [r["id"] for r in view.runs]
+    assert len(view.runs) == server.MAX_RUNS + 1
+    with pytest.raises(ValueError):
+        view.mark_run(2, label="gone")
+
+
 def test_notes_from_the_viewer(tmp_path):
     from fdgen.view import notes
 

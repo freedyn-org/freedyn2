@@ -16,7 +16,7 @@ From the page (POST, JSON):
   /api/overrides  {path: value}: numbers of the model file tuned in the viewer (apply_overrides),
                   kept by the server (not written to the file) and applied to every rebuild;
                   simulates in the background, a simulation still running is stopped
-  /api/runs/<id>  {reference: true | false} / {delete: true}
+  /api/runs/<id>  {reference: true | false} / {delete: true} / {keep: true | false} / {label: text}
   /api/sweep      {path, values}: one tuned number over several values, simulated in parallel
                   (fdgen.sweep; the fan of curves, key figures over the value) / {stop: true}
                   / {clear: true}; its results: GET /api/sweep/<k>.csv
@@ -64,7 +64,7 @@ for _ext, _type in ((".woff2", "font/woff2"), (".svg", "image/svg+xml"), (".js",
     mimetypes.add_type(_type, _ext)
 POLL_SECONDS = 0.5
 MAX_POST = 20_000_000  # bytes (a note with its picture)
-MAX_RUNS = 20  # kept for comparison (the reference always)
+MAX_RUNS = 20  # kept for comparison, besides the reference and the runs marked to keep
 
 
 def apply_overrides(raw, overrides):
@@ -107,7 +107,7 @@ class View:
         self.version, self.status, self.error, self.log = 0, "loading", "", ""
         self.scene, self.csv, self.meshes = None, None, []
         self.overrides, self.model, self.fdm, self._modes = {}, None, None, {}
-        self.runs, self.current, self.reference = [], None, None  # runs: [{id, csv, overrides, edit, seconds, created}]
+        self.runs, self.current, self.reference = [], None, None  # runs: [{id, csv, overrides, edit, seconds, created, label, keep}]
         self._edits, self._file_stamp = 0, None  # versions of the model file the runs were made with
         self._progress = None  # (csv, end time) of the simulation in progress
         self.sweep, self._sweep_csv, self._sweeps = None, [], 0  # the parameter sweep (fan) and its results
@@ -311,7 +311,8 @@ class View:
         return float(model["solver"].get("end_time", 0.0))
 
     def _new_run(self, csv_path, seconds):
-        """A finished simulation (or a given result file) as a run; the oldest runs go (not the reference)."""
+        """A finished simulation (or a given result file) as a run; the oldest of more than MAX_RUNS go
+        (not the reference, not the runs marked to keep)."""
         stamp = self._watched().get(self.model_path)
         if stamp != self._file_stamp:
             self._edits, self._file_stamp = self._edits + 1, stamp
@@ -326,9 +327,9 @@ class View:
                     raise
                 time.sleep(0.05)
         self.runs.append({"id": rid, "csv": path, "overrides": dict(self.overrides), "edit": self._edits,
-                          "seconds": seconds, "created": time.strftime("%H:%M:%S")})
-        while len(self.runs) > MAX_RUNS:
-            old = next(r for r in self.runs if r["id"] != self.reference)
+                          "seconds": seconds, "created": time.strftime("%H:%M:%S"), "label": "", "keep": False})
+        loose = [r for r in self.runs if r["id"] not in (self.reference, rid) and not r["keep"]]
+        for old in loose[:max(0, len(loose) + 1 - MAX_RUNS)]:
             self.runs.remove(old)
             old["csv"].unlink(missing_ok=True)
         return rid, path
@@ -341,6 +342,17 @@ class View:
             if rid is not None and self.run_csv(rid) is None:
                 raise ValueError(f"no run {rid}")
             self.reference = rid
+
+    def mark_run(self, rid, keep=None, label=None):
+        """A run kept (not dropped as one of the oldest) or not, and its name ("": none)."""
+        with self._lock:
+            run = next((r for r in self.runs if r["id"] == rid), None)
+            if run is None:
+                raise ValueError(f"no run {rid}")
+            if keep is not None:
+                run["keep"] = bool(keep)
+            if label is not None:
+                run["label"] = " ".join(str(label).split())[:80]
 
     def delete_run(self, rid):
         with self._lock:
@@ -607,6 +619,8 @@ class ViewHandler(BaseHTTPRequestHandler):
                 rid = int(url.rsplit("/", 1)[1])
                 if body.get("delete"):
                     view.delete_run(rid)
+                elif "keep" in body or "label" in body:
+                    view.mark_run(rid, body.get("keep"), body.get("label"))
                 else:
                     view.set_reference(rid if body.get("reference", True) else None)
                 out = view.state()

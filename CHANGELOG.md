@@ -5,6 +5,15 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Added
+
+- Viewer: plots in pages (**+ page**, tabs above the plots: rename, move, drop a channel on a
+  tab). The plots of a page share its height, so many plots no longer get smaller and smaller.
+- Viewer: the run table (**≡ all runs** in the run strip): every run with its tuned values as
+  sortable columns, a name per run, show, ★, ⟲, ×, and *keep*, so a run is not dropped as one
+  of the oldest; *show none* and *remove the others* for many runs. The strip shows the
+  current, reference, shown, kept and named runs and the newest.
+
 ## [0.1.0rc4] - 2026-11-07
 
 Release candidate with the Onshape import, element ids and renaming that follows every
