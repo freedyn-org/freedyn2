@@ -151,16 +151,15 @@ Model load_model(const std::string& path) {
         if (index < 0) fail("element " + cur->name + ": input '" + name + "' not declared");
         cur->inputs.emplace_back(index, std::stoi(slot.substr(colon + 1)));
       }
-    } else if (cur && key == "splines") {  // table:points:segment ...
-      std::string call;
-      while (ss >> call) {
-        ElementSpec::SplineCall c{};
-        char a = 0, b = 0;
-        std::istringstream cs(call);
-        if (!(cs >> c.table >> a >> c.n >> b >> c.segment) || a != ':' || b != ':' || c.n < 1)
-          fail("splines: expected table:points:segment, got '" + call + "'");
-        cur->splines.push_back(c);
-      }
+    } else if (cur && key == "spline") {  // segment offset, points n, table (5 n numbers)
+      ElementSpec::SplineCall c;
+      if (!(ss >> c.segment >> c.n) || c.n < 1) fail("spline: expected segment offset and number of points");
+      c.table = read_all<double>(ss);
+      if (static_cast<int>(c.table.size()) != 5 * c.n)
+        fail("spline: expected " + std::to_string(5 * c.n) + " table values, got " + std::to_string(c.table.size()));
+      for (int i = 1; i < c.n; ++i)
+        if (!(c.table[i] > c.table[i - 1])) fail("spline: x values must be increasing");
+      cur->splines.push_back(std::move(c));
     } else if (cur && key == "jacobian") {
       ss >> cur->jacobian;
       if (cur->jacobian != "full" && cur->jacobian != "no_qvv") fail("jacobian must be full or no_qvv");

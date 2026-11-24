@@ -103,9 +103,8 @@ System::System(const Model& model) : nq_(model.nq()), nv_(model.nv()), nc_(model
       if (!e.spline || e.spline->sparsity_out(0).nrow != static_cast<int>(s.splines.size()))
         throw std::runtime_error("element " + s.name + ": spline calls and spline function do not match");
       for (const auto& c : s.splines)
-        if (c.table < 0 || c.segment < 0 || c.table + 5 * c.n > static_cast<int>(s.p.size()) ||
-            c.segment + 5 > static_cast<int>(s.p.size()))
-          throw std::runtime_error("element " + s.name + ": spline table or segment outside p");
+        if (c.segment < 0 || c.segment + 5 > static_cast<int>(s.p.size()))
+          throw std::runtime_error("element " + s.name + ": spline segment outside p");
       e.spline_buf.resize(s.splines.size());
       spline_users_.push_back(static_cast<int>(elems_.size()) - 1);
     }
@@ -183,12 +182,11 @@ void System::update_splines() {
       bool changed = false;
       for (int j = 0; j < sp.nnz(); ++j) {
         const ElementSpec::SplineCall& c = calls[sp.row[j]];
-        double* p = e.spec.p.data();
-        const double* x = p + c.table;
+        const double* x = c.table.data();
         const double xv = e.spline_buf[j];
         // the largest i with x[i] <= xv, 0 below the first point (fdgen.splines.segment)
         const int i = std::max(static_cast<int>(std::upper_bound(x, x + c.n, xv) - x) - 1, 0);
-        double* seg = p + c.segment;
+        double* seg = e.spec.p.data() + c.segment;
         if (seg[0] == x[i] && seg[1] == x[c.n + i]) continue;
         for (int m = 0; m < 5; ++m) seg[m] = x[m * c.n + i];
         changed = true;

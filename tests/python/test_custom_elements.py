@@ -456,4 +456,31 @@ def test_spline_of_1000_points_is_data(tmp_path):
     f = splines.numeric(x, y, "akima")
     assert r["cart.R_z"] == pytest.approx([f(t) for t in r["t"]], abs=1e-9)
     assert r["nested.value"] == pytest.approx([f(f(f(t) + 1) + 1) for t in r["t"]], abs=1e-9)
-    assert "splines " in fdm.read_text()
+    text = fdm.read_text()
+    assert "\nspline " in text
+    # the driver along a curve of time is a library type (no plugin code), the others are not
+    assert "element spline_driver_z_global_ground_none lift" in text
+    assert not (tmp_path / "spline_table_plugin_src" / "d_spline_table_lift.c").exists()
+
+
+@pytest.mark.parametrize("measure", [
+    {"type": "angle", "body1": "a", "body2": "b", "vector": [1, 0, 0], "plane": [[1, 0, 0], [0, 1, 0]]},
+    {"type": "displacement", "body1": "a", "body2": "b", "component": "y", "frame": "b", "offset": "initial"},
+    {"type": "distance", "body1": "a", "offset": 0.1},
+    {"type": "displacement", "body1": "a", "component": "x", "frame": "a"}])
+def test_library_drivers_match_the_plugin(measure):
+    """A driver along a curve of time is matched to its library type by the structure of its
+    constraint; the library element has the same p as the plugin element (same law)."""
+    from fdgen import drivers
+    model = validate({"model": "m", "bodies": {"a": {"mass": 1, "inertia": [1, 1, 1], "position": [0.5, 0, 0]},
+                                               "b": {"mass": 1, "inertia": [1, 1, 1], "position": [0, 0.2, 0]}},
+                      "splines": {"c": {"x": [0, 1, 2, 3], "y": [0, 0.1, 0.3, 0.2]}},
+                      "measures": {"m": measure}, "drivers": {"d": {"measure": "m", "motion": "c(t)"}},
+                      "solver": {"type": "HHT", "end_time": 1, "step": 0.01}})
+    el = drivers.library_driver(model, "d", model["drivers"]["d"])
+    assert el is not None and el[0].startswith("spline_driver_")
+    cx, _, phi = drivers._build(model, "d", model["drivers"]["d"])
+    assert el[2] == cx.consts.values and drivers.driver_elements(model) == []
+    # not covered: a ramp, or another motion
+    for d in ({"measure": "m", "motion": "c(t)", "ramp": 0.5}, {"measure": "m", "motion": "2 * c(t)"}):
+        assert drivers.library_driver(model, "d", d) is None

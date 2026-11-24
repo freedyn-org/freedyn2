@@ -32,8 +32,8 @@ MAX_CACHED_ELEMENTS = 512
 class PluginElement(tuple):
     """(name, element type, [bodies], p values, ElementFunctions) of one plugin element, with
     .inputs: runtime input name -> offset in p (empty for elements without inputs), .splines:
-    [(table offset, number of points, segment offset)] of its spline calls (the runtime selects
-    their segments)."""
+    [(segment offset in p, table 5 x n)] of its spline calls (the runtime selects their
+    segments)."""
 
     def __new__(cls, name, tname, bodies, p, elem, inputs=None, splines=()):
         self = super().__new__(cls, (name, tname, bodies, p, elem))
@@ -83,30 +83,22 @@ class CustomElement:
         self.intermediates = []
         for name in self.measure_names:
             self.symbols[name] = self.intermediate(self.measure(measures[name]), name)
-        # splines: the table is data in p, the runtime selects the segment of each call (the
-        # generated code is one cubic per call, whatever the number of points)
+        # splines: the table is data of the runtime, p holds the segment it selects for each call
+        # (the generated code is one cubic per call, whatever the table)
         self.functions = {}
         for name in sorted(calls & set(model_splines)):
             sp = model_splines[name]
-            b_, c_, d_ = spl.coefficients(sp["x"], sp["y"], sp.get("type", "akima"))
-            table = len(self.consts.values)
-            self.consts.add(np.concatenate([sp["x"], sp["y"], b_, c_, d_]), f"{name}_table")
-            self.functions[name] = lambda xv, table=table, n=len(sp["x"]): self._spline_call(xv, table, n)
+            tab = spl.table(sp["x"], sp["y"], sp.get("type", "akima"))
+            self.functions[name] = lambda xv, tab=tab: self._spline_call(xv, tab)
 
     def spline_slots(self):
-        """[(table offset, number of points, segment offset)] of the spline calls (fdm: splines)."""
-        return [(table, n, seg) for _, table, n, seg in self.consts.splines]
+        """[(segment offset in p, table (5 x n))] of the spline calls (fdm: spline)."""
+        return [(seg, tab) for _, tab, seg in self.consts.splines]
 
-    def _spline_call(self, xv, table, n):
+    def _spline_call(self, xv, tab):
         if isinstance(xv, (int, float)) or (hasattr(xv, "is_constant") and xv.is_constant()):
-            # a constant argument: the value (no runtime lookup needed)
-            v = self.consts.values
-            x0 = float(xv)
-            tab = [v[table + k * n: table + (k + 1) * n] for k in range(5)]
-            i = spl.segment(tab[0], x0)
-            dx = x0 - tab[0][i]
-            return tab[1][i] + tab[2][i] * dx + tab[3][i] * dx ** 2 + tab[4][i] * dx ** 3
-        r = self.consts.add_spline_call(xv, table, n)
+            return spl.cubic(spl.segment_of(tab, float(xv)), float(xv))  # a constant argument: its value
+        r = self.consts.add_spline_call(xv, tab)
         self.select_segments(self.q0, 0.0, self.consts.values)  # p consistent with the initial state
         return r
 
@@ -139,9 +131,8 @@ class CustomElement:
         for _ in range(len(calls)):
             xs = np.atleast_1d(np.array(fn(q, np.zeros(c.v.numel()), t, values), float).ravel())
             changed = False
-            for xv, (_, table, n, seg) in zip(xs, calls):
-                i = spl.segment(values[table:table + n], xv)
-                new = [values[table + k * n + i] for k in range(5)]
+            for xv, (_, tab, seg) in zip(xs, calls):
+                new = spl.segment_of(tab, xv)
                 if values[seg:seg + 5] != new:
                     values[seg:seg + 5] = new
                     changed = True
@@ -172,7 +163,7 @@ class CustomElement:
         parts += [f"out {k}={v}" for k, v in (out or {}).items()]
         if consts.updates:
             parts.append(f"post={consts.post()}")
-        parts += [f"spline {x} {table} {n} {seg}" for x, table, n, seg in consts.splines]
+        parts += [f"spline {x} {seg}" for x, _, seg in consts.splines]
         return hashlib.sha256("\n".join(parts).encode()).hexdigest()
 
     def element(self, name, out=None, **kw):

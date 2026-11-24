@@ -63,10 +63,13 @@ forces:
 `type: akima` (default: no overshoot, linear beyond the ends) or `zcc` (the legacy FreeDyn
 spline).
 
-The table is data, not code: the runtime looks up the segment of the current argument (binary
-search) and the compiled law evaluates that one cubic, exactly differentiated. A spline of
-10 000 points builds as fast as one of 5; other data with the same number of points reuse the
-compiled model.
+The coefficients are computed once when the model is built (with the operation order of the
+legacy splines: bitwise the same values). The table is data, not code: the runtime looks up the
+segment of the current argument (binary search) and the law evaluates that one cubic, exactly
+differentiated. A spline of 10 000 points builds as fast as one of 5, and other tables reuse
+the compiled model. Characteristic curves of springs and dampers and drivers along a curve of
+time are library types without any compiled code of the model (see
+[forces](forces.md#spring-damper) and [drivers](#drivers)).
 
 <!-- keys: splines -->
 
@@ -106,5 +109,10 @@ drivers:
 
 Without `ramp` the motion must start where the measure is at t = 0. With `ramp: Ta` a smooth
 polynomial joins the initial value at rest to the motion at Ta.
+
+A driver along a curve of time, `motion: <spline>(t)` without `ramp`, on an angle, a distance
+or a displacement (component in the global frame or in the frame of body1 or body2, with or
+without offset) is a library type: no model plugin, no compiler. Other motions are built in
+the model plugin.
 
 <!-- keys: drivers -->

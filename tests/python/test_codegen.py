@@ -72,5 +72,6 @@ def test_cmake_lists_all_element_types():
     from fdgen.codegen import ELEMENT_BUILDERS
 
     text = (ROOT / "CMakeLists.txt").read_text()
-    listed = re.search(r"set\(FD_ELEMENT_TYPES(.*?)\)", text, re.S).group(1).split()
+    block = re.search(r"set\(FD_ELEMENT_TYPES(.*?)\)", text, re.S).group(1)
+    listed = re.sub(r"#[^\n]*", "", block).split()
     assert sorted(listed) == sorted(ELEMENT_BUILDERS)

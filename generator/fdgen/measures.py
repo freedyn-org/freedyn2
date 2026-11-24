@@ -37,7 +37,7 @@ class Consts:
         self.syms, self.values = [], []
         self.updates = {}  # state symbol -> its new value after an accepted step (post)
         self.inputs = {}  # runtime input name -> its offset in p (the runtime overwrites it)
-        self.splines = []  # calls of splines: (argument expression, table offset, knots, segment offset)
+        self.splines = []  # calls of splines: (argument expression, table (5 x n), segment offset in p)
 
     def add(self, value, name="c"):
         v = np.atleast_1d(np.asarray(value, dtype=float))
@@ -58,16 +58,15 @@ class Consts:
         self.values.append(float(value))
         return s
 
-    def add_spline_call(self, xv, table, n):
-        """A call of a spline at xv whose table [x, y, b, c, d] (5 n values) is at offset table of
-        p: four slots [x0, y0, b, c, d] of p hold the segment the runtime selects for the
-        current xv (fd::System::update_splines); returns the value of its cubic."""
+    def add_spline_call(self, xv, tab):
+        """A call at xv of the spline with the table tab (5 x n: x, y, b, c, d; data of the
+        runtime, not in p): five slots [x0, y0, b, c, d] of p hold the segment the runtime
+        selects for the current xv (fd::System::update_splines); returns its cubic."""
+        from .splines import cubic
         offset = len(self.values)
-        seg = self.add([self.values[table + k * n] for k in range(5)], "seg")  # the first segment
-        self.splines.append((xv, table, n, offset))
-        dx = xv - seg[0]
-        dx2 = dx * dx
-        return seg[1] + seg[2] * dx + seg[3] * dx2 + seg[4] * (dx2 * dx)
+        seg = self.add(tab[:, 0], "seg")  # the first segment, until selected
+        self.splines.append((xv, tab, offset))
+        return cubic(seg, xv)
 
     def post(self):
         """The state entries of p after an accepted step (a sparse vector of the size of p: the

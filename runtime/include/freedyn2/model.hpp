@@ -49,10 +49,11 @@ struct ElementSpec {
   int road = -1;
   // Runtime inputs this element uses: (index into Model::inputs, offset in p).
   std::vector<std::pair<int, int>> inputs;
-  // Spline calls (generated spline function): offset of the table [x, y, b, c, d] in p, number
-  // of points, offset of the segment slots [x0, y0, b, c, d] the runtime sets.
+  // Spline calls (generated spline function), in call order: offset of the segment slots
+  // [x0, y0, b, c, d] in p the runtime sets, the table x, y, b, c, d (5 rows of n points).
   struct SplineCall {
-    int table, n, segment;
+    int segment = 0, n = 0;
+    std::vector<double> table;
   };
   std::vector<SplineCall> splines;
 };

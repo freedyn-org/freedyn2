@@ -15,7 +15,7 @@ import yaml
 from . import forces
 from . import joints as joint_types
 from .geometry import rotation_matrix
-from . import extensions, flex_body, formulas, hardpoints, plugin, resources, rigid_body, shapes, splines
+from . import drivers, extensions, flex_body, formulas, hardpoints, plugin, resources, rigid_body, shapes, splines
 from .flex import load_modal
 from .measures import POSITION_MEASURES
 from .errors import ModelError  # noqa: F401  (re-exported: fdgen.model.ModelError)
@@ -385,6 +385,14 @@ def validate(model, base_dir=None, prepare_flex=True):
     inputs = {name: float(v) for name, v in (model.get("inputs") or {}).items()}
     model_splines = {name: _spline(name, sp, base_dir) for name, sp in section("splines")}
     drivers = {name: _driver(name, d, measures) for name, d in section("drivers")}
+    for f in forces:  # characteristic curves of springs: splines of the model
+        if f["type"] in ("spring_damper", "torsion_spring"):
+            for key in ("stiffness", "damping"):
+                v = f.get(key)
+                if isinstance(v, str) and v not in model_splines:
+                    raise ModelError(f"force {f['name']}: {key} {v!r} is not a spline (splines: {sorted(model_splines)})")
+                if isinstance(v, list):
+                    raise ModelError(f"force {f['name']}: {key} is a number or the name of a spline")
     outputs = {name: str(e) for name, e in section("outputs")}
     taken = (set(bodies) | {j["name"] for j in joints} | {f["name"] for f in forces} | {sn["name"] for sn in sensors}
              | set(drivers))
@@ -520,31 +528,42 @@ def write_fdm(model, path):
     def input_lines(name):
         slots = input_slots.get(name)
         lines = ["inputs " + " ".join(f"{k}:{o}" for k, o in slots.items())] if slots else []
-        # spline calls: the runtime selects the segment (table offset:points:segment offset in p)
-        calls = spline_slots.get(name)
-        return lines + (["splines " + " ".join(f"{a}:{n}:{s}" for a, n, s in calls)] if calls else [])
+        return lines + spline_lines(spline_slots.get(name))
 
     for force in model.get("forces", []):
         if force["name"] in in_plugin:
             kind, names, p = in_plugin[force["name"]]
         else:
-            kind, names, p = forces.element(force, model["bodies"])
+            el = forces.element(force, model["bodies"], model.get("splines"))
+            kind, names, p = el
             kind += euler(names)
         # tires on the OpenCRG road: the runtime sets their road plane at this offset of p
         offset = forces.LOCAL_ROAD_OFFSET.get(kind.removesuffix("_euler"), extensions.road_offset(kind))
         extra = [f"road {offset}"] if offset is not None else []
         extra += input_lines(force["name"])
+        if force["name"] not in in_plugin:
+            extra += spline_lines(getattr(el, "splines", ()))
         lines += connector(kind, force["name"], names, p, False, f"force {force['name']}", extra)
     for sensor in model.get("sensors", []):
         kind, names, p = forces.sensor_element(sensor, model["bodies"], gravity)
         lines += connector(kind + euler(names), sensor["name"], names, p, False, f"sensor {sensor['name']}")
-    for name in model.get("drivers") or {}:  # prescribed motion: one constraint each
-        tname, names, p = in_plugin[name]
-        lines += connector(tname, name, names, p, True, f"driver {name}", input_lines(name))
+    for name, d in (model.get("drivers") or {}).items():  # prescribed motion: one constraint each
+        if name in in_plugin:
+            tname, names, p = in_plugin[name]
+            lines += connector(tname, name, names, p, True, f"driver {name}", input_lines(name))
+        else:  # along a curve of time: a library type
+            el = drivers.library_driver(model, name, d)
+            lines += connector(el[0], name, el[1], el[2], True, f"driver {name}", spline_lines(el.splines))
     for name in model.get("outputs") or {}:  # output channels: no loads, no constraints
         tname, names, p = in_plugin[name]
         lines += connector(tname, name, names, p, False, f"output {name}", input_lines(name))
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def spline_lines(calls):
+    """fdm lines of the spline calls of an element, in call order: the segment offset in p, the
+    number of points and the table x, y, b, c, d (the runtime selects the segment)."""
+    return [f"spline {seg} {tab.shape[1]} " + _fmt(tab.ravel()) for seg, tab in calls or ()]
 
 
 def data_files(model_path):
