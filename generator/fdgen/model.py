@@ -15,7 +15,7 @@ import yaml
 from . import forces
 from . import joints as joint_types
 from .geometry import rotation_matrix
-from . import drivers, extensions, flex_body, formulas, hardpoints, plugin, resources, rigid_body, shapes, splines
+from . import curve_forces, drivers, extensions, flex_body, formulas, hardpoints, plugin, resources, rigid_body, shapes, splines
 from .flex import load_modal
 from .measures import POSITION_MEASURES
 from .errors import ModelError  # noqa: F401  (re-exported: fdgen.model.ModelError)
@@ -179,6 +179,7 @@ def _joint_node(out, j, bodies):
 
 _FORCE_KEYS = {"spring_damper": ["stiffness"], "torsion_spring": ["stiffness"], "force": ["vector"],
                "torque": ["vector"], "bushing": ["stiffness", "rot_stiffness"], "expression_force": ["force"],
+               "curve_force": ["measure", "curve"],
                "expression_torque": ["torque", "axis"], "tire": []}
 
 
@@ -385,6 +386,12 @@ def validate(model, base_dir=None, prepare_flex=True):
     inputs = {name: float(v) for name, v in (model.get("inputs") or {}).items()}
     model_splines = {name: _spline(name, sp, base_dir) for name, sp in section("splines")}
     drivers = {name: _driver(name, d, measures) for name, d in section("drivers")}
+    for f in forces:  # curve forces: a measure and a spline of the model
+        if f["type"] == "curve_force":
+            if f["measure"] not in measures:
+                raise ModelError(f"force {f['name']}: measure {f['measure']!r} unknown (measures: {sorted(measures)})")
+            if f["curve"] not in model_splines:
+                raise ModelError(f"force {f['name']}: curve {f['curve']!r} is not a spline (splines: {sorted(model_splines)})")
     for f in forces:  # characteristic curves of springs: splines of the model
         if f["type"] in ("spring_damper", "torsion_spring"):
             for key in ("stiffness", "damping"):
@@ -534,7 +541,8 @@ def write_fdm(model, path):
         if force["name"] in in_plugin:
             kind, names, p = in_plugin[force["name"]]
         else:
-            el = forces.element(force, model["bodies"], model.get("splines"))
+            el = (curve_forces.element(force, model) if force["type"] == "curve_force"
+                  else forces.element(force, model["bodies"], model.get("splines")))
             kind, names, p = el
             kind += euler(names)
         # tires on the OpenCRG road: the runtime sets their road plane at this offset of p

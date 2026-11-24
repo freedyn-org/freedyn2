@@ -29,6 +29,10 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   `stiffness` or `damping` (force over the deflection, over the rate), and drivers along a
   curve of time (`motion: <spline>(t)`) on angles, distances and displacements are built into
   the runtime: no model plugin, no compiler (legacy 101_V8Motion runs without one).
+- `curve_force`: a force or torque that is a spline of a measure, s = a curve(b m + c),
+  a library type for any measure between its two bodies (frames, components and directions
+  are parameters: 42 types). The `.fds` importer makes one of a legacy law
+  `a * SPL[MEAVAL[..], ..]`.
 - Fatigue output of flexible bodies (modal superposition):
   `freedyn2 modal-stress model.yaml body [result.csv]` and the MCP tool `flex_modal_stress` write the
   FE mesh with the stress tensor of each mode (Universal file) and the modal coordinates of the

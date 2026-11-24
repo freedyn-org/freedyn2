@@ -112,7 +112,7 @@ concepts map:
 | `Constraint Generic` with `dxFixed` … `azFixed` | [`joints`](reference/joints.md): `revolute`, `prismatic`, `spherical`, … or `generic` with the directions to fix |
 | `Constraint TimeMotion` | [`drivers`](reference/measures.md#drivers) |
 | `Measure Translational` / `Rotational` | [`measures`](reference/measures.md) |
-| `Force GenericForce` / `GenericTorque` with `ForceExpression` | [`expression_force`](reference/forces.md#expression-force-and-torque), `expression_torque` |
+| `Force GenericForce` / `GenericTorque` with `ForceExpression` | [`expression_force`](reference/forces.md#expression-force-and-torque), `expression_torque`; a law `a * SPL[MEAVAL[m], data]` (also `AKISPL`, `ZCCSPL`) becomes a [`curve_force`](reference/forces.md#curve-force-and-torque) (no model plugin) |
 | `DataObject Parameter` | [`parameters`](reference/model-file.md#parameters-and-formulas), usable as `=formulas` in any field |
 | `DataObject Spline_1D` | [`splines`](reference/measures.md#splines) |
 | `Simulation Dynamic`, `Solver HHT` | [`solver`](reference/solver.md): `end_time`, `output_step`, `alpha`; the step size control as `adaptive`, `eps` (`GlobalErrorTolerance`), `step` (`SolverMaxTimeStep`), `h_min` |

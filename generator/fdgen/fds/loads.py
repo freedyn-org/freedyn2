@@ -1,5 +1,6 @@
 """Measures, parameters, splines, expression forces / torques and TimeMotion drivers."""
 
+import re
 from pathlib import Path
 
 from ..errors import ModelError
@@ -132,6 +133,51 @@ def _unknown(kind, name, text):
     raise ModelError(f"unknown {kind} {name!r} in {text!r}")
 
 
+_NUMBER = r"[0-9]+\.?[0-9]*(?:[eE][+-]?[0-9]+)?"
+_CURVE_LAW = re.compile(rf"^(?:({_NUMBER})\*)?([a-z_][a-z0-9_]*)\(([a-z_][a-z0-9_]*)\)$")
+
+
+def curve_law(law, measures, used_splines):
+    """(scale, spline, measure) of a translated law a * spline(measure) (a number, a sign, or
+    nothing), else None."""
+    s = law.replace(" ", "")
+    sign = 1.0
+    while True:
+        if s.startswith("-(") and s.endswith(")") and _balanced(s[2:-1]):
+            sign, s = -sign, s[2:-1]
+        elif s.startswith("(") and s.endswith(")") and _balanced(s[1:-1]):
+            s = s[1:-1]
+        elif s.startswith("-"):
+            sign, s = -sign, s[1:]
+        else:
+            break
+    m = _CURVE_LAW.match(s)
+    if not m or m.group(2) not in (used_splines or {}) or m.group(3) not in set(measures.values()):
+        return None
+    return sign * float(m.group(1) or 1.0), m.group(2), m.group(3)
+
+
+def _balanced(s):
+    depth = 0
+    for ch in s:
+        depth += {"(": 1, ")": -1}.get(ch, 0)
+        if depth < 0:
+            return False
+    return depth == 0
+
+
+def _as_curve_force(f, key, measures, used_splines):
+    """A law a * spline(measure) becomes a curve_force (a library type: no model plugin)."""
+    cl = curve_law(f[key], measures, used_splines)
+    if cl is None:
+        return f
+    f = {k: v for k, v in f.items() if k != key}
+    f.update(type="curve_force", measure=cl[2], curve=cl[1])
+    if cl[0] != 1.0:
+        f["scale"] = cl[0]
+    return f
+
+
 def expression_force(block, body_ids, measures, parameters, splines=None, used_splines=None):
     b1, b2 = body_pair(block, body_ids)
     f = {"body1": b1, "body2": b2}
@@ -160,7 +206,7 @@ def expression_force(block, body_ids, measures, parameters, splines=None, used_s
         if atype not in ("SpaceFixed", "BodyFixed"):
             raise ModelError(f"Force GenericTorque: AxisType {atype!r} not valid")
         f["frame"] = "global" if atype == "SpaceFixed" else "body"
-    return f
+    return _as_curve_force(f, "force" if "force" in f else "torque", measures, used_splines)
 
 
 def parameter(block):

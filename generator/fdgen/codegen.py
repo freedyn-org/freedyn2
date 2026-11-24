@@ -4,7 +4,7 @@ from pathlib import Path
 
 import casadi as ca
 
-from . import drivers, flex_body, forces, joints, rigid_body
+from . import curve_forces, drivers, flex_body, forces, joints, rigid_body
 from .lagrange import ROLES as FUNCTION_ROLES
 
 # All element types known to the generator. The runtime is compiled with all of them.
@@ -13,6 +13,8 @@ for _mod in (joints, forces):
     for _kind in _mod.KINDS:
         ELEMENT_BUILDERS[_kind] = lambda k=_kind, m=_mod: m.build(k)
         ELEMENT_BUILDERS[_kind + "_euler"] = lambda k=_kind, m=_mod: m.build_euler(k)
+for _kind in curve_forces.KINDS:  # curves of measures (the table is data)
+    ELEMENT_BUILDERS[_kind] = lambda k=_kind: curve_forces.build(k)
 for _kind in drivers.VARIANTS:  # drivers along a curve of time (the table is data)
     ELEMENT_BUILDERS[_kind] = lambda k=_kind: drivers.build_library(k)
 
