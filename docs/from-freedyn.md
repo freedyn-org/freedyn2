@@ -24,7 +24,8 @@ the legacy Newton rule and step size control): then both programs take the same 
 agree to round-off.
 
 The importer reads the blocks freedyn2 supports: `Body Rigid_EulerParameter_PAI`,
-`Constraint Generic`, `Constraint TimeMotion`, `Force Gravity`, `Force GenericForce` and
+`Body MBS_FlexBody_Full` and `Constraint FixRiBoFleBo` (default profile only; the MTX file is
+looked for next to the model if its path does not exist), `Constraint Generic`, `Constraint TimeMotion`, `Force Gravity`, `Force GenericForce` and
 `GenericTorque`, `Measure Translational` and `Rotational`, `DataObject Parameter` and
 `Spline_1D`, `Simulation Dynamic`, `Solver HHT` and `HHT_Negrut`. Any other block is rejected
 with its name, so a model is never simulated with parts missing.

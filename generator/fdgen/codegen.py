@@ -4,11 +4,11 @@ from pathlib import Path
 
 import casadi as ca
 
-from . import forces, joints, rigid_body
+from . import flex_body, forces, joints, rigid_body
 from .lagrange import ROLES as FUNCTION_ROLES
 
 # All element types known to the generator. The runtime is compiled with all of them.
-ELEMENT_BUILDERS = {"rigid_body": rigid_body.build, "rigid_body_euler": rigid_body.build_euler}
+ELEMENT_BUILDERS = {"rigid_body": rigid_body.build, "rigid_body_euler": rigid_body.build_euler, **flex_body.BUILDERS}
 for _mod in (joints, forces):
     for _kind in _mod.KINDS:
         ELEMENT_BUILDERS[_kind] = lambda k=_kind, m=_mod: m.build(k)

@@ -162,6 +162,64 @@ multiplier of \(\Phi_\text{norm}\)), but not off that manifold, where an index-3
 numerically. Initial velocities \(\dot\theta = \tfrac12 G^T \omega_0\) with the global
 \(G\) (\(\omega = 2 G \dot\theta\)).
 
+### 3.4 Flexible body (floating frame of reference)
+
+`fdgen/flex_body.py`, modal data `fdgen/flex` (Adams MTX files). Configuration
+\(q = [R; \theta; \eta]\) on \(\mathbb{R}^3 \times SO(3) \times \mathbb{R}^{n_m}\): the origin \(R\)
+and orientation \(A(\theta)\) of the body frame of the modal data, and \(n_m\) modal coordinates
+\(\eta\); velocities \(v = [\dot R; \bar\omega; \dot\eta]\). A point with the undeformed position
+\(s\) (body frame) moves to \(R + A(s + \Phi \eta)\). With the inertia invariants of Adams
+(\(I_1 = m\), \(I_2 \dots I_9\), section `fdgen/flex/modal.py`) the kinetic energy is
+
+$$
+T = \tfrac12 m \dot R \cdot \dot R + \dot R \cdot A\big(-\tilde S \bar\omega + I_3 \dot\eta\big)
+  + \tfrac12 \bar\omega^T J \bar\omega + \bar\omega^T \Big(I_4 + \sum_j \eta_j I_{5,j}\Big)\dot\eta
+  + \tfrac12 \dot\eta^T I_6 \dot\eta,
+$$
+
+$$
+S = I_2 + I_3 \eta, \qquad
+J = I_7 - \sum_j \eta_j \big(I_{8,j} + I_{8,j}^T\big) - \sum_{j,k} \eta_j \eta_k I_{9,jk},
+$$
+
+with the elastic energy \(\tfrac12 \eta^T K \eta\), the potential of gravity
+\(-g \cdot (m R + A S)\) and modal damping \(-D \dot\eta\), \(D_{ii} = 2 \zeta_i \omega_i\)
+(mass-normalized modes). Options as the legacy kernel: without the rotation-deformation
+coupling \(I_4\), \(I_5\) (`rotation_coupling: false`, legacy `Is_Itf_active = no`), without the
+quadratic inertia term \(I_9\) (`quadratic_inertia: false`).
+
+Equations of motion of the left-trivialized velocities (Hamel, Euler-Poincaré):
+
+$$
+p = \frac{\partial T}{\partial v}, \qquad M = \frac{\partial p}{\partial v}, \qquad
+h = \frac{\partial p}{\partial \delta} v + \begin{bmatrix} 0 \\ \bar\omega \times p_{\bar\omega} \\ 0 \end{bmatrix}
+  - \Big(\frac{\partial T}{\partial \delta}\Big)^T + \Big(\frac{\partial V}{\partial \delta}\Big)^T,
+$$
+
+with \(\partial/\partial\delta\) along \(q \circ \exp(\delta)\) at fixed \(v\) (4.2). For a rigid body
+this is Newton-Euler (3.2).
+
+**Decomposition into element types of fixed size.** \(T\), \(V\) and the damping force are
+polynomials of degree two at most in \(\eta\) and \(\dot\eta\), and the equations of motion are
+linear in them. So \(T\) splits into a term of the rigid part (invariants 1, 2, 7), one term per
+mode \(i\) (\(\eta_i\), \(\dot\eta_i\) only, with the diagonal pair \(i, i\)) and one term per pair
+\(i < j\). Each becomes an element type (`flex_frame`, `flex_mode`, `flex_pair`; the modal
+coordinates are owned by `flex_coord`), and the runtime adds their contributions in the scatter
+assembly, which gives exactly the equations of the whole body. Nothing depends on \(n_m\): a model
+with flexible bodies is solved with the library element types, without a model plugin or a
+compiler. Pairs whose invariants are zero are left out (modes with a diagonal \(I_6\), \(K\),
+\(D\) and partial coupling need none). The code per type is small (about 120 kB of C for
+`flex_mode`); the cost per body grows with \(n_m^2\) through the pairs.
+
+**Joints at a node.** A joint primitive (5.1) at a node \(k\) of a flexible body uses the node
+point \(s_k + \Phi_k \eta\) and the node axes \((I + \widetilde{\Psi_k \eta})\, b\) in the body frame,
+linear in \(\eta\) as in the legacy `MBS_RiBo_FleBo_FixJoint` (small nodal rotations). The
+constraint is its rigid form at the node (the library primitive with the body frame of the
+flexible body) plus one term per mode, linear in \(\eta_i\) (`transfix_bb_node`,
+`rotfix_bb_node`, `transfix_ground_node`, `rotfix_ground_node`), all in the same constraint row.
+The flexible body is body 2 (or the body of a joint with the ground): with the node on body 1
+the translational primitive would be quadratic in \(\eta\).
+
 ## 4. Kinematics of connected bodies and derivatives
 
 ### 4.1 Body kinematics
@@ -671,6 +729,8 @@ that states each.
 8. The Newton criteria (7.5), the local error estimate, its weights and the step size
    controller (8).
 9. The linearization from the iteration matrices and the elimination of the constraints (12).
+10. The flexible body: kinetic energy from the invariants, the Hamel form, the decomposition
+    into terms of one mode and of a pair of modes, and the joint primitives at a node (3.4).
 
 ## References
 

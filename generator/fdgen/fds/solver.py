@@ -6,17 +6,19 @@ from .blocks import flag, numbers
 PROFILES = ("legacy", "v2")
 
 
-def settings(sim, solver):
-    """freedyn2 solver settings of the legacy algorithm (profile legacy)."""
+def settings(sim, solver, profile="legacy"):
+    """freedyn2 solver settings of the legacy algorithm (profile legacy). Options of the legacy
+    Newton iteration freedyn2 does not reproduce are an error in the legacy profile only (v2
+    solves with its own iteration)."""
     if numbers(sim, "SimulationTimeBegin", 1, [0.0])[0] != 0.0:
         raise ModelError("SimulationTimeBegin must be 0")
     for key in ("InitialPositionFromFile", "InitialVelocityFromFile"):
         if numbers(sim, key, 1, [0.0])[0] != 0.0:
             raise ModelError(f"{key} is not supported")
-    if numbers(solver, "MaxNumOfTimeStepsUsingSameFactorizedJacobian", 1, [0.0])[0] > 0:
+    if profile == "legacy" and numbers(solver, "MaxNumOfTimeStepsUsingSameFactorizedJacobian", 1, [0.0])[0] > 0:
         raise ModelError("MaxNumOfTimeStepsUsingSameFactorizedJacobian > 0 is not supported yet")
     iters = numbers(solver, "MaxNumberOfInnerIterations", 2)
-    if iters[1] != 0:
+    if profile == "legacy" and iters[1] != 0:
         raise ModelError("forward/backward substitution only iterations (second value) are not supported yet")
     return {
         "alpha": numbers(solver, "Alpha", 1)[0],
@@ -40,6 +42,8 @@ def apply_profile(profile, s, bodies, solver):
     """Body element types and solver settings of the profile (the model itself is the same)."""
     if profile not in PROFILES:
         raise ModelError(f"profile must be one of {PROFILES}")
+    if profile == "legacy" and any("flex" in b for b in bodies.values()):
+        raise ModelError("flexible bodies are built on the Lie group only: use the profile v2")
     if profile == "legacy":
         # Euler-parameter bodies as in the legacy kernel, with its modified Newmark option.
         modified = flag(solver, "ModifyNewmark", False)
@@ -51,4 +55,5 @@ def apply_profile(profile, s, bodies, solver):
         s.update(form="arnold_bruls", newton="velocity", newton_tol=1e-10, max_newton=25, vproj_tol=1e-12,
                  error_norm="mixed")
         for b in bodies.values():
-            b.update(element="rigid_body", jacobian="full")
+            if "flex" not in b:
+                b.update(element="rigid_body", jacobian="full")

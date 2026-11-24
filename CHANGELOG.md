@@ -5,6 +5,17 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Added
+
+- Flexible bodies (floating frame of reference, modal coordinates) from Adams MTX files:
+  `bodies.<name>.flex: {mtx, damping, rotation_coupling, quadratic_inertia}`; joints at a node
+  of a flexible body (`node` of a joint, any joint type). The body is split into element types
+  of fixed size (rigid part, one mode, one pair of modes) that the runtime adds up: no model
+  plugin, no compiler, any number of modes. The `.fds` importer reads `Body MBS_FlexBody_Full`
+  and `Constraint FixRiBoFleBo` (default profile). Checked against the legacy check-in tests
+  03_FlyingFleBo and 04_FlexRotUHackerl, free and clamped beam frequencies, energy and momentum
+  conservation (docs/theory.md, 3.4).
+
 ## [0.1.0rc4] - 2026-11-07
 
 Release candidate with the Onshape import, element ids and renaming that follows every

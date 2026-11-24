@@ -197,7 +197,7 @@
     },
     "body": {
       "type": "object",
-      "required": ["mass", "inertia"],
+      "anyOf": [{"required": ["mass", "inertia"]}, {"required": ["flex"]}],
       "additionalProperties": false,
       "properties": {
         "id": {"$ref": "#/$defs/id"},
@@ -209,14 +209,27 @@
           "minItems": 3,
           "maxItems": 3
         },
-        "position": {"$ref": "#/$defs/point", "description": "Global position of the center of mass. Default [0,0,0]."},
-        "orientation": {"$ref": "#/$defs/orientation", "description": "Principal axes as Euler parameters [theta0, theta1, theta2, theta3], theta0 scalar part. Normalized by the generator. Default [1,0,0,0]."},
-        "velocity": {"$ref": "#/$defs/vec3", "description": "Global velocity of the center of mass. Default [0,0,0]."},
+        "position": {"$ref": "#/$defs/point", "description": "Global position of the center of mass (flexible bodies: of the origin of the body frame). Default [0,0,0]."},
+        "orientation": {"$ref": "#/$defs/orientation", "description": "Principal axes (flexible bodies: the body frame) as Euler parameters [theta0, theta1, theta2, theta3], theta0 scalar part. Normalized by the generator. Default [1,0,0,0]."},
+        "velocity": {"$ref": "#/$defs/vec3", "description": "Global velocity of the center of mass (flexible bodies: of the origin of the body frame). Default [0,0,0]."},
         "angular_velocity": {"$ref": "#/$defs/vec3", "description": "Angular velocity in GLOBAL components. Default [0,0,0]."},
         "shapes": {"$ref": "#/$defs/shapes"},
         "element": {"enum": ["rigid_body", "rigid_body_euler"], "default": "rigid_body", "description": "Body formulation: rigid_body (Lie group) or rigid_body_euler (Euler parameters with a normalization constraint, as legacy FreeDyn; models converted with freedyn2 convert --profile legacy). All bodies of a model use the same one."},
         "jacobian": {"enum": ["full", "no_qvv"], "default": "full", "description": "Iteration matrix: full, or without the velocity derivatives of the inertia forces (legacy RegardVelocityInertiaForcesInsideJacobian = no; rigid_body_euler)."},
-        "newmark": {"enum": ["standard", "modified"], "default": "standard", "description": "rigid_body_euler: the legacy ModifyNewmark option (modified)."}
+        "newmark": {"enum": ["standard", "modified"], "default": "standard", "description": "rigid_body_euler: the legacy ModifyNewmark option (modified)."},
+        "flex": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mtx"],
+          "description": "Flexible body (floating frame of reference, modal coordinates). Mass and inertia come from the modal data (mass and inertia given as well are ignored); position, orientation and velocity are those of the body frame of the modal data.",
+          "properties": {
+            "mtx": {"type": "string", "description": "Adams MTX file with the modal data (inertia invariants, generalized stiffness, mode shapes at the nodes), relative to the model file. Its values are used in the units of the model."},
+            "damping": {"description": "Modal damping ratio: one value for all modes or one per mode (the last for the rest). Default 0.",
+                        "oneOf": [{"type": "number", "minimum": 0}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1}]},
+            "rotation_coupling": {"type": "boolean", "default": true, "description": "Coupling of rotation and deformation (invariants 4 and 5; legacy Is_Itf_active)."},
+            "quadratic_inertia": {"type": "boolean", "default": true, "description": "Inertia tensor quadratic in the modal coordinates (invariant 9; legacy Is_QuadraticTermOF_Itt_active)."}
+          }
+        }
       }
     },
     "shapes": {
@@ -334,7 +347,8 @@
           "items": {"enum": ["dx", "dy", "dz", "ax", "ay", "az"]},
           "uniqueItems": true,
           "description": "generic only: fixed translations (d) and rotations (a) along/about the joint axes."
-        }
+        },
+        "node": {"type": "integer", "description": "Flexible body: the joint acts at this node of its modal data (moves and turns with the deformation). The flexible body is body2, or body1 of a joint with the ground. Without a node a joint acts on the body frame. location defaults to the node."}
       }
     },
     "solver": {

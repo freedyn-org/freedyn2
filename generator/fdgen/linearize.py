@@ -75,10 +75,13 @@ def reference_state(elems, row):
     q, v, lam = np.zeros(nq), np.zeros(nv), np.zeros(nc)
     get = lambda k: float(row[k])
     for e in elems:
-        if e["type"] == "rigid_body":
+        if e["type"] in ("rigid_body", "flex_frame"):
             n = e["name"]
             q[e["coords"]] = [get(f"{n}.R_{c}") for c in "xyz"] + [get(f"{n}.theta{k}") for k in range(4)]
             v[e["dofs"]] = [get(f"{n}.Rdot_{c}") for c in "xyz"] + [get(f"{n}.omega_body_{c}") for c in "xyz"]
+        elif e["type"] == "flex_coord":  # modal coordinate of a flexible body
+            q[e["coords"]] = [get(f"{e['name']}.eta")]
+            v[e["dofs"]] = [get(f"{e['name']}.etadot")]
         elif e["type"].endswith("_euler") or e["type"] == "rigid_body_euler":
             raise ValueError("linearize: Euler-parameter bodies (legacy profile) are not supported")
         if e.get("cons") and f"{e['name']}.lambda" in row:
@@ -264,7 +267,7 @@ def modes(model, fdm, csv_path, time=None, count=24, consistent=False):
     tiny = max(1e-6, 1e-5 * np.max(np.abs(lam), initial=0.0))  # eigenvalues 0 (cyclic coordinates) in round-off
     keep = [k for k in range(len(lam)) if abs(lam[k]) > tiny and lam[k].imag >= -1e-12]
     keep.sort(key=lambda k: (abs(lam[k].imag) < 1e-9, abs(lam[k].imag) if abs(lam[k].imag) >= 1e-9 else abs(lam[k])))
-    bodies = [e for e in elems if e["type"] == "rigid_body"]
+    bodies = [e for e in elems if e["type"] in ("rigid_body", "flex_frame")]
     out = []
     for k in keep[:count]:
         x = X[:, k]

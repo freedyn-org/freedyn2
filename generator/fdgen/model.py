@@ -15,7 +15,8 @@ import yaml
 from . import forces
 from . import joints as joint_types
 from .geometry import rotation_matrix
-from . import extensions, formulas, hardpoints, plugin, resources, rigid_body, shapes, splines
+from . import extensions, flex_body, formulas, hardpoints, plugin, resources, rigid_body, shapes, splines
+from .flex import load_modal
 from .measures import POSITION_MEASURES
 from .errors import ModelError  # noqa: F401  (re-exported: fdgen.model.ModelError)
 
@@ -88,9 +89,36 @@ def _body(name, b, base_dir):
     if abs(n - 1) > 1e-9:
         warnings.warn(f"body {name}: orientation |theta| = {n}, normalized")
     b["orientation"] = [t / n for t in b["orientation"]]
+    if "flex" in b:
+        _flex(name, b, base_dir)
     if "shapes" in b:
         b["shapes"] = shapes.validate_shapes(f"body {name}", b["shapes"], b, base_dir)
     return b
+
+
+def _flex(name, b, base_dir):
+    """Flexible body: the modal data file (absolute path), mass and principal moments from it
+    (for checks, shapes and the viewer; the element uses the invariants)."""
+    flex = b["flex"] = dict(b["flex"])
+    path = _data_path(flex["mtx"], base_dir)
+    if not path.is_file():
+        raise ModelError(f"body {name}: modal data file {path} not found")
+    flex["mtx"] = str(path.resolve())
+    try:
+        data = load_modal(path)
+    except ModelError as e:
+        raise ModelError(f"body {name}: {e}") from None
+    if "mass" in b or "inertia" in b:
+        warnings.warn(f"body {name}: flexible, mass and inertia come from the modal data")
+    c = data.center_of_mass()
+    Jc = data.I7 - data.mass * (np.dot(c, c) * np.eye(3) - np.outer(c, c))
+    b["mass"] = float(data.mass)
+    b["inertia"] = [float(max(x, 1e-12 * np.trace(Jc))) for x in np.linalg.eigvalsh(Jc)]
+    flex.setdefault("damping", 0.0)
+    flex.setdefault("rotation_coupling", True)
+    flex.setdefault("quadratic_inertia", True)
+    if data.nm == 0:
+        raise ModelError(f"body {name}: the modal data has no elastic modes")
 
 
 def _joint(name, j, bodies):
@@ -101,11 +129,40 @@ def _joint(name, j, bodies):
     if j["body1"] == "ground":
         raise ModelError(f"joint {name}: body1 must be a body (body2 may be ground)")
     t = np.array(j.get("orientation", [1.0, 0.0, 0.0, 0.0]), dtype=float)
-    return {
+    out = {
         "name": name, "type": j["type"], "body1": j["body1"], "body2": j.get("body2", "ground"),
         "location": list(j.get("location", [0.0, 0.0, 0.0])),
         "frame": rotation_matrix(t / np.linalg.norm(t)).tolist(), "fix": list(fix),
     }
+    _joint_node(out, j, bodies)
+    return out
+
+
+def _joint_node(out, j, bodies):
+    """A joint at a node of a flexible body: the node label (checked), location defaults to the
+    node position at t = 0. Flexible bodies without a node: the joint acts on the body frame."""
+    flex = out["body2"] if out["body2"] != "ground" else out["body1"]
+    if "node" not in j:
+        for b in (out["body1"], out["body2"]):
+            if b != "ground" and "flex" in bodies[b]:
+                warnings.warn(f"joint {out['name']}: on the body frame of the flexible body {b} (no node)")
+        return
+    if "flex" not in bodies[flex]:
+        raise ModelError(f"joint {out['name']}: node needs a flexible body as body2 (or body1 of a joint with the "
+                         f"ground), {flex} is rigid")
+    if out["body2"] != "ground" and "flex" in bodies[out["body1"]]:
+        raise ModelError(f"joint {out['name']}: two flexible bodies, the node is on body2 ({flex}); body1 "
+                         "would act on its body frame")
+    data = load_modal(bodies[flex]["flex"]["mtx"])
+    try:
+        k = data.node_index(j["node"])
+    except KeyError as e:
+        raise ModelError(f"joint {out['name']}: {e.args[0]} of body {flex}") from None
+    out["node"] = int(j["node"])
+    if "location" not in j:
+        b = bodies[flex]
+        out["location"] = (np.array(b["position"]) + rotation_matrix(np.array(b["orientation"]))
+                           @ data.node_positions[k]).tolist()
 
 
 _FORCE_KEYS = {"spring_damper": ["stiffness"], "torsion_spring": ["stiffness"], "force": ["vector"],
@@ -378,7 +435,15 @@ def write_fdm(model, path):
     gravity = model.get("gravity", [0.0, 0.0, 0.0])
     nq = nv = nc = 0  # stored coordinates, velocity dofs, constraints
     layout = {}  # body -> (element type, coords, dofs)
+    flex_layout = {}  # flexible body -> (coords, dofs of the modal coordinates)
     for name, b in model["bodies"].items():
+        if "flex" in b:  # frame (connectors see it as a Lie group rigid body), modal coordinates, terms
+            flex_lines, coords, dofs, nq1, nv1 = flex_body.fdm_elements(name, b, gravity, nq, nv)
+            layout[name] = ("rigid_body", coords, dofs)
+            flex_layout[name] = (list(range(nq + 7, nq1)), list(range(nv + 6, nv1)))
+            nq, nv = nq1, nv1
+            lines += flex_lines
+            continue
         element = b.get("element", "rigid_body")
         if element == "rigid_body":  # Lie group: 7 stored coordinates, 6 velocity dofs
             n_coords, n_dofs, n_cons = rigid_body.NQ, rigid_body.NV, 0
@@ -414,8 +479,18 @@ def write_fdm(model, path):
     euler = lambda names: "_euler" if {layout[b][0] for b in names} == {"rigid_body_euler"} else ""
     for joint in model.get("joints", []):
         for kind, suffix, names, p in joint_types.primitives(joint, model["bodies"]):
+            con = nc
             lines += connector(kind + euler(names), f"{joint['name']}.{suffix}", names, p, True,
                                f"joint {joint['name']}")
+            if "node" in joint:  # mode terms of the primitive at the node, same constraint row
+                flex = names[-1]
+                data = load_modal(model["bodies"][flex]["flex"]["mtx"])
+                k = data.node_index(joint["node"])
+                ec, ed = flex_layout[flex]
+                _, idx = _connected(names, layout)
+                for i, (nkind, np_) in enumerate(flex_body.node_terms(kind, p, data.Phi[k], data.Psi[k])):
+                    lines += [f"element {nkind} {joint['name']}.{suffix}.mode{i + 1}", f"{idx[0]} {ec[i]}",
+                              f"{idx[1]} {ed[i]}", f"cons {con}", "p " + _fmt(np_), "end"]
     # model plugin: expression forces, drivers and the element types of extensions, shared types
     custom = plugin.plugin_elements(model)
     if custom:

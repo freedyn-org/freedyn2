@@ -75,3 +75,56 @@ def joint(block, body_ids, bodies):
     name = "".join(c if c.isalnum() or c == "_" else "_" for c in name)
     return {"name": name, "body1": names[0], "body2": names[1],
             "location": numbers(block, "Location", 3, [0.0, 0.0, 0.0]), "frame": K, "fix": fix}
+
+
+def legacy_file(value, base_dir):
+    """A file named in a .fds model, often with an absolute Windows path of the machine it was
+    made on: the path itself if it exists, else its last components relative to the model
+    directory (longest first), else its name next to the model."""
+    from pathlib import Path, PureWindowsPath
+    p = Path(value)
+    if p.is_file():
+        return str(p)
+    parts = PureWindowsPath(value).parts
+    for k in range(len(parts) - 1, 0, -1):
+        cand = Path(base_dir).joinpath(*parts[-k:])
+        if cand.is_file():
+            return str(cand)
+    raise ModelError(f"file {value} not found (also not relative to {base_dir})")
+
+
+def flex_body(block, base_dir):
+    """Body MBS_FlexBody_Full: Path2MtxFile, Is_Itf_active, Is_QuadraticTermOF_Itt_active,
+    LocationCenterMass and OrientationPAI (the body frame of the modal data: origin and axes),
+    InitialVelocityVector (of that origin), InitialOmegaVector, GlobalDampingFactor (modal damping
+    ratios, the last for the remaining modes)."""
+    name = block[2].get("BodyName") or block[2].get("Name") or f"body{block[2].get('BodyID', '')}"
+    cols = numbers(block, "OrientationPAI", 9)
+    A = [[cols[3 * j + i] for j in range(3)] for i in range(3)]
+    damping = numbers(block, "GlobalDampingFactor", None, [0.0])
+    return name, {
+        "flex": {"mtx": legacy_file(block[2].get("Path2MtxFile", ""), base_dir),
+                 "damping": damping[0] if len(damping) == 1 else damping,
+                 "rotation_coupling": flag(block, "Is_Itf_active", False),
+                 "quadratic_inertia": flag(block, "Is_QuadraticTermOF_Itt_active", False)},
+        "position": numbers(block, "LocationCenterMass", 3),
+        "orientation": euler_parameters(orthonormalize_columns(A)),
+        "velocity": numbers(block, "InitialVelocityVector", 3, [0.0, 0.0, 0.0]),
+        "angular_velocity": numbers(block, "InitialOmegaVector", 3, [0.0, 0.0, 0.0]),
+    }
+
+
+def flex_fixed_joint(block, body_ids, bodies):
+    """Constraint FixRiBoFleBo: a fixed joint between a rigid body (BodyIDs first) and an
+    InterfaceNode of a flexible body (second), at Location, with the global axes as joint frame
+    (MBS_RiBo_FleBo_FixJoint)."""
+    j = joint(dict_block(block, ("ConstraintOrientation",)), body_ids, bodies)
+    if "flex" not in bodies[j["body2"]]:
+        raise ModelError(f"Constraint FixRiBoFleBo {j['name']}: the second body must be flexible")
+    j["fix"] = ["dx", "dy", "dz", "ax", "ay", "az"]
+    j["node"] = int(numbers(block, "InterfaceNode", 1)[0])
+    return j
+
+
+def dict_block(block, drop):
+    return (block[0], block[1], {k: v for k, v in block[2].items() if k not in drop})

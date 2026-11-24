@@ -25,6 +25,35 @@ bodies:
   error otherwise.
 - Bodies move on the Lie group R³ × SO(3): no singular angles, any rotation.
 
+### Flexible bodies
+
+A body with `flex` is flexible: a floating frame of reference with modal coordinates, from the
+modal data of an Adams MTX file (MSC Nastran or Adams/Flex). Mass and inertia come from that
+file; `position`, `orientation` and `velocity` are those of the body frame of the modal data
+(its origin and axes), not of the center of mass.
+
+```yaml
+bodies:
+  beam:
+    flex:
+      mtx: data/flex_beam.mtx    # relative to the model file, values in the units of the model
+      damping: 0.02              # modal damping ratio, or one per mode: [0.02, 0.05]
+    position: [0, 0, 0]
+joints:
+  clamp: {type: fixed, body1: beam, node: 10001}   # at node 10001 of the modal data
+```
+
+- Joints act at a **node** of the modal data (`node` of the joint): its point and axes move and
+  turn with the deformation. The flexible body is `body2`, or `body1` of a joint with the
+  ground. Without `node` a joint acts on the body frame. `location` defaults to the node.
+- `rotation_coupling: false` and `quadratic_inertia: false` leave out terms of the inertia
+  coupling, as the legacy options `Is_Itf_active` and `Is_QuadraticTermOF_Itt_active`.
+- Result channels: the body frame as for a rigid body (`beam.R_x`, `beam.theta0`, …) and per
+  mode `beam.eta3.eta`, `beam.eta3.etadot`, `beam.eta3.etaddot` (modes numbered from 1 in the
+  order of the file, rigid body modes left out).
+- Any number of modes, no compiler needed. The cost grows with the square of the number of
+  modes (full coupling); high-frequency modes need small time steps.
+
 ## Shapes
 
 Geometry is for the [viewer](../viewer.md) only; it does not change the simulation. Without

@@ -57,7 +57,9 @@ set(FD_ELEMENT_TYPES
   torsion_ground torsion_ground_euler torsion_bb torsion_bb_euler
   bushing_ground bushing_ground_euler bushing_bb bushing_bb_euler
   tire tire_euler tire_local tire_local_euler
-  sensor sensor_euler)
+  sensor sensor_euler
+  flex_frame flex_coord flex_mode flex_pair
+  transfix_bb_node rotfix_bb_node transfix_ground_node rotfix_ground_node)
 set(FD_ELEMENT_SOURCES)
 foreach(t ${FD_ELEMENT_TYPES})
   list(APPEND FD_ELEMENT_SOURCES ${FD_GEN_DIR}/${t}.c)
