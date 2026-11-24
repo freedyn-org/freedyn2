@@ -25,6 +25,7 @@ class Assembly:
     G: tuple = ((), (), ())              # dependent rows, independent cols, vals
     quad: list = field(default_factory=list)  # [(x (ne, nq, 3), w (ne, nq), interp, dofs (ne, nd))]
     masters: dict = field(default_factory=dict)  # RBE master / reference node -> element id
+    surface: tuple = None                # boundary of the solids: (node indices, triangles into them)
 
     def index(self, node):
         k = np.searchsorted(self.node_ids, node)
@@ -94,6 +95,8 @@ def assemble(fe, chunk=4000):
             Kc.append(_coo(Ke, dofs))
             Mc.append(_coo(Me, dofs))
             a.quad.append((xq, wq, ("solid", N), dofs))
+
+    a.surface = boundary(fe, node_ids, a.xyz)
 
     # beams
     if fe.bars:
@@ -186,3 +189,37 @@ def _constraints(fe, a):
             add(sdofs[j], refd + [sdofs[k] for k in rest],
                 [*Wd_inv[i], *(-(Wd_inv[i] @ W[:, rest]))])
     return np.array(rows, int), np.array(cols, int), np.array(vals, float)
+
+
+# faces of the solids by their corner nodes (local indices), as triangles; outward by geometry
+_FACES = {4: [(0, 1, 2), (0, 1, 3), (1, 2, 3), (0, 2, 3)], 10: [(0, 1, 2), (0, 1, 3), (1, 2, 3), (0, 2, 3)],
+          8: [(0, 1, 2, 3), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]}
+
+
+def boundary(fe, node_ids, xyz):
+    """Boundary of the solids (faces of one element only): (indices of its corner nodes into
+    node_ids, triangles (nt, 3) into those), oriented outwards. For the viewer."""
+    faces, owner = [], []
+    for _, _, ids in fe.solids:
+        for f in _FACES[len(ids)]:
+            faces.append(tuple(ids[i] for i in f))
+            owner.append(ids[:8] if len(ids) == 8 else ids[:4])
+    if not faces:
+        return np.zeros(0, int), np.zeros((0, 3), int)
+    count = {}
+    for f in faces:
+        key = tuple(sorted(f))
+        count[key] = count.get(key, 0) + 1
+    tris = []
+    for f, corners in zip(faces, owner):
+        if count[tuple(sorted(f))] != 1:
+            continue
+        k = np.searchsorted(node_ids, f)
+        c = xyz[np.searchsorted(node_ids, corners)].mean(axis=0)
+        n = np.cross(xyz[k[1]] - xyz[k[0]], xyz[k[2]] - xyz[k[0]])
+        if np.dot(n, xyz[k].mean(axis=0) - c) < 0:
+            k = k[::-1]
+        tris += [(k[0], k[1], k[2])] if len(k) == 3 else [(k[0], k[1], k[2]), (k[0], k[2], k[3])]
+    tris = np.array(tris, int)
+    used, inv = np.unique(tris, return_inverse=True)
+    return used, inv.reshape(-1, 3)

@@ -76,6 +76,8 @@ def inertia_box(mass, inertia):
     """Edge lengths of the homogeneous box with this mass and principal inertia (a box for any
     inertia: lengths that would be imaginary or tiny are limited to a tenth of the largest)."""
     I1, I2, I3 = inertia
+    if mass <= 0:  # massless (interface bodies of flexible bodies)
+        return [0.0, 0.0, 0.0]
     sq = 6.0 / mass * np.array([I2 + I3 - I1, I1 + I3 - I2, I1 + I2 - I3])
     a = np.sqrt(np.maximum(sq, 0.0))
     return np.maximum(a, 0.1 * max(a.max(), 1e-3)).tolist()

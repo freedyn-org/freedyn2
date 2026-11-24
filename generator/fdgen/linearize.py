@@ -276,9 +276,16 @@ def modes(model, fdm, csv_path, time=None, count=24, consistent=False):
             continue
         x = x / big
         z = lam[k]
+        # flexible bodies: their modal coordinates (the viewer deforms the shapes), {body: [[re, im], ...]}
+        flex = {}
+        for e in elems:
+            if e["type"] == "flex_coord":
+                body, _, i = e["name"].rpartition(".eta")
+                flex.setdefault(body, {})[int(i)] = x[e["dofs"][0]]
         out.append({"eigenvalue": [z.real, z.imag], "frequency": abs(z.imag) / (2 * np.pi),
                     "natural_frequency": abs(z) / (2 * np.pi), "damping": -z.real / abs(z),
-                    "bodies": {e["name"]: [[float(c.real), float(c.imag)] for c in x[e["dofs"][:6]]] for e in bodies}})
+                    "bodies": {e["name"]: [[float(c.real), float(c.imag)] for c in x[e["dofs"][:6]]] for e in bodies},
+                    "flex": {b: [[float(v[i].real), float(v[i].imag)] for i in sorted(v)] for b, v in flex.items()}})
     return {"time": float(row["t"]), "modes": out}
 
 

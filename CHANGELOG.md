@@ -24,6 +24,9 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   quadratic tetrahedra; extra `fem`: `pip install "freedyn2[fem]"`), makes an interface node
   with an RBE2 spider at every joint and force point, reduces and simulates it as a flexible
   body; joints act at the nodes, forces on massless bodies fixed to them.
+- Viewer: flexible bodies deform (their STL, or the surface of the FE mesh), magnified with
+  *deformation* about their best-fitting rigid motion; eigenmodes with the deformation. Mesh
+  shapes count for the size of the scene and *fit view*.
 
 ## [0.1.0rc4] - 2026-11-07
 

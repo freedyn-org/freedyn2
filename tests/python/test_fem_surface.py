@@ -101,3 +101,23 @@ def test_material_name_and_errors(env):
     path.write_text(yaml.safe_dump(m))
     with pytest.raises(ModelError, match="material|schema"):
         cli.build(path, env, "v2")
+
+
+def test_viewer_scene(env):
+    """The scene of a flexible body: its modal coordinate channels and the mode shapes on the
+    vertices of its STL (three per triangle), in the shape's coordinates; the massless interface
+    body without shapes; mesh shapes with their extent."""
+    import base64
+    from fdgen.view.scene import scene
+    path = env / "flex.yaml"
+    path.write_text(yaml.safe_dump(arm({"material": {"E": E, "nu": 0.3, "rho": RHO}, "mesh_size": 0.005, "modes": 4},
+                                       name="flex")))
+    s = scene(cli.load(path))
+    b = {x["name"]: x for x in s["bodies"]}
+    flex = b["arm"]["flex"]
+    nm = 2 * 6 + 4 - 6  # two interfaces, 4 fixed-interface modes, without the rigid body modes
+    assert flex["eta"] == [f"arm.eta{i}.eta" for i in range(1, nm + 1)]
+    phi = np.frombuffer(base64.b64decode(flex["modes"]["0"]), "<f4").reshape(nm, 12 * 3, 3)
+    assert np.abs(phi).max() > 0
+    assert b["arm"]["shapes"][0]["extent"] == pytest.approx(np.sqrt((L / 2) ** 2 + (B / 2) ** 2 + (H / 2) ** 2), rel=1e-6)
+    assert b["arm_if2"]["shapes"] == []

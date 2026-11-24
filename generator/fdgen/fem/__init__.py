@@ -9,7 +9,22 @@ from .reduce import reduce
 __all__ = ["assemble", "read_nastran", "reduce"]
 
 
-FEM_VERSION = 1  # part of the cache key: raise it when the results of the reduction change
+FEM_VERSION = 2  # part of the cache key: raise it when the results of the reduction change
+
+
+def viz_path(mtx):
+    """The mode shapes on the surface of the FE model, next to its MTX file (for the viewer)."""
+    from pathlib import Path
+    return Path(mtx).with_suffix(".viz.npz")
+
+
+def save_viz(data, mtx):
+    viz = getattr(data, "viz", None)
+    if viz is not None:
+        import numpy as np
+        tmp = viz_path(mtx).with_suffix(".tmp.npz")
+        np.savez_compressed(tmp, xyz=viz[0], tri=viz[1], phi=viz[2].astype(np.float32))
+        tmp.replace(viz_path(mtx))
 
 
 def modal_file(path, interfaces=None, modes=20, log=None):
@@ -40,4 +55,5 @@ def modal_file(path, interfaces=None, modes=20, log=None):
     tmp = out.with_suffix(".tmp")
     write_mtx(data, tmp, title=f"{path.name}, freedyn2 FEM, Craig-Bampton, interfaces {' '.join(map(str, ifs))}")
     tmp.replace(out)
+    save_viz(data, out)
     return out

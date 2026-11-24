@@ -74,6 +74,12 @@ variable `FREEDYN2_NO_UPDATE_CHECK=1`.
 - **Click an element** to inspect it: its data, its result channels (click to plot), its
   findings and its YAML text with the line in the model file. What it is connected to stays,
   the rest fades.
+- **Flexible bodies** deform: their STL shapes (or, for a Nastran FE model without one, the
+  surface of the mesh) move with the modal coordinates of the run. *deformation* magnifies the
+  deformation (1: true size); magnified, only the deformation relative to the rigid motion
+  that fits it best is scaled, so the body stays where it is. Eigenmodes show the deformation
+  too. The mode shapes come from the own FE reduction; an MTX file gives them only at its nodes
+  (with a few interface nodes, the body is drawn rigid).
 
 ## Edit the model
 

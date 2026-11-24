@@ -21,7 +21,7 @@ import numpy as np
 
 from ..errors import ModelError
 from ..geometry import body_frame, rotation_matrix
-from . import FEM_VERSION, assemble, reduce
+from . import FEM_VERSION, assemble, reduce, save_viz
 from .stl import INTERFACE_IDS, MATERIALS, fe_model, mesh_stl, read_surface
 
 SYMMETRIC_JOINTS = ("fixed", "spherical", "revolute", "cylindrical", "prismatic")
@@ -170,4 +170,5 @@ def _modal_file(name, tri, material, h, specs, modes, log):
     tmp = out.with_suffix(".tmp")
     write_mtx(data, tmp, title=f"body {name}: Netgen TET10 h = {h}, freedyn2 FEM, Craig-Bampton")
     tmp.replace(out)
+    save_viz(data, out)
     return out
