@@ -220,7 +220,8 @@ def test_continuous_angle_counts_revolutions():
     for a in angles:  # rotate about global z in small steps, accepting each
         q = np.r_[R, np.cos(a / 2), 0, 0, np.sin(a / 2)]
         values.append(float(e.out(q, np.zeros(6), np.zeros(6), p, 0.0)[0]))
-        p = np.array(e.post(q, np.zeros(6), p, 0.0)).ravel()
+        state = e.post(q, np.zeros(6), p, 0.0)  # sparse: the state entries of p
+        p[e.post.sparsity_out(0).row()] = np.array(state.nonzeros())
     np.testing.assert_allclose(values, angles, atol=1e-12)
 
 
@@ -411,3 +412,48 @@ def test_outputs_are_channels_without_loads():
         plugin_elements(validate(_input_model(outputs={"const": "k * 2"})))
     with pytest.raises(ModelError, match="already used"):
         validate(_input_model(outputs={"f": "z"}))
+
+
+def test_spline_of_1000_points_is_data(tmp_path):
+    """A spline is evaluated by the runtime's segment lookup: the generated code holds one cubic
+    per call (small, whatever the number of points), the table is data in p. A driver on a
+    spline of 1000 points of t, a spring law of a measure and a nested call agree with the
+    numeric spline at every output."""
+    import time
+
+    import yaml
+
+    from fdgen import cli, splines
+    from fdgen.view.scene import read_results
+    try:
+        runtime = cli.find_runtime()
+    except FileNotFoundError:
+        pytest.skip("freedyn2_run not built")
+    x = np.linspace(0.0, 2.0, 1000)
+    y = 0.1 * np.sin(3 * x) + 0.02 * x * x
+    (tmp_path / "lift.txt").write_text("\n".join(f"{a:.17g} {b:.17g}" for a, b in zip(x, y)))
+    m = {"model": "spline_table", "gravity": [0, 0, 0],
+         "splines": {"lift": {"file": "lift.txt", "type": "akima"}},
+         "bodies": {"cart": {"mass": 1.0, "inertia": [1, 1, 1]}, "mass": {"mass": 2.0, "inertia": [1, 1, 1]}},
+         "joints": {"rail": {"type": "prismatic", "body1": "cart"},
+                    "slider": {"type": "prismatic", "body1": "mass", "location": [1, 0, 0]}},
+         "measures": {"zc": {"type": "displacement", "body1": "cart", "component": "z"},
+                      "z": {"type": "displacement", "body1": "mass", "component": "z"}},
+         "drivers": {"lift": {"measure": "zc", "motion": "lift(t)"}},
+         "forces": {"law": {"type": "expression_force", "body1": "mass", "direction": [0, 0, 1],
+                            "force": "-100 * lift(z + 1) + 100 * lift(1.0)"}},
+         "outputs": {"nested": "lift(lift(zc + 1) + 1)"},
+         "solver": {"type": "HHT", "alpha": -0.1, "end_time": 1.5, "step": 1e-3, "output_step": 1e-2}}
+    path = tmp_path / "m.yaml"
+    path.write_text(yaml.safe_dump(m))
+    t0 = time.perf_counter()
+    fdm, model, _ = cli.build(path, tmp_path)
+    assert time.perf_counter() - t0 < 60
+    sources = sum(p.stat().st_size for p in tmp_path.rglob("*.c"))
+    assert 0 < sources < 400_000  # an if_else chain over 1000 points was megabytes
+    cli.simulate(runtime, fdm, tmp_path / "r.csv")
+    r = read_results(tmp_path / "r.csv")
+    f = splines.numeric(x, y, "akima")
+    assert r["cart.R_z"] == pytest.approx([f(t) for t in r["t"]], abs=1e-9)
+    assert r["nested.value"] == pytest.approx([f(f(f(t) + 1) + 1) for t in r["t"]], abs=1e-9)
+    assert "splines " in fdm.read_text()

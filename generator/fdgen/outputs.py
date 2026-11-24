@@ -28,5 +28,5 @@ def output_elements(model):
         s = cx.translate(expr)
         tname = f"o_{model['model']}_{name}" + ("_euler" if cx.rep == "euler" else "")
         elem = cx.element(tname, out={"value": s}, Q=ca.SX(cx.c.v.numel(), 1))
-        out.append(PluginElement(name, tname, cx.bodies, cx.consts.values, elem, cx.consts.inputs))
+        out.append(PluginElement(name, tname, cx.bodies, cx.consts.values, elem, cx.consts.inputs, cx.spline_slots()))
     return out

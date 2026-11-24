@@ -151,6 +151,16 @@ Model load_model(const std::string& path) {
         if (index < 0) fail("element " + cur->name + ": input '" + name + "' not declared");
         cur->inputs.emplace_back(index, std::stoi(slot.substr(colon + 1)));
       }
+    } else if (cur && key == "splines") {  // table:points:segment ...
+      std::string call;
+      while (ss >> call) {
+        ElementSpec::SplineCall c{};
+        char a = 0, b = 0;
+        std::istringstream cs(call);
+        if (!(cs >> c.table >> a >> c.n >> b >> c.segment) || a != ':' || b != ':' || c.n < 1)
+          fail("splines: expected table:points:segment, got '" + call + "'");
+        cur->splines.push_back(c);
+      }
     } else if (cur && key == "jacobian") {
       ss >> cur->jacobian;
       if (cur->jacobian != "full" && cur->jacobian != "no_qvv") fail("jacobian must be full or no_qvv");

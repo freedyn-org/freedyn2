@@ -96,7 +96,8 @@ results to 2e-8). The models are kept as golden results of freedyn2
   the simulation (4 s for 10 s) but compiling the driver, 1.9 MB of C (the spline as a chain of
   if_else with its time derivatives): gcc -O2 20 min, -O1 10 min, -O0 11 s. Generated sources
   above 256 kB are now compiled with -O0 (`plugin.LARGE_SOURCE`); the run agrees with legacy
-  FreeDyn to 1e-7 mm. A compact spline (a lookup instead of the chain) would shrink the code.
+  FreeDyn to 1e-7 mm. Since then splines are data (the runtime looks up the segment, the
+  code holds one cubic): 45 kB of C, built in 0.3 s, bitwise the same results.
 - 05_FlexBodyJointForce and 105_Waegemaschine need contact elements freedyn2 does not have.
 - The units in the title line of an MTX file are not reliable (`beam.mtx` says METER and is in
   millimeters); like the legacy kernel, freedyn2 uses the values in the units of the model.

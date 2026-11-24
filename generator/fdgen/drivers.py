@@ -45,5 +45,5 @@ def driver_elements(model):
             f = ca.if_else(t < consts[0], ramp(t, *consts), f)
         tname = f"d_{model['model']}_{name}" + ("_euler" if cx.rep == "euler" else "")
         out.append(PluginElement(name, tname, cx.bodies, cx.consts.values, cx.element(tname, Phi=m - f),
-                                 cx.consts.inputs))
+                                 cx.consts.inputs, cx.spline_slots()))
     return out

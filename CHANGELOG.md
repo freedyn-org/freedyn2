@@ -7,6 +7,12 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Fixed
 
+- Splines are data, not code: the runtime looks up the segment (binary search) and the
+  compiled law evaluates one cubic. A driver on an Akima spline of 1000 points (legacy
+  101_V8Motion) builds in 0.3 s instead of 20 minutes (1.9 MB of C before, 45 kB now), with
+  bitwise the same results; other tables of the same size reuse the compiled model. The post
+  function of element state writes only the state entries of p. Model plugins of earlier
+  versions must be built again (registry layout 3).
 - Newton (velocity criterion) at the round-off floor: a correction that stops getting smaller
   below 1e3 times the tolerance counts as converged. Models with massless bodies in mm units
   (legacy 106_V8_FlexConRod) broke down with no step size converging.

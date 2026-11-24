@@ -515,10 +515,14 @@ def write_fdm(model, path):
         lines.insert(3, f"plugin {lib.name}")
     in_plugin = {pe[0]: (pe[1], pe[2], pe[3]) for pe in custom}
     input_slots = {pe[0]: getattr(pe, "inputs", {}) for pe in custom}
+    spline_slots = {pe[0]: getattr(pe, "splines", ()) for pe in custom}
 
     def input_lines(name):
         slots = input_slots.get(name)
-        return ["inputs " + " ".join(f"{k}:{o}" for k, o in slots.items())] if slots else []
+        lines = ["inputs " + " ".join(f"{k}:{o}" for k, o in slots.items())] if slots else []
+        # spline calls: the runtime selects the segment (table offset:points:segment offset in p)
+        calls = spline_slots.get(name)
+        return lines + (["splines " + " ".join(f"{a}:{n}:{s}" for a, n, s in calls)] if calls else [])
 
     for force in model.get("forces", []):
         if force["name"] in in_plugin:

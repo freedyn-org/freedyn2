@@ -29,8 +29,11 @@ COEF_NAMES = ("alpha", "beta", "gamma", "h")
 STD_INPUTS = ("q", "qd", "qdd", "lam", "p", "coef", "incr", "t")
 # Function roles in registry order. Roles an element type does not provide are empty.
 # post(q, qd, p, t) -> p: new element parameters after each accepted step (element state,
-# e.g. the reference value that keeps an angle measure continuous).
-ROLES = ("res", "iter", "iter_noqv", "ic", "init", "out", "update", "scale", "mn_qd", "jac_qd", "post")
+# e.g. the reference value that keeps an angle measure continuous); sparse: the runtime writes
+# its nonzeros, the other entries of p stay.
+# spline(q, qd, p, t) -> x: the arguments of the spline calls; the runtime selects the segment
+# of each and writes its coefficients to p (fdgen.measures.Consts.add_spline_call).
+ROLES = ("res", "iter", "iter_noqv", "ic", "init", "out", "update", "scale", "mn_qd", "jac_qd", "post", "spline")
 
 
 class ElementFunctions:

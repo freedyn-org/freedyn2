@@ -64,5 +64,5 @@ def expression_elements(model):
         name = f"x_{model['model']}_{f['name']}" + ("_euler" if cx.rep == "euler" else "")
         vec_name = "force" if is_force else "torque"
         elem = cx.element(name, out={"value": s, vec_name: s * e}, Q=cx.c.generalized_force(loads))
-        out.append(PluginElement(f["name"], name, cx.bodies, cx.consts.values, elem, cx.consts.inputs))
+        out.append(PluginElement(f["name"], name, cx.bodies, cx.consts.values, elem, cx.consts.inputs, cx.spline_slots()))
     return out

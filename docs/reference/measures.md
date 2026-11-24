@@ -63,6 +63,11 @@ forces:
 `type: akima` (default: no overshoot, linear beyond the ends) or `zcc` (the legacy FreeDyn
 spline).
 
+The table is data, not code: the runtime looks up the segment of the current argument (binary
+search) and the compiled law evaluates that one cubic, exactly differentiated. A spline of
+10 000 points builds as fast as one of 5; other data with the same number of points reuse the
+compiled model.
+
 <!-- keys: splines -->
 
 ## Outputs

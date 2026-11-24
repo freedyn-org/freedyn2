@@ -110,6 +110,12 @@ def coefficients(x, y, kind):
     raise ValueError(f"spline type must be one of {TYPES}, not {kind!r}")
 
 
+def segment(knots, xv):
+    """Index of the segment of xv: the largest i with knots[i] <= xv, 0 below the first point."""
+    import bisect
+    return max(bisect.bisect_right(knots, xv) - 1, 0)
+
+
 def evaluate(xv, knots, y, b, c, d):
     """CasADi expression of the spline at xv; knots, y, b, c, d are SX vectors (or numbers)."""
     n = knots.numel() if hasattr(knots, "numel") else len(knots)

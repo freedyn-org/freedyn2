@@ -76,7 +76,7 @@ def plugin_elements(model):
             key = hashlib.sha256(code_generator("x", elem, header=False).dump().replace(tname, "@").encode()).hexdigest()
             elem.code_key = key
         tname, elem = types.setdefault(key, (tname, elem))
-        out.append(PluginElement(name, tname, bodies, p, elem, inputs))
+        out.append(PluginElement(name, tname, bodies, p, elem, inputs, getattr(pe, "splines", ())))
     return out
 
 
@@ -238,7 +238,8 @@ def _write_def(path, exports):
 
 # Generated sources larger than this are compiled without optimization: the optimizers of gcc,
 # clang and MSVC take super-linear time on very large functions (a driver on an Akima spline of
-# 1000 points: 1.9 MB of C, -O2 about 20 min, -O1 10 min, -O0 11 s), the code still runs fine.
+# 1000 points, when splines were code: 1.9 MB of C, -O2 about 20 min, -O0 11 s; now the table is
+# data and that driver is 45 kB), the code still runs fine.
 LARGE_SOURCE = 256 * 1024
 
 

@@ -31,11 +31,14 @@ MAX_CACHED_ELEMENTS = 512
 
 class PluginElement(tuple):
     """(name, element type, [bodies], p values, ElementFunctions) of one plugin element, with
-    .inputs: runtime input name -> offset in p (empty for elements without inputs)."""
+    .inputs: runtime input name -> offset in p (empty for elements without inputs), .splines:
+    [(table offset, number of points, segment offset)] of its spline calls (the runtime selects
+    their segments)."""
 
-    def __new__(cls, name, tname, bodies, p, elem, inputs=None):
+    def __new__(cls, name, tname, bodies, p, elem, inputs=None, splines=()):
         self = super().__new__(cls, (name, tname, bodies, p, elem))
         self.inputs = dict(inputs or {})
+        self.splines = list(splines)
         return self
 
 
@@ -80,13 +83,32 @@ class CustomElement:
         self.intermediates = []
         for name in self.measure_names:
             self.symbols[name] = self.intermediate(self.measure(measures[name]), name)
+        # splines: the table is data in p, the runtime selects the segment of each call (the
+        # generated code is one cubic per call, whatever the number of points)
         self.functions = {}
         for name in sorted(calls & set(model_splines)):
             sp = model_splines[name]
             b_, c_, d_ = spl.coefficients(sp["x"], sp["y"], sp.get("type", "akima"))
-            data = [self.consts.add(v, f"{name}_{k}") for k, v in (("x", sp["x"]), ("y", sp["y"]), ("b", b_),
-                                                                     ("c", c_), ("d", d_))]
-            self.functions[name] = lambda xv, data=data: spl.evaluate(xv, *data)
+            table = len(self.consts.values)
+            self.consts.add(np.concatenate([sp["x"], sp["y"], b_, c_, d_]), f"{name}_table")
+            self.functions[name] = lambda xv, table=table, n=len(sp["x"]): self._spline_call(xv, table, n)
+
+    def spline_slots(self):
+        """[(table offset, number of points, segment offset)] of the spline calls (fdm: splines)."""
+        return [(table, n, seg) for _, table, n, seg in self.consts.splines]
+
+    def _spline_call(self, xv, table, n):
+        if isinstance(xv, (int, float)) or (hasattr(xv, "is_constant") and xv.is_constant()):
+            # a constant argument: the value (no runtime lookup needed)
+            v = self.consts.values
+            x0 = float(xv)
+            tab = [v[table + k * n: table + (k + 1) * n] for k in range(5)]
+            i = spl.segment(tab[0], x0)
+            dx = x0 - tab[0][i]
+            return tab[1][i] + tab[2][i] * dx + tab[3][i] * dx ** 2 + tab[4][i] * dx ** 3
+        r = self.consts.add_spline_call(xv, table, n)
+        self.select_segments(self.q0, 0.0, self.consts.values)  # p consistent with the initial state
+        return r
 
     def intermediate(self, expr, name):
         """Symbol standing for the scalar expr in loads and constraints (see group_element)."""
@@ -103,11 +125,36 @@ class CustomElement:
     def kin(self, name):
         return Ground() if name == "ground" else self.c.bodies[self.bodies.index(name)]
 
+    def _p(self):
+        return ca.vertcat(*self.consts.syms) if self.consts.syms else ca.SX(0, 1)
+
+    def select_segments(self, q, t, values):
+        """Set the spline segments in values (p) for the configuration q at time t (zero
+        velocities), as the runtime does: calls in order, repeated for nested calls."""
+        calls = self.consts.splines
+        if not calls:
+            return values
+        c = self.c
+        fn = ca.Function("x", [c.q, c.v, c.t, self._p()], [ca.vertcat(*[self.expand(x) for x, *_ in calls])])
+        for _ in range(len(calls)):
+            xs = np.atleast_1d(np.array(fn(q, np.zeros(c.v.numel()), t, values), float).ravel())
+            changed = False
+            for xv, (_, table, n, seg) in zip(xs, calls):
+                i = spl.segment(values[table:table + n], xv)
+                new = [values[table + k * n + i] for k in range(5)]
+                if values[seg:seg + 5] != new:
+                    values[seg:seg + 5] = new
+                    changed = True
+            if not changed:
+                break
+        return values
+
     def value0(self, expr, t=0.0):
         """Numeric value of an expression of q (and t) at the initial configuration."""
         c, consts = self.c, self.consts
-        fn = ca.Function("v", [c.q, c.t, ca.vertcat(*consts.syms) if consts.syms else ca.SX(0, 1)], [self.expand(expr)])
-        return float(fn(self.q0, t, consts.values))
+        values = self.select_segments(self.q0, t, list(consts.values))
+        fn = ca.Function("v", [c.q, c.t, self._p()], [self.expand(expr)])
+        return float(fn(self.q0, t, values))
 
     def measure(self, spec):
         return measure(spec, self.kin, self.consts, self.model, self.value0, self.c.rate)
@@ -125,6 +172,7 @@ class CustomElement:
         parts += [f"out {k}={v}" for k, v in (out or {}).items()]
         if consts.updates:
             parts.append(f"post={consts.post()}")
+        parts += [f"spline {x} {table} {n} {seg}" for x, table, n, seg in consts.splines]
         return hashlib.sha256("\n".join(parts).encode()).hexdigest()
 
     def element(self, name, out=None, **kw):
@@ -149,4 +197,8 @@ class CustomElement:
         if consts.updates:
             funs["post"] = ca.Function(f"fd_{name}_post", [c.q, c.v, c.p, c.t], [self.expand(consts.post())],
                                        ["q", "qd", "p", "t"], ["p_new"])
+        if consts.splines:
+            funs["spline"] = ca.Function(f"fd_{name}_spline", [c.q, c.v, c.p, c.t],
+                                         [ca.vertcat(*[self.expand(x) for x, *_ in consts.splines])],
+                                         ["q", "qd", "p", "t"], ["x"])
         return ElementFunctions(name, **funs)
