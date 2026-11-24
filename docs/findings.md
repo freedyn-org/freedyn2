@@ -84,11 +84,20 @@ results to 2e-8). The models are kept as golden results of freedyn2
   elastic energy + modal damping) to 1e-6. **Legacy FreeDyn is not**: with the step 1e-4 and
   the tolerance 1e-8 it moves away from its own result at 1e-3 (3e-2 rad after 1 s, growing in
   time), so the converged legacy result is the one at the larger step.
-- **106_V8_FlexConRod** does not run in freedyn2, neither does the same model with rigid
-  connecting rods (breakdown at 5 ms) nor the rigid 101_V8Motion (very small steps): crank
-  drives built from generic joints and massless bodies are a problem of freedyn2 that is
-  independent of the flexible bodies (open). 05_FlexBodyJointForce and 105_Waegemaschine need
-  contact elements freedyn2 does not have.
+- **106_V8_FlexConRod** (8 flexible connecting rods on 16 massless bodies, mm-t-s) broke down at
+  5 ms, with rigid rods too: the constraints were fine (full rank, one degree of freedom,
+  condition number 2.5e5 from the mm lever arms), but Newton's velocity criterion (1e-10
+  relative) lay below the round-off of the massless dofs, so no step size converged. With a
+  Newton correction that stagnates below 1e3 times the tolerance accepted as converged (round-off
+  floor, `hht.cpp`) it runs with 2.0 Newton iterations per step; its pistons agree with legacy
+  FreeDyn to 0.6 % of the stroke, freedyn2 at 1e-4 against 5e-4 to 0.01 % (the legacy result at
+  its step is the less accurate one). Kept as a golden (0.05 s).
+- **101_V8Motion** (rigid, driven along an Akima spline of 1000 points) took 20 minutes: not
+  the simulation (4 s for 10 s) but compiling the driver, 1.9 MB of C (the spline as a chain of
+  if_else with its time derivatives): gcc -O2 20 min, -O1 10 min, -O0 11 s. Generated sources
+  above 256 kB are now compiled with -O0 (`plugin.LARGE_SOURCE`); the run agrees with legacy
+  FreeDyn to 1e-7 mm. A compact spline (a lookup instead of the chain) would shrink the code.
+- 05_FlexBodyJointForce and 105_Waegemaschine need contact elements freedyn2 does not have.
 - The units in the title line of an MTX file are not reliable (`beam.mtx` says METER and is in
   millimeters); like the legacy kernel, freedyn2 uses the values in the units of the model.
 - The legacy kernel builds with MKL up to 2024.2 only (`pip install "mkl-devel==2024.2.*"`):

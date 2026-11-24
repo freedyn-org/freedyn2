@@ -256,7 +256,12 @@ int main(int argc, char** argv) {
       std::function<void(double, double, const fd::StepResult&)> log_attempt;
       if (!step_log_path.empty())
         log_attempt = [&](double t, double h, const fd::StepResult& r) { step_log.push_back({t, h, r}); };
-      n_steps = stepper.run(write_output, log_attempt, before_step);
+      try {
+        n_steps = stepper.run(write_output, log_attempt, before_step);
+      } catch (...) {  // the attempts up to the failure are what explains it
+        if (!step_log_path.empty()) write_step_log(step_log_path, step_log);
+        throw;
+      }
       rejected = stepper.rejected_steps();
     } else {
       n_steps = std::lround(s.end_time / s.step);

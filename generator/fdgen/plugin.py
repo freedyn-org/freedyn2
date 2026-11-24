@@ -236,22 +236,31 @@ def _write_def(path, exports):
     return path
 
 
+# Generated sources larger than this are compiled without optimization: the optimizers of gcc,
+# clang and MSVC take super-linear time on very large functions (a driver on an Akima spline of
+# 1000 points: 1.9 MB of C, -O2 about 20 min, -O1 10 min, -O0 11 s), the code still runs fine.
+LARGE_SOURCE = 256 * 1024
+
+
 def compile_library(sources, lib, cc=None, exports=(), cache=True):
     """Compile C sources into the shared library lib (one compiler process per file), or copy
-    it from the cache. exports: symbols the library must export (MSVC; ",DATA" for data)."""
+    it from the cache. exports: symbols the library must export (MSVC; ",DATA" for data).
+    Sources larger than LARGE_SOURCE are compiled without optimization."""
     compiler = find_compiler(cc)
     cc, env = compiler.cmd, compiler.env
     lib = Path(lib)
     windows = sys.platform == "win32"
     if compiler.kind == "msvc":
         flags = ["/nologo", "/O2"]
-        compile_cmd = lambda f, o: [*cc, *flags, "/c", f"/Fo{o}", str(f)]
+        opt = lambda f: ["/Od"] if f.stat().st_size > LARGE_SOURCE else []
+        compile_cmd = lambda f, o: [*cc, *flags, *opt(f), "/c", f"/Fo{o}", str(f)]
         link = lambda objs: [*cc, "/nologo", "/LD", *objs, f"/Fe{lib}", "/link", *(f"/EXPORT:{e}" for e in exports)]
         obj_suffix = ".obj"
     else:
         target = (["-target", _zig_target()] if windows else []) + ZIG_FLAGS if compiler.kind == "zig" else []
         flags = (["-O2"] if windows else ["-O2", "-fPIC"]) + target
-        compile_cmd = lambda f, o: [*cc, *flags, "-c", "-o", str(o), str(f)]
+        opt = lambda f: ["-O0"] if f.stat().st_size > LARGE_SOURCE else []  # the last -O counts
+        compile_cmd = lambda f, o: [*cc, *flags, *opt(f), "-c", "-o", str(o), str(f)]
         exported = "-Wl,--export-all-symbols" if windows else "-lm"
         if windows and compiler.kind == "zig":  # zig's lld drops --export-all-symbols: a .def file
             exported = str(_write_def(sources[0].parent / (lib.stem + ".def"), exports))

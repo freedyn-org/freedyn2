@@ -5,6 +5,15 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Fixed
+
+- Newton (velocity criterion) at the round-off floor: a correction that stops getting smaller
+  below 1e3 times the tolerance counts as converged. Models with massless bodies in mm units
+  (legacy 106_V8_FlexConRod) broke down with no step size converging.
+- Model plugins with very large generated sources (a driver on a spline of 1000 points) took
+  20 minutes to compile: sources above 256 kB are compiled without optimization.
+- `freedyn2_run --step-log` also writes the log when the run fails.
+
 ### Added
 
 - Viewer: the inspector of a joint or force at a spider of a body meshed from its STL sets the

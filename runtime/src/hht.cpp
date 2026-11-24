@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace fd {
@@ -23,6 +24,8 @@ double norm_2(const double* v, int n) {
 // Constants of the legacy solver (SOL_DynSolverHHT.h).
 constexpr double kLegacyEps = 1e-16;
 constexpr double kNoiseFactor = 1e3;
+// Newton (velocity criterion): a correction that stagnates below this times the tolerance is round-off.
+constexpr double kStagnationFactor = 1e3;
 constexpr double kAdaptivity = 1e-3;  // c in Negrut et al. Eq. 40
 }  // namespace
 
@@ -219,6 +222,7 @@ StepResult HhtIntegrator::try_step(double h, double t_new) {
   const double e2_noise = kNoiseFactor * DBL_EPSILON * std::max(1., norm_2(sys_.q.data(), nq));
 
   bool converged = false;
+  double prev_correction = std::numeric_limits<double>::infinity();
   while (res.iterations < max_iterations && !converged) {
     ++res.iterations;
     try {
@@ -255,6 +259,13 @@ StepResult HhtIntegrator::try_step(double h, double t_new) {
       res.correction = c_.gamma * h * dv / qd_scale;
       // fixed: always max_iterations corrections, the work does not depend on the state
       converged = fixed ? res.iterations == max_iterations : c_.gamma * h * dv <= s_.newton_tol * qd_scale;
+      // Round-off floor: corrections that stop getting smaller (after 3 iterations) while already
+      // below kStagnationFactor * tol are round-off, not divergence (badly scaled models: mm
+      // units, massless bodies), and the state is converged as far as it can be.
+      if (!fixed && !converged && res.iterations >= 3 && res.correction <= kStagnationFactor * s_.newton_tol &&
+          res.correction >= 0.5 * prev_correction)
+        converged = true;
+      prev_correction = res.correction;
     }
   }
   if (res.status == StepStatus::ok && !converged) res.status = StepStatus::newton_not_converged;

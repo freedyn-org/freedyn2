@@ -1,5 +1,6 @@
-"""Golden results of flexible body models: the legacy check-in tests 03_FlyingFleBo and
-04_FlexRotUHackerl (me_testing), as freedyn2 computes them. The comparison with legacy FreeDyn
+"""Golden results of flexible body models: the legacy check-in tests 03_FlyingFleBo,
+04_FlexRotUHackerl and 106_V8_FlexConRod (me_testing; 8 flexible connecting rods on massless
+bodies, mm-t-s: Newton at the round-off floor), as freedyn2 computes them. The comparison with legacy FreeDyn
 that these results were checked with is documented in docs/findings.md; it is not repeated.
 
 FD_UPDATE_GOLDEN=1 python -m pytest tests/python/test_flex_golden.py  writes them anew.
@@ -16,7 +17,8 @@ from fdgen import cli
 from conftest import ROOT
 
 DATA = ROOT / "tests" / "data" / "flex"
-MODELS = {"flying_beam": ("flex_beam", 26, 1), "rotating_hook": ("struct1", 20, 20)}  # body, modes, every n-th row
+MODELS = {"flying_beam": ("flex_beam", 26, 1), "rotating_hook": ("struct1", 20, 20),  # body, modes, every n-th row
+          "v8_flex_conrods": ("con_rod.1", 21, 5)}
 
 
 @pytest.fixture
