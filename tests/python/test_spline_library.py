@@ -130,9 +130,10 @@ def _pair(force, measure, ground=False):
 @pytest.mark.parametrize("app", APPS)
 @pytest.mark.parametrize("kind", MEASURES)
 def test_curve_force_library_equals_expression(tmp_path, runtime, kind, app):
-    """curve_force without a plugin against the same law as an expression force / torque."""
+    """curve_force / curve_torque without a plugin against the same law as an expression force /
+    torque."""
     from fdgen.curve_forces import as_expression
-    force = {"type": "curve_force", "body1": "a", "body2": "b", "measure": "m", "curve": "c", "scale": -0.5,
+    force = {"type": "curve_torque" if app == "torque" else "curve_force", "body1": "a", "body2": "b", "measure": "m", "curve": "c", "scale": -0.5,
              "argument_scale": 2.0, "argument_offset": 0.05, **APPS[app]}
     m = _pair(force, MEASURES[kind])
     r, fdm = run(tmp_path, m, "library")
@@ -155,6 +156,23 @@ def test_curve_force_to_ground(tmp_path, runtime, kind):
     m["forces"]["f"] = {k: v for k, v in as_expression(dict(force, name="f")).items() if k != "name"}
     r2, _ = run(tmp_path, m, "plugin")
     assert r["a.R_z"] == pytest.approx(r2["a.R_z"], abs=1e-9)
+
+
+def test_curve_force_and_torque_keys(tmp_path):
+    """A force has a direction, a torque an axis: the other key is an error, not another type."""
+    from fdgen.errors import ModelError
+    from fdgen.model import validate
+    m = _pair({"type": "curve_force", "body1": "a", "measure": "m", "curve": "c", "axis": [0, 0, 1]},
+              MEASURES["angle"], ground=True)
+    with pytest.raises(ModelError, match="no axis"):
+        validate(m, tmp_path)
+    m["forces"]["f"] = {"type": "curve_torque", "body1": "a", "measure": "m", "curve": "c", "direction": [0, 0, 1],
+                        "axis": [0, 0, 1]}
+    with pytest.raises(ModelError, match="no direction"):
+        validate(m, tmp_path)
+    m["forces"]["f"] = {"type": "curve_torque", "body1": "a", "measure": "m", "curve": "c"}
+    with pytest.raises(ModelError, match="needs axis"):
+        validate(m, tmp_path)
 
 
 def test_curve_force_not_covered_is_compiled(tmp_path, runtime):

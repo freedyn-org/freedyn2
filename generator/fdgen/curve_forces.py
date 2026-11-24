@@ -1,9 +1,9 @@
-"""Curve forces: a force or torque that is a curve (spline) of a measure,
+"""Curve forces and torques: a force or torque that is a curve (spline) of a measure,
 
     s = a * curve(b * m + c)
 
-along a direction (line of sight, or fixed in space or in body1) or about an axis, on body1 and
--s on body2. Library element types (compiled into the runtime, the curve's table is data): the
+curve_force along a direction (line of sight, or fixed in space or in body1), curve_torque
+about an axis (fixed in space or in body1); on body1, -s on body2. Library element types (compiled into the runtime, the curve's table is data): the
 measure's frame, component and directions are parameters, so a few types cover them all
 
     curve_<measure>_<application>_<end>   measure: displacement, velocity, distance,
@@ -26,6 +26,7 @@ from .measures import ANGLE_TOL_PI
 from .splines import cubic
 from .splines import table as spline_table
 
+CURVE_TYPES = ("curve_force", "curve_torque")
 MEASURES = ("displacement", "velocity", "distance", "distance_rate", "angle", "angular_rate", "angular_velocity")
 APPLICATIONS = ("los", "dir", "torque")
 # parameters of the measure part, the law [a, b, c, segment (5)] and the application part
@@ -209,7 +210,8 @@ def _offset(spec, value0):
 
 
 def element(force, model):
-    """LibraryElement of a curve_force, or None (then it is an expression force, as_expression)."""
+    """LibraryElement of a curve_force / curve_torque, or None (then it is an expression force or
+    torque with the same law, as_expression)."""
     if any(model["bodies"][b].get("element", "rigid_body") != "rigid_body" for b in _ends(force) if b != "ground"):
         return None
     fb = _ends(force)
@@ -220,7 +222,7 @@ def element(force, model):
     sp = model["splines"][force["curve"]]
     tab = spline_table(sp["x"], sp["y"], sp.get("type", "akima"))
     a, b, c = (float(force.get(k, d)) for k, d in (("scale", 1.0), ("argument_scale", 1.0), ("argument_offset", 0.0)))
-    if "axis" in force:
+    if force["type"] == "curve_torque":
         app = "torque"
         ap = _direction_params(model, force, force["axis"])
     else:
@@ -249,7 +251,7 @@ def as_expression(force):
     a, b, c = (force.get(k, d) for k, d in (("scale", 1.0), ("argument_scale", 1.0), ("argument_offset", 0.0)))
     law = f"{float(a)!r} * {force['curve']}({float(b)!r} * {force['measure']} + {float(c)!r})"
     f = {k: v for k, v in force.items() if k not in ("measure", "curve", "scale", "argument_scale", "argument_offset")}
-    if "axis" in force:
+    if force["type"] == "curve_torque":
         return dict(f, type="expression_torque", torque=law)
     return dict(f, type="expression_force", force=law)
 

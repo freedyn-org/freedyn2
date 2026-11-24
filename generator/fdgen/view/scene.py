@@ -133,7 +133,7 @@ def _forces(model):
             o = np.asarray(f.get("orientation", [1.0, 0.0, 0.0, 0.0]), dtype=float)
             entry["point1"] = local_point(model, b1, loc).tolist()
             entry["point2"], entry["orientation2"] = _frame_on(model, b2, loc, rotation_matrix(o / np.linalg.norm(o)))
-        elif kind in ("force", "torque", "expression_force", "expression_torque", "curve_force") or "point" in f:
+        elif kind in ("force", "torque", "expression_force", "expression_torque", "curve_force", "curve_torque") or "point" in f:
             entry["point1"] = local_point(model, b1, f.get("point")).tolist()  # also types of extensions
         elif kind != "tire":
             entry["point1"] = [0.0, 0.0, 0.0]

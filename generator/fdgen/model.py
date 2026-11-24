@@ -179,7 +179,7 @@ def _joint_node(out, j, bodies):
 
 _FORCE_KEYS = {"spring_damper": ["stiffness"], "torsion_spring": ["stiffness"], "force": ["vector"],
                "torque": ["vector"], "bushing": ["stiffness", "rot_stiffness"], "expression_force": ["force"],
-               "curve_force": ["measure", "curve"],
+               "curve_force": ["measure", "curve"], "curve_torque": ["measure", "curve", "axis"],
                "expression_torque": ["torque", "axis"], "tire": []}
 
 
@@ -387,7 +387,11 @@ def validate(model, base_dir=None, prepare_flex=True):
     model_splines = {name: _spline(name, sp, base_dir) for name, sp in section("splines")}
     drivers = {name: _driver(name, d, measures) for name, d in section("drivers")}
     for f in forces:  # curve forces: a measure and a spline of the model
-        if f["type"] == "curve_force":
+        if f["type"] in curve_forces.CURVE_TYPES:
+            if f["type"] == "curve_force" and "axis" in f:
+                raise ModelError(f"force {f['name']}: a curve_force has a direction, no axis (a torque: curve_torque)")
+            if f["type"] == "curve_torque" and ({"direction", "point1", "point2"} & set(f)):
+                raise ModelError(f"force {f['name']}: a curve_torque has an axis, no direction or points")
             if f["measure"] not in measures:
                 raise ModelError(f"force {f['name']}: measure {f['measure']!r} unknown (measures: {sorted(measures)})")
             if f["curve"] not in model_splines:
@@ -541,7 +545,7 @@ def write_fdm(model, path):
         if force["name"] in in_plugin:
             kind, names, p = in_plugin[force["name"]]
         else:
-            el = (curve_forces.element(force, model) if force["type"] == "curve_force"
+            el = (curve_forces.element(force, model) if force["type"] in curve_forces.CURVE_TYPES
                   else forces.element(force, model["bodies"], model.get("splines")))
             kind, names, p = el
             kind += euler(names)

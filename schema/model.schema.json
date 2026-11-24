@@ -282,7 +282,7 @@
       "properties": {
         "id": {"$ref": "#/$defs/id"},
         "type": {
-          "enum": ["spring_damper", "force", "torque", "torsion_spring", "bushing", "expression_force", "expression_torque", "curve_force", "tire"],
+          "enum": ["spring_damper", "force", "torque", "torsion_spring", "bushing", "expression_force", "expression_torque", "curve_force", "curve_torque", "tire"],
           "description": "spring_damper: line of sight between point1 (body1) and point2 (body2 or ground), s = k (l - l0) + d ldot + f0, tension > 0. force / torque: constant vector on body1. torsion_spring: about the z axis of the frame (orientation) fixed on body2 or the ground, tau = -k (phi - phi0) - d phidot + tau0 on body1. expression_force / expression_torque: magnitude from an expression of t, parameters and measures (compiled into the model plugin), along direction / axis on body1 and opposite on body2."
         },
         "body1": {"type": "string", "description": "A body."},
@@ -303,18 +303,18 @@
         "length": {"type": "number", "exclusiveMinimum": 0, "description": "spring_damper: free length l0. Default the initial distance."},
         "angle": {"type": "number", "description": "torsion_spring: phi0 [rad]. Default 0 (the initial configuration)."},
         "preload": {"type": "number", "description": "f0 [N] or tau0 [N m]. Default 0."},
-        "measure": {"type": "string", "description": "curve_force: the measure m (a name of measures); s = scale * curve(argument_scale * m + argument_offset)."},
-        "curve": {"type": "string", "description": "curve_force: the spline of the law (a name of splines)."},
-        "scale": {"type": "number", "description": "curve_force: factor a of the curve. Default 1."},
-        "argument_scale": {"type": "number", "description": "curve_force: factor b of the measure in the argument. Default 1."},
-        "argument_offset": {"type": "number", "description": "curve_force: offset c of the argument. Default 0."},
+        "measure": {"type": "string", "description": "curve_force / curve_torque: the measure m (a name of measures); s = scale * curve(argument_scale * m + argument_offset)."},
+        "curve": {"type": "string", "description": "curve_force / curve_torque: the spline of the law (a name of splines)."},
+        "scale": {"type": "number", "description": "curve_force / curve_torque: factor a of the curve. Default 1."},
+        "argument_scale": {"type": "number", "description": "curve_force / curve_torque: factor b of the measure in the argument. Default 1."},
+        "argument_offset": {"type": "number", "description": "curve_force / curve_torque: offset c of the argument. Default 0."},
         "force": {"type": "string", "description": "expression_force: force law, e.g. '-c * y - d * vy + 10 * sin(t)'."},
         "torque": {"type": "string", "description": "expression_torque: torque law."},
         "direction": {
           "description": "expression_force: 'line_of_sight' (default, from point1 to point2) or a vector (global at t = 0; fixed in space or, with frame body, in body1).",
           "oneOf": [{"const": "line_of_sight"}, {"$ref": "#/$defs/vec3"}]
         },
-        "axis": {"$ref": "#/$defs/vec3", "description": "expression_torque: axis, global at t = 0 (fixed in space or, with frame body, in body1)."}
+        "axis": {"$ref": "#/$defs/vec3", "description": "expression_torque / curve_torque: axis, global at t = 0 (fixed in space or, with frame body, in body1)."}
       }
     },
     "sensor": {

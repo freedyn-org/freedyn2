@@ -167,12 +167,12 @@ def _balanced(s):
 
 
 def _as_curve_force(f, key, measures, used_splines):
-    """A law a * spline(measure) becomes a curve_force (a library type: no model plugin)."""
+    """A law a * spline(measure) becomes a curve_force / curve_torque (a library type: no model plugin)."""
     cl = curve_law(f[key], measures, used_splines)
     if cl is None:
         return f
     f = {k: v for k, v in f.items() if k != key}
-    f.update(type="curve_force", measure=cl[2], curve=cl[1])
+    f.update(type="curve_force" if key == "force" else "curve_torque", measure=cl[2], curve=cl[1])
     if cl[0] != 1.0:
         f["scale"] = cl[0]
     return f

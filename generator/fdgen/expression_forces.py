@@ -54,7 +54,7 @@ def expression_elements(model):
     from . import curve_forces
     out = []
     for f in model.get("forces", []):
-        if f["type"] == "curve_force" and curve_forces.element(f, model) is None:
+        if f["type"] in curve_forces.CURVE_TYPES and curve_forces.element(f, model) is None:
             f = curve_forces.as_expression(f)  # no library type covers it: the same law, compiled
         if f["type"] not in EXPRESSION_TYPES:
             continue
