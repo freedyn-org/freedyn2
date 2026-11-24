@@ -15,3 +15,4 @@ site/
 
 # worktrees of parallel agent sessions
 .claude/worktrees/
+!tests/data/**/*.csv
