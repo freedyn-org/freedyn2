@@ -12,6 +12,9 @@ Format: a ZIP archive of NumPy arrays (.npy, numpy.savez_compressed), readable w
     frequencies   (nm) Hz       has_I5, has_I9  () bool (full coupling data present)
     node_labels   (nn) int      node_positions (nn, 3)   Phi, Psi (nn, 3, nm)
     viz_xyz, viz_tri, viz_phi   optional: mode shapes on the surface of the FE model (viewer)
+    spider_node, spider_type, spider_start, spider_xyz   optional: the RBE2 / RBE3 of the
+                  interfaces: node, "rbe2" or "rbe3", the positions of the nodes it connects
+                  (spider_xyz[spider_start[k]:spider_start[k + 1]])
 
 The inertia invariants are those of fdgen.flex.modal (Adams' definitions).
 """
@@ -40,6 +43,12 @@ def write_fdflex(data, path, meta=None):
     if viz is not None:
         arrays.update(viz_xyz=np.asarray(viz[0], float), viz_tri=np.asarray(viz[1], np.int32),
                       viz_phi=np.asarray(viz[2], np.float32))
+    spiders = getattr(data, "spiders", None)
+    if spiders:
+        arrays.update(spider_node=np.array([s[0] for s in spiders], np.int64),
+                      spider_type=np.array([s[1] for s in spiders]),
+                      spider_start=np.cumsum([0] + [len(s[2]) for s in spiders]),
+                      spider_xyz=np.concatenate([np.asarray(s[2], float).reshape(-1, 3) for s in spiders]))
     tmp = path.with_name(path.name + ".tmp")
     with open(tmp, "wb") as f:
         np.savez_compressed(f, **arrays)
@@ -69,4 +78,9 @@ def read_fdflex(path):
                          units=(), source=str(path), **a)
         data.meta = json.loads(str(z["meta"]))
         data.viz = (z["viz_xyz"], z["viz_tri"], z["viz_phi"]) if "viz_xyz" in z.files else None
+        data.spiders = []
+        if "spider_node" in z.files:
+            st = z["spider_start"]
+            data.spiders = [(int(n), str(t), z["spider_xyz"][st[k]:st[k + 1]])
+                            for k, (n, t) in enumerate(zip(z["spider_node"], z["spider_type"]))]
     return data

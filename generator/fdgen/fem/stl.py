@@ -130,9 +130,51 @@ def _tet10_order(xyz, raw):
     return out
 
 
-def spider_nodes(xyz, surf, point, radius=None, h=1.0):
-    """Surface nodes (indices) of an interface at point: within radius, by default the
+def bore_nodes(xyz, surf, point, axis, h):
+    """Surface nodes of the bore around the axis through point: the nodes at the smallest
+    distance r0 from the axis near the point (faceted: within 3 % of r0 plus h / 20), along the
+    axis as far as that surface goes on without a gap of more than 2 h, and around at least
+    270 degrees. None if there is no such bore (the point on a face, an open slot)."""
+    e = np.asarray(axis, float) / np.linalg.norm(axis)
+    d = xyz[surf] - point
+    a = d @ e
+    rho = np.linalg.norm(d - np.outer(a, e), axis=1)
+    near = np.abs(a) <= 3 * h
+    if not near.any():
+        return None
+    r0 = rho[near].min()
+    if r0 < 0.5 * h:
+        return None
+    on = rho <= r0 * 1.03 + 0.05 * h
+    av = np.sort(a[on])
+    if not len(av):
+        return None
+    lo = hi = np.searchsorted(av, 0.0)
+    lo, hi = max(min(lo, len(av) - 1), 0), max(min(hi, len(av) - 1), 0)
+    while lo > 0 and av[lo] - av[lo - 1] <= 2 * h:
+        lo -= 1
+    while hi < len(av) - 1 and av[hi + 1] - av[hi] <= 2 * h:
+        hi += 1
+    if av[lo] > 2 * h or av[hi] < -2 * h:  # the bore surface does not reach the point
+        return None
+    sel = on & (a >= av[lo] - 1e-12) & (a <= av[hi] + 1e-12)
+    u = np.cross(e, [1.0, 0, 0] if abs(e[0]) < 0.9 else [0, 1.0, 0])
+    u /= np.linalg.norm(u)
+    v = np.cross(e, u)
+    ang = np.arctan2(d[sel] @ v, d[sel] @ u)
+    if len(np.unique(np.floor((ang + np.pi) / (2 * np.pi) * 12).astype(int) % 12)) < 9:
+        return None
+    return surf[sel]
+
+
+def spider_nodes(xyz, surf, point, radius=None, h=1.0, axis=None):
+    """Surface nodes (indices) of an interface at point: with an axis (a revolute or cylindrical
+    joint) the bore around it (bore_nodes), if there is one; else within radius, by default the
     distance to the nearest surface node plus h, widened until 6 nodes not on one line."""
+    if axis is not None and radius is None:
+        sel = bore_nodes(xyz, surf, np.asarray(point, float), axis, h)
+        if sel is not None and len(sel) >= 6:
+            return sel
     d = np.linalg.norm(xyz[surf] - point, axis=1)
     r = d.min() + h if radius is None else float(radius)
     while True:
@@ -150,16 +192,16 @@ def spider_nodes(xyz, surf, point, radius=None, h=1.0):
 
 def fe_model(xyz, tets, surf, material, interfaces, h):
     """FeModel of the tet mesh with material (E, nu, rho) and interfaces [(point, type,
-    radius)]: interface nodes INTERFACE_IDS + 1, ... in that order."""
+    radius, axis)]: interface nodes INTERFACE_IDS + 1, ... in that order."""
     fe = FeModel()
     fe.nodes = {i + 1: tuple(x) for i, x in enumerate(xyz)}
     fe.solids = [(k + 1, 1, list(t + 1)) for k, t in enumerate(tets)]
     fe.psolid = {1: 1}
     fe.materials = {1: tuple(material)}
-    for k, (point, kind, radius) in enumerate(interfaces):
+    for k, (point, kind, radius, axis) in enumerate(interfaces):
         nid = INTERFACE_IDS + k + 1
         fe.nodes[nid] = tuple(float(x) for x in point)
-        sel = [int(i) + 1 for i in spider_nodes(xyz, surf, np.asarray(point, float), radius, h)]
+        sel = [int(i) + 1 for i in spider_nodes(xyz, surf, np.asarray(point, float), radius, h, axis)]
         if kind == "rbe2":
             fe.rbe2.append((nid, nid, "123456", sel))
         elif kind == "rbe3":

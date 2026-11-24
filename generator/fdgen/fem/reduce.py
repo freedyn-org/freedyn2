@@ -113,6 +113,9 @@ def reduce(a, interfaces, nmodes, output_nodes=None, rigid="auto", shift=None, t
     data.Phi = np.stack([Phi[a.start[k]:a.start[k] + 3] for k in idx])
     data.Psi = np.stack([Phi[a.start[k] + 3:a.start[k] + 6] if a.ndof[k] == 6 else np.zeros((3, nm)) for k in idx])
     data.removed_modes = list(range(1, nr + 1))
+    # the spiders of the interfaces (viewer): node, type, positions of the nodes it connects
+    data.spiders = [(int(m), kind, a.xyz[[a.index(n) for n in nodes]]) for m, kind, nodes in a.spiders
+                    if m in set(int(i) for i in interfaces)]
     if a.surface is not None and len(a.surface[0]):  # mode shapes on the boundary, for the viewer
         k = a.surface[0]
         data.viz = (a.xyz[k], a.surface[1], np.stack([Phi[a.start[i]:a.start[i] + 3] for i in k]))

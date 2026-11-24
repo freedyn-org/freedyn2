@@ -182,3 +182,48 @@ def test_cms_result_kept_and_reused(env):
     path.write_text(yaml.safe_dump(arm(flex, name="a")))
     cli.build(path, env, "v2")
     assert (env / "parts" / "arm_cms.fdflex").is_file()
+
+
+def plate_with_hole(path, r=0.005):
+    """STL of the arm with a bore of radius r through it at the origin (axis z), by OpenCASCADE."""
+    occ = pytest.importorskip("netgen.occ")
+    from fdgen.fem.stl import write_stl
+    arm = occ.Box(occ.Pnt(-0.015, -B, -H / 2), occ.Pnt(L, B, H / 2)) - occ.Cylinder(occ.Pnt(0, 0, -H), occ.Dir(0, 0, 1),
+                                                                               r, 2 * H)
+    m = occ.OCCGeometry(arm).GenerateMesh(maxh=0.004)
+    pts = np.array([p.p for p in m.Points()])
+    tri = np.array([[p.nr - 1 for p in el.points][:3] for el in m.Elements2D()])
+    write_stl(path, pts[tri])
+    return path
+
+
+def test_bore_spider(env):
+    """A revolute joint in a bore: its spider takes the bore surface (all around, through the
+    thickness), the explicit radius a patch; spiders in the .fdflex and in the scene, with the
+    joint at them."""
+    from fdgen.flex.fdflex import read_fdflex
+    from fdgen.view.scene import scene
+    r = 0.005
+    plate_with_hole(env / "hole.stl", r)
+    m = {"model": "bore", "gravity": [0, -9.81, 0],
+         "bodies": {"arm": {"mass": 0.67, "inertia": [1e-5, 1e-4, 1e-4],
+                            "shapes": [{"type": "mesh", "file": "hole.stl", "frame": "body"}],
+                            "flex": {"material": "steel", "mesh_size": 0.004, "modes": 4}}},
+         "joints": {"pivot": {"type": "revolute", "body1": "arm", "location": [0, 0, 0]}},
+         "solver": {"type": "HHT", "alpha": -0.05, "step": 1e-4, "end_time": 2e-4}}
+    path = env / "bore.yaml"
+    path.write_text(yaml.safe_dump(m))
+    model = cli.load(path)
+    d = read_fdflex(model["bodies"]["arm"]["flex"]["modal"])
+    (node, kind, pts), = d.spiders
+    rho = np.hypot(pts[:, 0], pts[:, 1])
+    assert kind == "rbe2" and len(pts) > 30
+    assert rho.max() == pytest.approx(r, rel=1e-6) and rho.min() > 0.9 * r  # on the bore (facets: midside nodes)
+    assert pts[:, 2].min() == pytest.approx(-H / 2, rel=1e-6) and pts[:, 2].max() == pytest.approx(H / 2, rel=1e-6)
+    sp = scene(model)["bodies"][0]["flex"]["spiders"][0]
+    assert sp["elements"] == ["pivot"] and sp["n"] == len(pts) and sp["center"] == pytest.approx([0, 0, 0])
+    # an explicit radius: the nodes within it (a patch of the bore wall near the point)
+    m["bodies"]["arm"]["flex"]["interfaces"] = [{"point": [0, 0, 0], "radius": 1.05 * r}]
+    path.write_text(yaml.safe_dump(m))
+    (_, _, pts2), = read_fdflex(cli.load(path)["bodies"]["arm"]["flex"]["modal"]).spiders
+    assert np.linalg.norm(pts2, axis=1).max() <= 1.05 * r * (1 + 1e-9) and len(pts2) < len(pts)

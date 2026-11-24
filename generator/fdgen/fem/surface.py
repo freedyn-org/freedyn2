@@ -88,19 +88,28 @@ def plan(name, body, joints, forces, base_dir):
     R, A = body_frame(body)
     tri = _surface(name, body, base_dir)
     size = float(np.ptp(tri.reshape(-1, 3), axis=0).max())
-    specs, owners = [], []  # explicit interfaces, then joints and forces; coinciding points share one
+    # explicit interfaces, then joints and forces; coinciding points share one. A revolute or
+    # cylindrical joint gives its axis (joint z): its spider takes the bore around it
+    specs, owners = [], []
     for i in flex.get("interfaces") or []:
-        specs.append((A.T @ (np.array(i["point"], float) - R), i.get("type", "rbe2"), i.get("radius")))
+        axis = A.T @ np.array(i["axis"], float) if "axis" in i else None
+        specs.append([A.T @ (np.array(i["point"], float) - R), i.get("type", "rbe2"), i.get("radius"), axis])
         owners.append([])
     for p, what in _attachments(name, joints, forces):
         u = A.T @ (p - R)
+        axis = None
+        if what[0] == "joint" and what[1]["type"] in ("revolute", "cylindrical"):
+            axis = A.T @ np.array(what[1]["frame"], float)[:, 2]
         for k, sp in enumerate(specs):
             if np.linalg.norm(sp[0] - u) <= 1e-6 * size:
                 owners[k].append(what)
+                if sp[3] is None and axis is not None:
+                    sp[3] = axis
                 break
         else:
-            specs.append((u, flex.get("interface_type", "rbe2"), None))
+            specs.append([u, flex.get("interface_type", "rbe2"), None, axis])
             owners.append([what])
+    specs = [tuple(sp) for sp in specs]
     if not specs:
         raise ModelError(f"body {name}: flexible without interfaces (no joint or force acts on it)")
     return tri, specs, owners
@@ -202,7 +211,8 @@ def _modal_file(name, tri, material, h, specs, modes, log, base_dir=None, flex=N
     from . import cms_file
     key = hashlib.sha256(np.ascontiguousarray(tri, float).tobytes())
     key.update(repr((FEM_VERSION, "surface", tuple(material), h, modes,
-                     [(tuple(np.round(u, 12)), t, r) for u, t, r in specs])).encode())
+                     [(tuple(np.round(u, 12)), t, r, None if ax is None else tuple(np.round(ax, 12)))
+                      for u, t, r, ax in specs])).encode())
 
     def compute():
         fe = fe_of(name, tri, material, h, specs)
@@ -213,7 +223,9 @@ def _modal_file(name, tri, material, h, specs, modes, log, base_dir=None, flex=N
         return reduce(a, ifs, modes, output_nodes=ifs), {
             "source": "surface", "mesh_size": h, "material": list(material), "dofs": int(a.n),
             "elements": len(fe.solids), "interfaces": [{"node": n, "point_body": [float(x) for x in sp[0]],
-                                                         "type": sp[1], "radius": sp[2]} for n, sp in zip(ifs, specs)]}
+                                                         "type": sp[1], "radius": sp[2],
+                                                         "axis_body": None if sp[3] is None else [float(x) for x in sp[3]]}
+                                                        for n, sp in zip(ifs, specs)]}
 
     return cms_file(base_dir, name, flex or {}, key.hexdigest(), compute,
                     f"body {name}: Netgen TET10 h = {h}, freedyn2 FEM, Craig-Bampton")

@@ -56,7 +56,7 @@ def _bodies(model):
         entry = {"name": name, "mass": b["mass"], "default_shapes": not own,
                  "position": list(b["position"]), "orientation": list(b["orientation"])}
         if "flex" in b:
-            entry["flex"], extra = _flex(name, b, own)
+            entry["flex"], extra = _flex(name, b, own, model)
             if extra:
                 own, entry["default_shapes"] = own + extra, False
         entry["shapes"] = [_extent(dict(s, color=s.get("color", color))) for s in (own or defaults.get(name, []))]
@@ -78,18 +78,31 @@ def _extent(shape):
     return shape
 
 
-def _flex(name, b, shapes):
-    """Deformation of a flexible body in the viewer: its modal coordinate channels and the mode
-    shapes on the vertices of its STL shapes (fdgen.flex.viz), base64 float32 (nm, nv, 3)."""
+def _flex(name, b, shapes, model):
+    """A flexible body in the viewer: its modal coordinate channels, the mode shapes on the
+    vertices of its STL shapes (fdgen.flex.viz), base64 float32 (nm, nv, 3), and the spiders of
+    its interfaces (node, type, centre in the body frame, the nodes they connect, base64 float32
+    (n, 3), the joints and forces at them)."""
     from ..flex import load_modal
     from ..flex.viz import shape_modes
-    nm = load_modal(b["flex"]["modal"]).nm
+    d = load_modal(b["flex"]["modal"])
     try:
         modes, extra = shape_modes(b, shapes)
     except (OSError, ValueError):
         modes, extra = {}, []
-    return {"eta": [f"{name}.eta{i + 1}.eta" for i in range(nm)],
-            "modes": {str(k): _float32(v) for k, v in modes.items()}}, extra
+    spiders = []
+    for node, kind, pts in getattr(d, "spiders", None) or []:
+        at = []
+        for j in model.get("joints", []):
+            if j.get("node") != node or name not in (j["body1"], j["body2"]):
+                continue
+            aux = model["bodies"].get(j["body1"], {}).get("interface_of") == name and j["body1"]
+            at += [f["name"] for f in model.get("forces", []) if aux in (f["body1"], f["body2"])] if aux else [j["name"]]
+        centre = d.node_positions[d.node_index(node)] if node in set(d.node_labels.tolist()) else pts.mean(axis=0)
+        spiders.append({"node": node, "type": kind, "center": [float(x) for x in centre], "n": len(pts),
+                        "points": _float32(pts), "elements": at})
+    return {"eta": [f"{name}.eta{i + 1}.eta" for i in range(d.nm)],
+            "modes": {str(k): _float32(v) for k, v in modes.items()}, "spiders": spiders}, extra
 
 
 def _joints(model):

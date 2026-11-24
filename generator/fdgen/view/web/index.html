@@ -274,6 +274,7 @@ header .model.editable:hover { color: var(--accent); border-color: var(--accent)
     <label><input type="checkbox" id="show-trace"> traces of the bodies</label>
     <label title="force and torque vectors from the force outputs (red: forces, purple: torques)"><input type="checkbox" id="show-arrows"> force arrows
       <input type="range" id="arrow-scale" min="-1.5" max="1.5" step="0.05" value="0" style="flex:1" title="scale of the arrows" disabled></label>
+    <label id="spiders-row" hidden title="the RBE2 / RBE3 spiders of the interfaces of flexible bodies: the surface nodes they connect (a click: the joint or force at it)"><input type="checkbox" id="show-spiders" checked> spiders of flexible bodies</label>
     <label id="deform-row" hidden title="deformation of the flexible bodies, magnified (1: true size)">deformation
       <input type="range" id="deform-scale" min="0" max="3" step="0.05" value="0" style="flex:1"> <span id="deform-label">× 1.0</span></label>
     <label title="the reference run (★ in the run strip): grey bodies"><input type="checkbox" id="show-reference" checked disabled> reference run</label>

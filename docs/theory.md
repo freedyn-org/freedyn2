@@ -264,9 +264,12 @@ number of modes stay the same.
 `fdgen/fem/stl.py`, `fdgen/fem/surface.py`. The STL of the part, placed in the body frame, is
 checked for a closed surface and meshed by Netgen (quadratic tetrahedra, the midside nodes
 assigned to the edges by geometry). Each joint and force point of the body, in the body frame,
-becomes an interface node with an RBE2 (or RBE3) to the surface nodes within a radius (default:
-the distance to the nearest surface node plus the mesh size, widened to at least 6 nodes not on
-a line); coinciding points share one. The reduction is that of 3.5. Joints act at the node
+becomes an interface node with an RBE2 (or RBE3) to the surface nodes around it: for a joint
+with an axis (revolute, cylindrical) the bore around it, the nodes at the smallest distance
+\(r_0\) from the axis near the point (within \(0.03\, r_0 + h/20\): midside nodes of a faceted
+bore lie inside it), along the axis while the gaps stay below \(2h\), and at least 270 degrees
+around; else within a radius (default: the distance to the nearest surface node plus the mesh
+size \(h\), widened to at least 6 nodes not on a line). Coinciding points share one node. The reduction is that of 3.5. Joints act at the node
 (3.4); forces at a massless rigid body fixed to the node by a joint at the node (its 6 dofs are
 determined by the 6 constraints, so the singular mass of that body does not make the iteration
 matrix singular).

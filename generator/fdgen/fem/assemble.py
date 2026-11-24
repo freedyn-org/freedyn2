@@ -26,6 +26,7 @@ class Assembly:
     quad: list = field(default_factory=list)  # [(x (ne, nq, 3), w (ne, nq), interp, dofs (ne, nd))]
     masters: dict = field(default_factory=dict)  # RBE master / reference node -> element id
     surface: tuple = None                # boundary of the solids: (node indices, triangles into them)
+    spiders: list = field(default_factory=list)  # [(master / reference node, "rbe2" | "rbe3", [node ids])]
 
     def index(self, node):
         k = np.searchsorted(self.node_ids, node)
@@ -138,6 +139,7 @@ def _constraints(fe, a):
 
     for eid, master, comps, slaves in fe.rbe2:
         a.masters[master] = eid
+        a.spiders.append((master, "rbe2", list(slaves)))
         xm = a.xyz[a.index(master)]
         mt, mr = a.dofs(master, range(3)), a.dofs(master, range(3, 6))
         cs = [int(c) - 1 for c in comps]
@@ -154,6 +156,7 @@ def _constraints(fe, a):
                     add(dep, [mr[c - 3]], [1.0])
     for eid, ref, refc, groups in fe.rbe3:
         a.masters[ref] = eid
+        a.spiders.append((ref, "rbe3", [n for g in groups for n in g[2]]))
         if refc != "123456":
             raise ModelError(f"RBE3 {eid}: reference components {refc}, only 123456 is supported")
         xr = a.xyz[a.index(ref)]

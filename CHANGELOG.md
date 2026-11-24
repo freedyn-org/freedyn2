@@ -33,6 +33,9 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   the surface and what it was made from), reused while its inputs are the same and usable by
   other models with `flex.modal`; `flex.cms` gives another place. `freedyn2 flex-info` shows a
   modal data file and converts between .fdflex and Adams MTX.
+- Spiders in bores: a revolute or cylindrical joint at a body meshed from its STL connects
+  to the bore around its axis (`interfaces[].axis` for others); the viewer shows the spiders
+  of flexible bodies, a click on one inspects its joint or force with the spider's size.
 - Viewer: flexible bodies deform (their STL, or the surface of the FE mesh), magnified with
   *deformation* about their best-fitting rigid motion; eigenmodes with the deformation. Mesh
   shapes count for the size of the scene and *fit view*.

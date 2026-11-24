@@ -9,7 +9,7 @@ from .reduce import reduce
 __all__ = ["assemble", "read_nastran", "reduce"]
 
 
-FEM_VERSION = 3  # part of the cache key: raise it when the results of the reduction change
+FEM_VERSION = 4  # part of the cache key: raise it when the results of the reduction change
 
 
 def cms_file(base_dir, name, flex, key, compute, describe):

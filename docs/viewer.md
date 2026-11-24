@@ -78,7 +78,9 @@ variable `FREEDYN2_NO_UPDATE_CHECK=1`.
   surface of the mesh) move with the modal coordinates of the run. *deformation* magnifies the
   deformation (1: true size); magnified, only the deformation relative to the rigid motion
   that fits it best is scaled, so the body stays where it is. Eigenmodes show the deformation
-  too. The mode shapes come from the own FE reduction; an MTX file gives them only at its nodes
+  too. *spiders of flexible bodies* shows the RBE2 / RBE3 spiders of their interfaces (RBE2 in
+  the joint colour, RBE3 in the point colour); a click on one inspects the joint or force at it.
+  The mode shapes come from the own FE reduction; an MTX file gives them only at its nodes
   (with a few interface nodes, the body is drawn rigid).
 
 ## Edit the model

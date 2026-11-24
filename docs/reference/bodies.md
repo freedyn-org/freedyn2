@@ -74,12 +74,16 @@ joints:
   `point`, a `torsion_spring` a `location` there), connected to the
   surface nodes around it by an RBE2 (`interface_type: rbe3` for an interpolating one).
   Joints act at that node (a joint with the flexible body as body1 swaps its bodies); forces act
-  on a massless body `<body>_if<k>` fixed to it, so that every force law works. The spider
-  takes the surface nodes within the distance to the nearest one plus `mesh_size`: a ring in a
-  bore around the joint point, a small patch around a point on a face. **The spider decides how
-  stiff the connection is** (a hinge on a 6 mm patch of a 20 mm wide arm: the first in-plane
-  bending mode at 260 Hz; with the whole end face: 440 Hz); give `interfaces` with a `radius`
-  where it matters. Named materials are in SI units (m, kg, s); in other units give
+  on a massless body `<body>_if<k>` fixed to it, so that every force law works. The spider of a
+  revolute or cylindrical joint takes the **bore** around its axis (joint z): the surface at the
+  smallest distance from the axis near the joint point, along the axis as far as it goes, all
+  around. Otherwise, and where there is no bore, it takes the surface nodes within the distance
+  to the nearest one plus `mesh_size` (a small patch around a point on a face). **The spider
+  decides how stiff the connection is** (a hinge on a 6 mm patch of a 20 mm wide arm: the first
+  in-plane bending mode at 260 Hz; with the whole end face: 440 Hz). The viewer shows the
+  spiders (*spiders of flexible bodies*; a click on one: its joint or force, with the size of
+  the spider); give `interfaces` with a `radius`, `axis` or `type` where they need to be
+  different. Named materials are in SI units (m, kg, s); in other units give
   `{E, nu, rho}`. Position and orientation stay those of the rigid body; mass and inertia come
   from the FE model.
 

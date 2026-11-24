@@ -146,6 +146,25 @@ function shapeObject(s, defaultShape, modes = null, body = null) {
   return holder;
 }
 
+// An RBE2 (joint colour) or RBE3 (point colour) spider: its nodes and lines to the interface
+// node; a click selects the joint or force at it.
+function spiderObject(sp) {
+  const color = sp.type === "rbe3" ? POINT_COLOR : JOINT_COLOR;
+  const p = float32(sp.points), c = sp.center, g = new THREE.Group();
+  const pts = new THREE.BufferGeometry();
+  pts.setAttribute("position", new THREE.BufferAttribute(p, 3));
+  g.add(new THREE.Points(pts, new THREE.PointsMaterial({ color, size: 4, sizeAttenuation: false, depthTest: false })));
+  const seg = new Float32Array(2 * p.length);
+  for (let i = 0; i < p.length; i += 3) seg.set([c[0], c[1], c[2], p[i], p[i + 1], p[i + 2]], 2 * i);
+  const lines = new THREE.BufferGeometry();
+  lines.setAttribute("position", new THREE.BufferAttribute(seg, 3));
+  g.add(new THREE.LineSegments(lines, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.35, depthTest: false })));
+  g.renderOrder = 11;
+  g.userData.spider = true;
+  if (sp.elements.length) g.userData.jointName = sp.elements[0];
+  return g;
+}
+
 function jointGlyph(j) {
   const r = 0.012 * modelSize;
   const mat = new THREE.MeshBasicMaterial({ color: JOINT_COLOR, transparent: true, opacity: 0.85, depthTest: false });
@@ -252,6 +271,11 @@ function build(scene) {
     byName.set(b.name, entry);
     return entry;
   });
+  for (const b of scene.bodies) {  // spiders of the interfaces of flexible bodies, on the body
+    const parent = byName.get(b.name);
+    for (const sp of b.flex?.spiders || []) parent.group.add(spiderObject(sp));
+  }
+  $("spiders-row").hidden = !scene.bodies.some((b) => b.flex?.spiders?.length);
   const ground = new THREE.Group();
   for (const s of scene.ground_shapes) ground.add(shapeObject(s, false));
   root.add(ground);
@@ -354,6 +378,7 @@ function applyToggles() {
     if (o.userData.joint) o.visible = $("show-joints").checked;
     if (o.userData.frame) o.visible = $("show-frames").checked;
     if (o.userData.point) o.visible = $("show-points").checked;
+    if (o.userData.spider) o.visible = $("show-spiders").checked;
   });
   const f = root.getObjectByName("forces"); if (f) f.visible = $("show-forces").checked;
   const a = root.getObjectByName("arrows"); if (a) a.visible = $("show-arrows").checked;
@@ -362,7 +387,7 @@ function applyToggles() {
   for (const b of bodies) if (b.ghost) b.ghost.visible = $("show-reference").checked;
   render();
 }
-for (const id of ["show-joints", "show-forces", "show-points", "show-frames", "show-trace", "show-arrows"]) $(id).addEventListener("change", applyToggles);
+for (const id of ["show-joints", "show-forces", "show-points", "show-frames", "show-trace", "show-arrows", "show-spiders"]) $(id).addEventListener("change", applyToggles);
 $("arrow-scale").addEventListener("input", (e) => { state.arrowScale = Math.pow(10, +e.target.value); refresh(); });
 $("deform-scale").addEventListener("input", (e) => {
   state.deform = Math.pow(10, +e.target.value);
@@ -917,6 +942,15 @@ function showInspector() {
   } else {
     html += `<div class="kind">${sel.kind} · ${esc(d.type)}${d.fix ? " · fixes " + d.fix.join(" ") : ""}</div>` +
       `<div>between ${link(d.body1)} and ${link(d.body2)}</div>`;
+  }
+  for (const b of model.bodies) for (const sp of b.flex?.spiders || []) {  // at an interface of a flexible body
+    if (!sp.elements.includes(sel.name)) continue;
+    const p = float32(sp.points), c = sp.center;
+    let rmin = Infinity, rmax = 0;
+    for (let i = 0; i < p.length; i += 3) { const r = Math.hypot(p[i] - c[0], p[i + 1] - c[1], p[i + 2] - c[2]); rmin = Math.min(rmin, r); rmax = Math.max(rmax, r); }
+    html += `<div>at interface ${sp.node} of ${link(b.name)}: ${sp.type.toUpperCase()} to ${sp.n} surface nodes ` +
+      `(${fmtNum(rmin)} to ${fmtNum(rmax)} from it)${sp.elements.length > 1 ? ", with " + sp.elements.filter((e) => e !== sel.name).map(link).join(", ") : ""}. ` +
+      `<span style="color:var(--muted)">Another spider: <code>flex.interfaces</code> of ${esc(b.name)} with its point and <code>radius</code>, <code>type</code> or <code>axis</code>.</span></div>`;
   }
   const findings = ((model.checks && model.checks.findings) || []).filter((f) => f.elements.includes(sel.name));
   for (const f of findings) html += `<div><span class="sev ${f.severity}" style="color:#fff;border-radius:3px;padding:0 4px;font-size:10px">${f.severity.toUpperCase()}</span> ${esc(f.message)}</div>`;
