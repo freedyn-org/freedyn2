@@ -90,14 +90,10 @@ def _flex(name, b, shapes, model):
         modes, extra = shape_modes(b, shapes)
     except (OSError, ValueError):
         modes, extra = {}, []
+    from ..flex.report import elements_at
     spiders = []
     for node, kind, pts in getattr(d, "spiders", None) or []:
-        at = []
-        for j in model.get("joints", []):
-            if j.get("node") != node or name not in (j["body1"], j["body2"]):
-                continue
-            aux = model["bodies"].get(j["body1"], {}).get("interface_of") == name and j["body1"]
-            at += [f["name"] for f in model.get("forces", []) if aux in (f["body1"], f["body2"])] if aux else [j["name"]]
+        at = elements_at(model, name, node)
         centre = d.node_positions[d.node_index(node)] if node in set(d.node_labels.tolist()) else pts.mean(axis=0)
         spiders.append({"node": node, "type": kind, "center": [float(x) for x in centre], "n": len(pts),
                         "points": _float32(pts), "elements": at})

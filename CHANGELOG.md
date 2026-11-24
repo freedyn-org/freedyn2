@@ -7,6 +7,10 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- MCP tools for flexible bodies: `flex_info` (modes, interfaces, spiders, what is attached),
+  `flex_convergence` (frequencies over mesh sizes or numbers of modes), `flex_deformation`
+  (largest deformation in a run), `flex_export`; `screenshot` with a deformation
+  magnification, `modes` names the elastic mode of flexible bodies; `guide` explains them.
 - Flexible bodies (floating frame of reference, modal coordinates) from Adams MTX files:
   `bodies.<name>.flex: {modal, damping, rotation_coupling, quadratic_inertia}`; joints at a node
   of a flexible body (`node` of a joint, any joint type). The body is split into element types

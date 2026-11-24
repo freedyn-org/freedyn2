@@ -267,3 +267,36 @@ def test_bore_spider(env):
     path.write_text(yaml.safe_dump(m))
     (_, _, pts2), = read_fdflex(cli.load(path)["bodies"]["arm"]["flex"]["modal"]).spiders
     assert np.linalg.norm(pts2, axis=1).max() <= 1.05 * r * (1 + 1e-9) and len(pts2) < len(pts)
+
+
+def test_mcp_flex_tools(env):
+    """The MCP tools for flexible bodies on the arm made flexible: info (modes, interfaces, spiders,
+    what is attached), convergence over the number of modes (the model's cms file untouched),
+    deformation in a run, the elastic mode in an eigenmode, export."""
+    from fdgen.mcp_server import Session
+    flex = {"material": {"E": E, "nu": 0.3, "rho": RHO}, "mesh_size": 0.005, "modes": 4}
+    m = arm(flex, name="mcp")
+    m["solver"]["end_time"] = 0.02
+    path = env / "mcp.yaml"
+    path.write_text(yaml.safe_dump(m))
+    s = Session(env / "runs", cli.find_runtime())
+    try:
+        info = s.flex_info(str(path))
+        assert "body arm: flexible, meshed from its surface" in info and "10 elastic modes" in info
+        assert "interface 90000001 at [0, 0, 0]: RBE2 patch" in info and "; pivot" in info
+        assert "interface 90000002 at [0.2, 0, 0]" in info and "; spring" in info
+        made = (env / "cms" / "arm.fdflex").stat().st_mtime_ns
+        conv = s.flex_convergence(str(path), "arm", modes=[2, 6], count=3)
+        assert "modes 2:" in conv and "modes 6:" in conv and conv.rstrip().endswith("(max change 0.00%)")
+        assert (env / "cms" / "arm.fdflex").stat().st_mtime_ns == made
+        run = s.simulate(str(path))
+        assert run.startswith("run r1")
+        dfm = s.flex_deformation(str(path), "r1")
+        assert "largest deformation" in dfm and "modes with the most elastic energy" in dfm
+        assert "deforms mostly in its mode" in s.modes(str(path), "r1")
+        out = s.flex_export(str(path), "arm", str(env / "arm.bdf"))
+        assert out.startswith("wrote") and (env / "arm.bdf").is_file()
+        with pytest.raises(ValueError, match="not a flexible body"):
+            s.flex_info(str(path), "arm_if2")
+    finally:
+        s.close()

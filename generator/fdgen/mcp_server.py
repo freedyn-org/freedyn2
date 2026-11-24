@@ -5,7 +5,8 @@ simulates it, reads and compares results, and looks at it (viewer in the browser
 screenshots for the assistant). The person checks; the assistant does the work.
 
 Tools: guide, schema, validate, simulate, channels, results, compare, check, view, screenshot,
-modes, locus, sweep, notes, note_image, answer_note.
+modes, locus, sweep, notes, note_image, answer_note; flexible bodies: flex_info,
+flex_convergence, flex_deformation, flex_export.
 Runs are kept for the session (run ids r1, r2, ...) so results can be compared after a change.
 
 The tool logic is the class Session (plain Python, tested without MCP); serve() registers it
@@ -73,6 +74,20 @@ direction, expression_force.value); measures are not channels (they enter the fo
 Workflow: write the YAML -> validate (findings!) -> simulate -> check (plausibility and
 references) -> view / screenshot -> change -> simulate again -> compare with the run before.
 Report what you changed and what the checks say; the person decides.
+
+Flexible bodies (bodies.<name>.flex): from the body's STL shape ({material, mesh_size, modes}:
+"rigid to flex", meshed and reduced automatically), from a Nastran FE model ({fem: part.bdf}) or
+from modal data ({modal: file.fdflex or Adams .mtx}). Every joint and force at the body gets an
+interface node with an RBE2 spider (a revolute or cylindrical joint: the bore around its axis);
+a torque needs a point, a torsion spring a location. The reduction is kept in cms/<body>.fdflex
+and reused while its inputs stay the same; the first build of a large mesh takes a while.
+Named materials (steel, aluminium, titanium) are SI. Tools: flex_info (modes, interfaces and
+their spiders: check them, they decide how stiff a connection is), flex_convergence (frequencies
+over mesh sizes or numbers of modes: choose them with it), flex_deformation (largest deformation
+in a run), flex_export (the FE model as Nastran bulk data, to change spiders by hand, then
+flex.fem). Channels: <body>.eta<i>.eta / etadot / etaddot (modal coordinates); the body frame
+channels as for a rigid body (it is the frame of the FE model, not the center of mass).
+Spiders differently: flex.interfaces [{point, radius, type: rbe2 | rbe3, axis}].
 
 The person answers in the viewer: notes to you (tool notes: text, time, selected element,
 plotted channels, values they tuned with the sliders, a picture: note_image). Work on the open
@@ -270,7 +285,8 @@ class Session:
             webbrowser.open(url)
         return f"viewer: {url} (reloads when the model file is saved)" + (f"\nerror: {v.error}" if v.error else "")
 
-    def screenshot(self, model_file, run_id=None, time=None, channels=(), select=None, width=1200, height=800):
+    def screenshot(self, model_file, run_id=None, time=None, channels=(), select=None, width=1200, height=800,
+                   deformation=None):
         """PNG of the viewer (needs the Python package playwright and a Chromium for it)."""
         try:
             from playwright.sync_api import sync_playwright
@@ -289,12 +305,14 @@ class Session:
             page = browser.new_page(viewport={"width": int(width), "height": int(height)})
             page.goto(page_file.as_uri())
             page.wait_for_function("window.fdViewer && window.fdViewer.model", timeout=60000)
-            page.evaluate("""([time, channels, select]) => {
+            page.evaluate("""([time, channels, select, deformation]) => {
                 const v = window.fdViewer;
+                if (deformation !== null) v.state.deform = deformation;
                 for (const c of channels) if (v.results && v.results.map.has(c)) v.addChannel(c);
                 if (time !== null) v.setTime(time);
+                else if (deformation !== null) v.setTime(v.state.time);
                 if (select) v.select(select);
-            }""", [time, list(channels), select])
+            }""", [time, list(channels), select, deformation])
             page.wait_for_timeout(600)
             png = page.screenshot()
             browser.close()
@@ -318,7 +336,12 @@ class Session:
             main = ", ".join(b for b, _ in sorted(amp.items(), key=lambda x: -x[1])[:3])
             kind = f"{m['frequency']:.4g} Hz, damping ratio {m['damping']:.3f}" if im > 1e-9 else \
                 f"non-oscillating, eigenvalue {re:.4g} 1/s" + (" (UNSTABLE)" if re > 0 else "")
-            lines.append(f"{k:3d}  {kind};  moves mostly {main}")
+            elastic = ""
+            for b, eta in (m.get("flex") or {}).items():
+                e = np.hypot(*np.array(eta).T)
+                if len(e) and e.max() > 0:
+                    elastic += f"; {b} deforms mostly in its mode {int(e.argmax()) + 1}"
+            lines.append(f"{k:3d}  {kind};  moves mostly {main}{elastic}")
         return "\n".join(lines) if data["modes"] else lines[0] + " no eigenvalues other than 0"
 
     def locus(self, model_file, run_id, path, values, time=None, count=8):
@@ -393,6 +416,84 @@ class Session:
     def answer_note(self, model_file, note_id, answer, done=True):
         n = viewer_notes.answer_note(model_file, note_id, answer, done)
         return f"note {n['id']} answered ({n['status']}); the person sees the answer in the viewer"
+
+    # ---- flexible bodies ----
+    def _flex_bodies(self, model, body=None):
+        names = [n for n, b in model["bodies"].items() if "flex" in b and not b.get("interface_of")]
+        if body:
+            if body not in names:
+                raise ValueError(f"{body} is not a flexible body; flexible: {', '.join(names) or 'none'}")
+            return [body]
+        return names
+
+    def flex_info(self, model_file, body=None):
+        """The flexible bodies of a model (meshed and reduced if needed): modes, interfaces, spiders."""
+        import warnings
+        from .flex.report import summary
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            model = cli.load(model_file)
+        names = self._flex_bodies(model, body)
+        text = "\n\n".join(summary(model, n) for n in names) if names else "no flexible bodies"
+        notes = sorted({str(w.message) for w in caught})
+        return text + ("\n\nwarnings:\n" + "\n".join(notes) if notes else "")
+
+    def flex_convergence(self, model_file, body, mesh_sizes=None, modes=None, count=6):
+        """Free-free frequencies of one flexible body for several mesh sizes or numbers of modes
+        (the reductions kept apart from the model's own cms file)."""
+        import copy
+        import warnings
+        from .model import load_yaml, validate
+        from .flex import load_modal
+        path = Path(model_file)
+        raw = load_yaml(path)
+        flex0 = (raw.get("bodies") or {}).get(body, {}).get("flex")
+        if flex0 is None:
+            raise ValueError(f"{body} has no flex block")
+        variants = []
+        for h in mesh_sizes or []:
+            if "material" not in flex0:
+                raise ValueError("mesh sizes: only for a body meshed from its STL (flex.material)")
+            variants.append({"mesh_size": float(h)})
+        for m in modes or []:
+            variants.append({"modes": int(m)})
+        if not variants:
+            raise ValueError("give mesh_sizes or modes")
+        rows = []
+        for k, v in enumerate(variants):
+            m = copy.deepcopy(raw)
+            f = m["bodies"][body]["flex"]
+            f.update(v)
+            f["cms"] = str((self.workdir / "convergence" / f"{body}_{k}.fdflex").resolve())
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")  # the same as for the model itself (flex_info reports them)
+                model = validate(m, path.parent)
+            d = load_modal(model["bodies"][body]["flex"]["modal"])
+            meta = getattr(d, "meta", None) or {}
+            rows.append((f.get("mesh_size", "-"), f.get("modes", 20), meta.get("dofs"), meta.get("seconds"),
+                         d.frequencies[:int(count)]))
+        ref = rows[-1][4]
+        lines = [f"body {body}: free-free frequencies (Hz); change against the last row (give the finest last)"]
+        for h, nm, dofs, sec, f in rows:
+            n = min(len(f), len(ref))
+            ch = np.max(np.abs(f[:n] / ref[:n] - 1)) if n else float("nan")
+            lines.append(f"mesh size {h}, modes {nm}: {dofs} dofs, {sec} s; " + ", ".join(f"{x:.5g}" for x in f) +
+                         f"  (max change {ch:.2%})")
+        return "\n".join(lines)
+
+    def flex_deformation(self, model_file, run_id, body=None):
+        """Largest deformation of the flexible bodies in a run, and their most active modes."""
+        from .flex.report import deformation
+        model = cli.load(model_file)
+        r = self.run(run_id).results
+        return "\n".join(deformation(model, n, r) for n in self._flex_bodies(model, body)) or "no flexible bodies"
+
+    def flex_export(self, model_file, body, output=None):
+        """The FE model of a body meshed from its STL as Nastran bulk data (spiders as RBE2 / RBE3)."""
+        from .fem.surface import export
+        out = export(model_file, body, output)
+        return (f"wrote {out}: change it (spiders, mesh) and use it with flex: {{fem: {out.name}}}; joints and forces "
+                "attach to the interface node at their point")
 
     def _runtime_or_none(self):
         try:
@@ -491,9 +592,12 @@ def serve(workdir=None):
 
     @mcp.tool()
     def screenshot(model_file: str, run_id: str | None = None, time: float | None = None,
-                   channels: list[str] | None = None, select: str | None = None) -> Image:
-        """A picture of the viewer, to look at the model yourself: at a time, with channels plotted, an element selected."""
-        return Image(data=session.screenshot(model_file, run_id, time, channels or [], select), format="png")
+                   channels: list[str] | None = None, select: str | None = None,
+                   deformation: float | None = None) -> Image:
+        """A picture of the viewer, to look at the model yourself: at a time, with channels plotted, an element selected;
+        deformation: magnification of the deformation of flexible bodies (default 1, true size)."""
+        return Image(data=session.screenshot(model_file, run_id, time, channels or [], select,
+                                             deformation=deformation), format="png")
 
     @mcp.tool()
     def modes(model_file: str, run_id: str, time: float | None = None) -> str:
@@ -513,6 +617,33 @@ def serve(workdir=None):
         forces.spring.stiffness) at each value, in parallel; a table of a key figure (max, min, max |x|,
         peak-peak, mean, rms, final) of the channels over [t_start, t_end] per value. Each value is a run."""
         return session.sweep(model_file, path, values, channels, kpi, t_start, t_end, end_time)
+
+    @mcp.tool()
+    def flex_info(model_file: str, body: str = "") -> str:
+        """Flexible bodies of a model: source (STL mesh, FE model, modal data), elastic modes and their
+        free-free frequencies, mass, and each interface with its spider (RBE2 / RBE3, bore or patch, how many
+        surface nodes, how far) and the joints and forces at it. Meshes and reduces first if needed."""
+        return session.flex_info(model_file, body or None)
+
+    @mcp.tool()
+    def flex_convergence(model_file: str, body: str, mesh_sizes: list[float] | None = None,
+                         modes: list[int] | None = None, count: int = 6) -> str:
+        """Free-free frequencies of a flexible body for several mesh sizes (bodies meshed from their STL) or
+        numbers of fixed-interface modes, side by side: choose mesh_size and modes with it. The model file and its
+        cms file are not changed."""
+        return session.flex_convergence(model_file, body, mesh_sizes, modes, count)
+
+    @mcp.tool()
+    def flex_deformation(model_file: str, run_id: str, body: str = "") -> str:
+        """Largest deformation of the flexible bodies in a run (relative to their best-fitting rigid motion),
+        when and where, and the modes with the most elastic energy."""
+        return session.flex_deformation(model_file, run_id, body or None)
+
+    @mcp.tool()
+    def flex_export(model_file: str, body: str, output: str = "") -> str:
+        """Write the FE model of a body meshed from its STL as Nastran bulk data (mesh, material, interface nodes,
+        RBE2 / RBE3 spiders): to change spiders or mesh by hand, then flex: {fem: file}."""
+        return session.flex_export(model_file, body, output or None)
 
     @mcp.tool()
     def notes(model_file: str, everything: bool = False) -> str:
