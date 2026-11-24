@@ -20,6 +20,10 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   Craig-Bampton reduction orthonormalized as Adams/Flex, inertia invariants with the consistent
   mass; the new program `freedyn2_modal` (Eigen only) does the sparse part. Checked against the
   MSC Nastran / Adams MTX files of the legacy check-in tests (docs/findings.md).
+- Rigid to flex: `flex: {material, mesh_size}` on a body with an STL shape meshes it (Netgen,
+  quadratic tetrahedra; extra `fem`: `pip install "freedyn2[fem]"`), makes an interface node
+  with an RBE2 spider at every joint and force point, reduces and simulates it as a flexible
+  body; joints act at the nodes, forces on massless bodies fixed to them.
 
 ## [0.1.0rc4] - 2026-11-07
 

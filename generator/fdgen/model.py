@@ -89,7 +89,7 @@ def _body(name, b, base_dir):
     if abs(n - 1) > 1e-9:
         warnings.warn(f"body {name}: orientation |theta| = {n}, normalized")
     b["orientation"] = [t / n for t in b["orientation"]]
-    if "flex" in b:
+    if "flex" in b and "material" not in b["flex"]:  # surface bodies: after the joints (fem.surface)
         _flex(name, b, base_dir)
     if "shapes" in b:
         b["shapes"] = shapes.validate_shapes(f"body {name}", b["shapes"], b, base_dir)
@@ -152,6 +152,9 @@ def _joint_node(out, j, bodies):
     """A joint at a node of a flexible body: the node label (checked), location defaults to the
     node position at t = 0. Flexible bodies without a node: the joint acts on the body frame."""
     flex = out["body2"] if out["body2"] != "ground" else out["body1"]
+    if any("flex" in bodies[b] and "mtx" not in bodies[b]["flex"] for b in (out["body1"], out["body2"])
+           if b != "ground"):
+        return  # a body meshed from its surface: nodes are set by fem.surface.prepare
     if "node" not in j:
         for b in (out["body1"], out["body2"]):
             if b != "ground" and "flex" in bodies[b]:
@@ -372,6 +375,9 @@ def validate(model, base_dir=None):
     joints = [_joint(name, j, bodies) for name, j in section("joints")]
     road = _road(model.get("road"), base_dir)
     forces = [_force(name, f, bodies, road, base_dir) for name, f in section("forces")]
+    if any("flex" in b and "material" in b["flex"] for b in bodies.values()):
+        from .fem.surface import prepare  # rigid to flex: mesh, interfaces, modal data
+        prepare(bodies, joints, forces, base_dir)
     measures = {name: _measure(name, m, bodies) for name, m in section("measures")}
     sensors = [_sensor(name, sn, bodies) for name, sn in section("sensors")]
     parameters = dict(model.get("parameters") or {})

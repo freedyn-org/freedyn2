@@ -156,6 +156,8 @@ def write_mtx(data, path, nodes=None, title="written by freedyn2"):
     new line; read back by read_mtx). nodes: the node labels to keep (default all); everything
     else (invariants, stiffness) is independent of them."""
     keep = list(range(len(data.node_labels))) if nodes is None else [data.node_index(n) for n in nodes]
+    if np.any(np.abs(data.node_labels[keep]) > 99_999_999):
+        raise ValueError("MTX: node labels have at most 8 digits")
     nm = data.nm
     blocks = [
         ("SELNOD", np.column_stack([data.node_labels[keep], data.node_positions[keep]]), True),

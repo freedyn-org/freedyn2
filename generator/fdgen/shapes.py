@@ -91,7 +91,7 @@ def default_shapes(model):
             wheels[f["body1"]] = extensions.wheel(f) or (radius, 0.4 * radius)
     out = {}
     for name, b in model["bodies"].items():
-        if b.get("shapes"):
+        if b.get("shapes") or b.get("interface_of"):  # interface bodies of flexible bodies: massless, none
             continue
         if name in wheels:
             r, w = wheels[name]  # cylinder axis z -> body y: rotation by -90 deg about x

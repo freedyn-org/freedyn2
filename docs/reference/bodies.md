@@ -56,6 +56,32 @@ joints:
       flex: {fem: hook.bdf, interfaces: [1000001], modes: 20, damping: 0.05}
   ```
 
+- **Rigid to flex.** With `material` and `mesh_size` the body is meshed from its one STL shape
+  (or `stl`) with quadratic tetrahedra (Netgen, `pip install "freedyn2[fem]"`) and reduced
+  automatically; the rest of the model stays as it is:
+
+  ```yaml
+  bodies:
+    arm:
+      mass: 0.314                      # kept for reference: a warning if the FE mass differs by 5 %
+      inertia: [1.3e-5, 1.05e-3, 1.06e-3]
+      position: [0.1, 0, 0]
+      shapes: [{type: mesh, file: arm.stl, frame: body}]
+      flex: {material: steel, mesh_size: 0.004, modes: 10}
+  ```
+
+  Every joint and force at the body gets an interface node at its point, connected to the
+  surface nodes around it by an RBE2 (`interface_type: rbe3` for an interpolating one).
+  Joints act at that node (a joint with the flexible body as body1 swaps its bodies); forces act
+  on a massless body `<body>_if<k>` fixed to it, so that every force law works. The spider
+  takes the surface nodes within the distance to the nearest one plus `mesh_size`: a ring in a
+  bore around the joint point, a small patch around a point on a face. **The spider decides how
+  stiff the connection is** (a hinge on a 6 mm patch of a 20 mm wide arm: the first in-plane
+  bending mode at 260 Hz; with the whole end face: 440 Hz); give `interfaces` with a `radius`
+  where it matters. Named materials are in SI units (m, kg, s); in other units give
+  `{E, nu, rho}`. Position and orientation stay those of the rigid body; mass and inertia come
+  from the FE model. Meshing and reduction are cached.
+
 - Joints act at a **node** of the modal data (`node` of the joint): its point and axes move and
   turn with the deformation. The flexible body is `body2`, or `body1` of a joint with the
   ground. Without `node` a joint acts on the body frame. `location` defaults to the node.
