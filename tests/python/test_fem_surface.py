@@ -300,3 +300,22 @@ def test_mcp_flex_tools(env):
             s.flex_info(str(path), "arm_if2")
     finally:
         s.close()
+
+
+def test_viewer_sets_a_spider(env):
+    """The viewer's inspector sets the radius of a spider: written into the model file, the
+    rebuilt model has the wider spider; automatic takes it out again."""
+    from fdgen.flex.fdflex import read_fdflex
+    from fdgen.view.server import View
+    flex = {"material": {"E": E, "nu": 0.3, "rho": RHO}, "mesh_size": 0.005, "modes": 2}
+    path = env / "edit.yaml"
+    path.write_text(yaml.safe_dump(arm(flex, name="edit")))
+    n0 = len(read_fdflex(cli.load(path)["bodies"]["arm"]["flex"]["modal"]).spiders[0][2])
+    v = View(path, run=False)
+    v.flex_interface({"body": "arm", "point": [0, 0, 0], "radius": 0.012, "type": "rbe2"})
+    assert yaml.safe_load(path.read_text())["bodies"]["arm"]["flex"]["interfaces"] == [
+        {"point": [0.0, 0.0, 0.0], "radius": 0.012, "type": "rbe2"}]
+    n1 = len(read_fdflex(cli.load(path)["bodies"]["arm"]["flex"]["modal"]).spiders[0][2])
+    assert n1 > n0
+    v.flex_interface({"body": "arm", "point": [0, 0, 0], "remove": True})
+    assert "interfaces" not in yaml.safe_load(path.read_text())["bodies"]["arm"]["flex"]

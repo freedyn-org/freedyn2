@@ -91,12 +91,17 @@ def _flex(name, b, shapes, model):
     except (OSError, ValueError):
         modes, extra = {}, []
     from ..flex.report import elements_at
+    from ..geometry import body_frame
+    R, A = body_frame(b)
+    given = {i["node"]: i for i in (getattr(d, "meta", None) or {}).get("interfaces", [])}
+    editable = "material" in b["flex"]
     spiders = []
     for node, kind, pts in getattr(d, "spiders", None) or []:
         at = elements_at(model, name, node)
         centre = d.node_positions[d.node_index(node)] if node in set(d.node_labels.tolist()) else pts.mean(axis=0)
         spiders.append({"node": node, "type": kind, "center": [float(x) for x in centre], "n": len(pts),
-                        "points": _float32(pts), "elements": at})
+                        "points": _float32(pts), "elements": at, "point": [float(x) for x in R + A @ centre],
+                        "radius": given.get(node, {}).get("radius"), "editable": editable})
     return {"eta": [f"{name}.eta{i + 1}.eta" for i in range(d.nm)],
             "modes": {str(k): _float32(v) for k, v in modes.items()}, "spiders": spiders}, extra
 

@@ -949,8 +949,17 @@ function showInspector() {
     let rmin = Infinity, rmax = 0;
     for (let i = 0; i < p.length; i += 3) { const r = Math.hypot(p[i] - c[0], p[i + 1] - c[1], p[i + 2] - c[2]); rmin = Math.min(rmin, r); rmax = Math.max(rmax, r); }
     html += `<div>at interface ${sp.node} of ${link(b.name)}: ${sp.type.toUpperCase()} to ${sp.n} surface nodes ` +
-      `(${fmtNum(rmin)} to ${fmtNum(rmax)} from it)${sp.elements.length > 1 ? ", with " + sp.elements.filter((e) => e !== sel.name).map(link).join(", ") : ""}. ` +
-      `<span style="color:var(--muted)">Another spider: <code>flex.interfaces</code> of ${esc(b.name)} with its point and <code>radius</code>, <code>type</code> or <code>axis</code>.</span></div>`;
+      `(${fmtNum(rmin)} to ${fmtNum(rmax)} from it)${sp.elements.length > 1 ? ", with " + sp.elements.filter((e) => e !== sel.name).map(link).join(", ") : ""}.</div>`;
+    if (sp.editable && !STATIC) {
+      html += `<div class="spider-edit" data-body="${esc(b.name)}" data-point="${esc(JSON.stringify(sp.point))}" style="margin-top:4px">` +
+        `spider: radius <input type="number" step="any" min="0" class="sp-radius" style="width:7em" value="${sp.radius ?? ""}" placeholder="automatic"> ` +
+        `<select class="sp-type"><option value="rbe2"${sp.type === "rbe2" ? " selected" : ""}>RBE2 rigid</option>` +
+        `<option value="rbe3"${sp.type === "rbe3" ? " selected" : ""}>RBE3 interpolating</option></select> ` +
+        `<button class="sp-apply">apply</button> <button class="sp-auto" title="as made by default (the entry in flex.interfaces removed)">automatic</button>` +
+        `<div class="sp-status" style="color:var(--muted)">writes flex.interfaces of ${esc(b.name)} into the model file; it is meshed and reduced again</div></div>`;
+    } else {
+      html += `<div style="color:var(--muted)">Another spider: <code>flex.interfaces</code> of ${esc(b.name)} (point, <code>radius</code>, <code>type</code>, <code>axis</code>)${sp.editable ? "" : ", or the RBE2 / RBE3 of its FE model"}.</div>`;
+    }
   }
   const findings = ((model.checks && model.checks.findings) || []).filter((f) => f.elements.includes(sel.name));
   for (const f of findings) html += `<div><span class="sev ${f.severity}" style="color:#fff;border-radius:3px;padding:0 4px;font-size:10px">${f.severity.toUpperCase()}</span> ${esc(f.message)}</div>`;
@@ -979,6 +988,18 @@ function showInspector() {
   box.querySelectorAll("[data-channel]").forEach((e) => e.addEventListener("click", () => {
     area.addChannel(e.dataset.channel);
   }));
+  box.querySelectorAll(".spider-edit").forEach((e) => {
+    const send = (remove) => {
+      const r = e.querySelector(".sp-radius").value, status = e.querySelector(".sp-status");
+      const body = { body: e.dataset.body, point: JSON.parse(e.dataset.point), remove,
+        radius: remove || r === "" ? null : +r, type: remove ? null : e.querySelector(".sp-type").value };
+      status.textContent = "saving ...";
+      post("api/flex-interface", body).then(() => { status.textContent = "saved: meshing, reducing, simulating ..."; pollSoon(); },
+        (err) => { status.textContent = `not saved: ${err.message}`; });
+    };
+    e.querySelector(".sp-apply").addEventListener("click", () => send(false));
+    e.querySelector(".sp-auto").addEventListener("click", () => send(true));
+  });
   const pre = box.querySelector("pre.editable");
   if (pre) pre.addEventListener("click", () => openEditor({ element: sel.name }));
 }

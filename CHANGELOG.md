@@ -7,6 +7,9 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- Viewer: the inspector of a joint or force at a spider of a body meshed from its STL sets the
+  spider's radius and type (RBE2 / RBE3) or makes it automatic again (`flex.interfaces` in the
+  model file, fdgen.flex.edit).
 - MCP tools for flexible bodies: `flex_info` (modes, interfaces, spiders, what is attached),
   `flex_convergence` (frequencies over mesh sizes or numbers of modes), `flex_deformation`
   (largest deformation in a run), `flex_export`; `screenshot` with a deformation

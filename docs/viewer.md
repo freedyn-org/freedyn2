@@ -80,6 +80,9 @@ variable `FREEDYN2_NO_UPDATE_CHECK=1`.
   that fits it best is scaled, so the body stays where it is. Eigenmodes show the deformation
   too. *spiders of flexible bodies* shows the RBE2 / RBE3 spiders of their interfaces (RBE2 in
   the joint colour, RBE3 in the point colour); a click on one inspects the joint or force at it.
+  For a body meshed from its STL the inspector changes the spider (radius, RBE2 or RBE3) or
+  makes it automatic again: an entry in `flex.interfaces` of the model file, meshed and reduced
+  again.
   The mode shapes come from the own FE reduction; an MTX file gives them only at its nodes
   (with a few interface nodes, the body is drawn rigid).
 
