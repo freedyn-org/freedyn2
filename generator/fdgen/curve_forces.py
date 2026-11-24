@@ -30,12 +30,12 @@ CURVE_TYPES = ("curve_force", "curve_torque")
 MEASURES = ("displacement", "velocity", "distance", "distance_rate", "angle", "angular_rate", "angular_velocity")
 APPLICATIONS = ("los", "dir", "torque")
 # parameters of the measure part, the law [a, b, c, segment (5)] and the application part
-_N_MEASURE = {"displacement": 16, "velocity": 16, "distance": 7, "distance_rate": 6, "angle": 11,
+N_MEASURE = {"displacement": 16, "velocity": 16, "distance": 7, "distance_rate": 6, "angle": 11,
               "angular_rate": 9, "angular_velocity": 9}
 _N_APP = {"los": 6, "dir": 12, "torque": 6}
 _TWO_PI = 2 * np.pi
 
-KINDS = {f"curve_{m}_{a}_{end}": (1 if end == "ground" else 2, _N_MEASURE[m] + 8 + _N_APP[a])
+KINDS = {f"curve_{m}_{a}_{end}": (1 if end == "ground" else 2, N_MEASURE[m] + 8 + _N_APP[a])
          for m in MEASURES for a in APPLICATIONS for end in ("ground", "bb")}
 
 
@@ -46,8 +46,10 @@ def _parts(kind):
     return m, rest[0], rest[1]
 
 
-def _measure(c, m, b1, b2, p):
-    """(value, rate-free parts) of the measure from p[0:n]; also the state update of an angle."""
+def measure_value(c, m, b1, b2, p):
+    """(value, state update) of a measure from its parameters p (measure_params); the update of
+    a continuous angle is (offset of its reference in p, new reference), else None. Shared with
+    the library drivers (fdgen.drivers)."""
     if m in ("displacement", "velocity"):
         u1, u2, eg, e1, e2, m0 = p[0:3], p[3:6], p[6:9], p[9:12], p[12:15], p[15]
         e = eg + b1.axis(e1) + b2.axis(e2)
@@ -78,8 +80,8 @@ def law(kind, c):
     m, app, _ = _parts(kind)
     p, b1 = c.p, c.bodies[0]
     b2 = c.bodies[1] if c.n == 2 else Ground()
-    n = _N_MEASURE[m]
-    value, update = _measure(c, m, b1, b2, p[0:n])
+    n = N_MEASURE[m]
+    value, update = measure_value(c, m, b1, b2, p[0:n])
     A, B, C, seg = p[n], p[n + 1], p[n + 2], p[n + 3:n + 8]
     arg = B * value + C
     c.spline_args = [arg]
@@ -158,8 +160,9 @@ def _global(model, body, v, point=False):
     return R + A @ v if point else A @ v
 
 
-def _measure_params(model, spec, fb):
-    """p of the measure part, or None if no library type covers it."""
+def measure_params(model, spec, fb):
+    """Parameters of a measure for measure_value between the bodies fb (body1, body2 / ground),
+    or None if the library types do not cover it."""
     t = spec["type"]
     if t not in MEASURES:
         return None
@@ -216,7 +219,7 @@ def element(force, model):
         return None
     fb = _ends(force)
     spec = model["measures"][force["measure"]]
-    mp = _measure_params(model, spec, fb)
+    mp = measure_params(model, spec, fb)
     if mp is None:
         return None
     sp = model["splines"][force["curve"]]

@@ -112,7 +112,9 @@ polynomial joins the initial value at rest to the motion at Ta.
 
 A driver along a curve of time, `motion: <spline>(t)` without `ramp`, on an angle, a distance
 or a displacement (component in the global frame or in the frame of body1 or body2, with or
-without offset) is a library type: no model plugin, no compiler. Other motions are built in
-the model plugin.
+without offset) is a library type: no model plugin, no compiler. Six types cover these
+(`spline_driver_<displacement|distance|angle>_<ground|bb>`, the measure's frame, component,
+points and axes are their parameters). Other motions, a `ramp` or an angle range other than
+continuous are built in the model plugin.
 
 <!-- keys: drivers -->

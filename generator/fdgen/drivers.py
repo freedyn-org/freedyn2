@@ -1,17 +1,23 @@
 """Drivers: prescribed motion of a measure, Phi = m(q) - f(t) = 0.
 
-Drivers along a curve of time (motion: <spline>(t)) on the common measures are library element
-types (spline_driver_*: compiled into the runtime, the table is data): no model plugin. Any
-other driver is built in the model plugin.
+Drivers along a curve of time (motion: <spline>(t), no ramp) on a displacement, distance or
+angle are library element types (spline_driver_<measure>_<end>: compiled into the runtime, the
+measure's geometry and the curve's segment are parameters, the table is data): no model
+plugin. Any other driver is built in the model plugin.
 """
 
 import re
 
 import casadi as ca
 
+from . import curve_forces
 from .custom_element import CustomElement, PluginElement
 from .forces import LibraryElement
+from .kinematics import Connector, Ground
+from .lagrange import ElementFunctions
 from .measures import POSITION_MEASURES
+from .splines import cubic, segment_of
+from .splines import table as spline_table
 
 
 def ramp(t, Ta, A, f1, f1d, f1dd):
@@ -50,79 +56,54 @@ def _build(model, name, d):
 
 
 # --- library drivers: motion along a curve of time ----------------------------------------------
+#
+# Phi = m(q) - curve(t): the measure's frame, component, points and axes are parameters (as for
+# the curve forces), so one type per measure and end: spline_driver_<measure>_<end>.
 
 _CURVE_OF_T = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*t\s*\)\s*$")
-
-
-def _variants():
-    """{type name: measure spec (bodies b1, b2 / ground)} of the library drivers."""
-    out = {}
-    for b2 in ("ground", "b2"):
-        end = "ground" if b2 == "ground" else "bb"
-        for off in ("none", "initial"):
-            out[f"spline_driver_angle_{end}_{off}"] = {"type": "angle", "body1": "b1", "body2": b2,
-                                                       "vector": [1, 0, 0], "plane": [[1, 0, 0], [0, 1, 0]],
-                                                       "offset": off}
-            out[f"spline_driver_distance_{end}_{off}"] = {"type": "distance", "body1": "b1", "body2": b2,
-                                                          "offset": off}
-            for comp in "xyz":
-                for frame in ("global", "b1") + (("b2",) if b2 != "ground" else ()):
-                    fname = {"global": "global", "b1": "body1", "b2": "body2"}[frame]
-                    out[f"spline_driver_{comp}_{fname}_{end}_{off}"] = {
-                        "type": "displacement", "body1": "b1", "body2": b2, "component": comp, "frame": frame,
-                        "offset": off}
-    return out
-
-
-VARIANTS = _variants()
-
-
-def _canonical(spec):
-    bodies = {"b1": {"mass": 1.0, "inertia": [1, 1, 1], "position": [0.1, 0.2, 0.3], "orientation": [1, 0, 0, 0]},
-              "b2": {"mass": 1.0, "inertia": [1, 1, 1], "position": [-0.3, 0.1, 0.2], "orientation": [1, 0, 0, 0]}}
-    return {"model": "library", "bodies": bodies, "measures": {"m": spec},
-            "splines": {"s": {"x": [0.0, 1.0, 2.0], "y": [0.0, 1.0, 0.0], "type": "akima"}}, "parameters": {}}
-
-
-def _library_build(kind):
-    model = _canonical(VARIANTS[kind])
-    return _build(model, kind, {"measure": "m", "motion": "s(t)"})
+LIBRARY_MEASURES = ("displacement", "distance", "angle")
+KINDS = {f"spline_driver_{m}_{end}": (1 if end == "ground" else 2, curve_forces.N_MEASURE[m] + 5)
+         for m in LIBRARY_MEASURES for end in ("ground", "bb")}
 
 
 def build_library(kind):
     """ElementFunctions of a library driver type (fdgen.codegen)."""
-    cx, _, phi = _library_build(kind)
-    return cx.element(kind, Phi=phi)
-
-
-_KEYS = {}
-
-
-def _library_keys():
-    if not _KEYS:
-        for kind in VARIANTS:
-            cx, _, phi = _library_build(kind)
-            cx.c.p = cx._p()
-            _KEYS[cx._key("@", None, {"Phi": phi})] = kind
-    return _KEYS
+    _, _, m, end = kind.split("_")
+    nb, n_p = KINDS[kind]
+    c = Connector("lie", nb, n_p)
+    b1, b2 = c.bodies[0], (c.bodies[1] if nb == 2 else Ground())
+    n = curve_forces.N_MEASURE[m]
+    value, update = curve_forces.measure_value(c, m, b1, b2, c.p[0:n])
+    funs = c.functions(kind, Phi=value - cubic(c.p[n:n + 5], c.t))
+    funs["spline"] = ca.Function(f"fd_{kind}_spline", [c.q, c.v, c.p, c.t], [c.t], ["q", "qd", "p", "t"], ["x"])
+    if update is not None:  # continuous angle: its reference after each accepted step
+        new = ca.SX(n_p, 1)
+        new[update[0]] = c.expand(update[1])
+        funs["post"] = ca.Function(f"fd_{kind}_post", [c.q, c.v, c.p, c.t], [new], ["q", "qd", "p", "t"], ["p_new"])
+    return ElementFunctions(kind, **funs)
 
 
 def library_driver(model, name, d):
-    """LibraryElement of a driver along a curve of time on a measure a library type covers, or None."""
+    """LibraryElement of a driver along a curve of time (motion: <spline>(t), no ramp) on a
+    measure the library types cover, or None (the driver is built in the model plugin)."""
     m = _CURVE_OF_T.match(str(d["motion"]))
-    if not m or m.group(1) not in (model.get("splines") or {}) or float(d.get("ramp", 0.0)) > 0:
+    splines = model.get("splines") or {}
+    if not m or m.group(1) not in splines or float(d.get("ramp", 0.0)) > 0:
         return None
-    try:
-        cx, _, phi = _build(model, name, d)
-    except ValueError:
+    spec = (model.get("measures") or {}).get(d["measure"])
+    if spec is None or spec["type"] not in LIBRARY_MEASURES:
         return None
-    if cx.rep != "lie":
+    fb = (spec["body1"], spec.get("body2", "ground"))
+    if any(model["bodies"][b].get("element", "rigid_body") != "rigid_body" for b in fb if b != "ground"):
         return None
-    cx.c.p = cx._p()
-    kind = _library_keys().get(cx._key("@", None, {"Phi": phi}))
-    if kind is None:
+    mp = curve_forces.measure_params(model, spec, fb)
+    if mp is None:
         return None
-    return LibraryElement(kind, cx.bodies, cx.consts.values, cx.spline_slots())
+    sp = splines[m.group(1)]
+    tab = spline_table(sp["x"], sp["y"], sp.get("type", "akima"))
+    kind = f"spline_driver_{spec['type']}_{'ground' if fb[1] == 'ground' else 'bb'}"
+    names = [fb[0]] + ([] if fb[1] == "ground" else [fb[1]])
+    return LibraryElement(kind, names, [*mp, *segment_of(tab, 0.0)], [(len(mp), tab)])
 
 
 def driver_elements(model):

@@ -15,7 +15,7 @@ for _mod in (joints, forces):
         ELEMENT_BUILDERS[_kind + "_euler"] = lambda k=_kind, m=_mod: m.build_euler(k)
 for _kind in curve_forces.KINDS:  # curves of measures (the table is data)
     ELEMENT_BUILDERS[_kind] = lambda k=_kind: curve_forces.build(k)
-for _kind in drivers.VARIANTS:  # drivers along a curve of time (the table is data)
+for _kind in drivers.KINDS:  # drivers along a curve of time (the table is data)
     ELEMENT_BUILDERS[_kind] = lambda k=_kind: drivers.build_library(k)
 
 # Version of the layout below; a model plugin is only loaded by a runtime with the same one.

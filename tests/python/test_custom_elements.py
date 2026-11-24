@@ -459,28 +459,55 @@ def test_spline_of_1000_points_is_data(tmp_path):
     text = fdm.read_text()
     assert "\nspline " in text
     # the driver along a curve of time is a library type (no plugin code), the others are not
-    assert "element spline_driver_z_global_ground_none lift" in text
+    assert "element spline_driver_displacement_ground lift" in text
     assert not (tmp_path / "spline_table_plugin_src" / "d_spline_table_lift.c").exists()
 
 
 @pytest.mark.parametrize("measure", [
-    {"type": "angle", "body1": "a", "body2": "b", "vector": [1, 0, 0], "plane": [[1, 0, 0], [0, 1, 0]]},
+    {"type": "angle", "body1": "a", "body2": "b", "vector": [1, 0, 0], "plane": [[1, 0, 0], [0, 1, 0]],
+     "offset": "initial"},
+    {"type": "angle", "body1": "a", "orientation": [1, 0, 0, 0]},
     {"type": "displacement", "body1": "a", "body2": "b", "component": "y", "frame": "b", "offset": "initial"},
-    {"type": "distance", "body1": "a", "offset": 0.1},
-    {"type": "displacement", "body1": "a", "component": "x", "frame": "a"}])
-def test_library_drivers_match_the_plugin(measure):
-    """A driver along a curve of time is matched to its library type by the structure of its
-    constraint; the library element has the same p as the plugin element (same law)."""
-    from fdgen import drivers
-    model = validate({"model": "m", "bodies": {"a": {"mass": 1, "inertia": [1, 1, 1], "position": [0.5, 0, 0]},
-                                               "b": {"mass": 1, "inertia": [1, 1, 1], "position": [0, 0.2, 0]}},
-                      "splines": {"c": {"x": [0, 1, 2, 3], "y": [0, 0.1, 0.3, 0.2]}},
-                      "measures": {"m": measure}, "drivers": {"d": {"measure": "m", "motion": "c(t)"}},
-                      "solver": {"type": "HHT", "end_time": 1, "step": 0.01}})
+    {"type": "displacement", "body1": "b", "body2": "a", "component": "x", "frame": "a", "offset": "initial"},
+    {"type": "displacement", "body1": "a", "component": "x", "frame": "a", "offset": 0.5},  # starts at 0
+    {"type": "distance", "body1": "a", "point1": [0.6, 0, 0], "offset": "initial"},
+    {"type": "distance", "body1": "a", "body2": "b", "offset": "initial"}])
+def test_library_drivers_equal_the_plugin(tmp_path, measure):
+    """A driver along a curve of time is one of the six library types (spline_driver_<measure>_
+    <end>, no plugin) and moves the bodies as the same driver built in the model plugin."""
+    import yaml
+
+    from fdgen import cli, drivers
+    from fdgen.view.scene import read_results
+    try:
+        runtime = cli.find_runtime()
+    except FileNotFoundError:
+        pytest.skip("freedyn2_run not built")
+    m = {"model": "m", "gravity": [0, 0, -9.81],
+         "bodies": {"a": {"mass": 1, "inertia": [0.1, 0.2, 0.3], "position": [0.5, 0, 0],
+                          "angular_velocity": [0.3, -0.2, 0.5]},
+                    "b": {"mass": 2, "inertia": [0.2, 0.1, 0.3], "position": [0, 0.2, 0]}},
+         "joints": {"hold": {"type": "spherical", "body1": "b", "location": [0, 0.2, 0]}},
+         "splines": {"c": {"x": [0, 0.1, 0.2, 0.3, 0.5], "y": [0, 0.01, 0.03, 0.02, 0.05]}},
+         "measures": {"m": measure}, "drivers": {"d": {"measure": "m", "motion": "c(t)"}},
+         "solver": {"type": "HHT", "alpha": -0.05, "end_time": 0.4, "step": 1e-3, "output_step": 1e-2}}
+    model = validate(m)
     el = drivers.library_driver(model, "d", model["drivers"]["d"])
-    assert el is not None and el[0].startswith("spline_driver_")
-    cx, _, phi = drivers._build(model, "d", model["drivers"]["d"])
-    assert el[2] == cx.consts.values and drivers.driver_elements(model) == []
-    # not covered: a ramp, or another motion
+    end = "ground" if measure.get("body2", "ground") == "ground" else "bb"
+    assert el is not None and el[0] == f"spline_driver_{measure['type']}_{end}"
+    assert drivers.driver_elements(model) == []
+    out = {}
+    for name, motion in (("library", "c(t)"), ("plugin", "c(t) + 0")):
+        d = tmp_path / name
+        d.mkdir()
+        m["drivers"]["d"]["motion"] = motion
+        (d / "m.yaml").write_text(yaml.safe_dump(m))
+        fdm, _, _ = cli.build(d / "m.yaml", d)
+        assert ("plugin" in fdm.read_text()) == (name == "plugin")
+        cli.simulate(runtime, fdm, d / "r.csv")
+        out[name] = read_results(d / "r.csv")
+    for ch in ("a.R_x", "a.R_y", "a.R_z", "a.theta1", "b.theta3"):
+        assert out["library"][ch] == pytest.approx(out["plugin"][ch], abs=1e-9), ch
+    # not covered: a ramp, another motion, an angle range, a frame of a third body
     for d in ({"measure": "m", "motion": "c(t)", "ramp": 0.5}, {"measure": "m", "motion": "2 * c(t)"}):
         assert drivers.library_driver(model, "d", d) is None

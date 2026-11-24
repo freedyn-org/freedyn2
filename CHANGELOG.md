@@ -28,7 +28,9 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 - Splines as library items: `spring_damper` and `torsion_spring` take a spline name as
   `stiffness` or `damping` (force over the deflection, over the rate), and drivers along a
   curve of time (`motion: <spline>(t)`) on angles, distances and displacements are built into
-  the runtime: no model plugin, no compiler (legacy 101_V8Motion runs without one).
+  the runtime (six types, displacement, distance, angle to the ground or between two bodies;
+  frame, component, points and axes of the measure are parameters): no model plugin, no
+  compiler (legacy 101_V8Motion runs without one).
 - `curve_force` and `curve_torque`: a force or torque that is a spline of a measure,
   s = a curve(b m + c), library types for any measure between its two bodies (frames,
   components and directions are parameters: 42 types). The `.fds` importer makes them of a
