@@ -27,3 +27,5 @@ Third-party components, used and not included in this repository:
   CasADi (LGPL-3.0)          symbolic derivatives and C code generation in the generator
   Eigen (MPL-2.0)            linear algebra in the runtime
   SuiteSparse KLU (LGPL-2.1) sparse LU factorization in the runtime, linked dynamically
+  Netgen (LGPL-2.1)          volume meshes of flexible bodies from STL (optional, pip package
+                             netgen-mesher with OpenCASCADE, extra fem)

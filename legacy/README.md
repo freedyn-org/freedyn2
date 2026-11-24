@@ -15,7 +15,7 @@ on the same machine. The legacy repository is never modified:
 `io.h`, `concurrent_queue.h` (MSVC PPL) and `tbb/concurrent_vector.h`.
 
 ```sh
-pip install mkl-devel                         # MKL headers and libraries
+pip install "mkl-devel==2024.2.*"             # MKL headers and libraries (later versions lack routines the kernel uses)
 git clone --depth 1 https://github.com/freedyn-org/me ../me
 python legacy/build_legacy.py ../me -o build/legacy [--mkl parallel|sequential]
 build/legacy/build/FreeDyn model.fds screen   # writes model.srf, ... next to the .fds

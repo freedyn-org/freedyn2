@@ -91,7 +91,7 @@ async function meshBytes(url) {
 const q = (t) => new THREE.Quaternion(t[1], t[2], t[3], t[0]).normalize();
 let model = null, results = null, bodies = [], updaters = [], modelSize = 1, traces = null;
 let reference = null;  // the reference run (parsed CSV), if it is not the current one
-const state = { time: 0, playing: false, speed: 1, follow: "", selection: null, arrowScale: 1, mode: null };
+const state = { time: 0, playing: false, speed: 1, follow: "", selection: null, arrowScale: 1, mode: null, deform: 1 };
 const GHOST_COLOR = "#8a8f98";
 
 function material(color, opacity = 1) {
@@ -99,7 +99,10 @@ function material(color, opacity = 1) {
     opacity, depthWrite: opacity >= 1, side: THREE.DoubleSide });
 }
 
-function shapeObject(s, defaultShape) {
+// Deformable meshes of flexible bodies: {body, geo, base (positions at rest), phi (nm x nv x 3), nm}.
+// The vertices move by factor * sum_m eta_m phi_m in the shape's own coordinates.
+let deformables = [];
+function shapeObject(s, defaultShape, modes = null, body = null) {
   const opacity = s.opacity ?? (defaultShape ? 0.8 : 1);
   const mat = material(s.color, opacity);
   const holder = new THREE.Group();
@@ -122,6 +125,15 @@ function shapeObject(s, defaultShape) {
         const g = new STLLoader().parse(buf);
         g.computeVertexNormals();
         obj = new THREE.Mesh(g, mat);
+        if (modes && body) {
+          const phi = float32(modes), base = g.attributes.position.array.slice();
+          const nm = Math.round(phi.length / base.length);
+          if (nm * base.length === phi.length) {
+            g.attributes.position.setUsage(THREE.DynamicDrawUsage);
+            deformables.push({ body, geo: g, base, phi, nm });
+            refresh();
+          }
+        }
       } else {
         obj = new OBJLoader().parse(new TextDecoder().decode(buf));
         obj.traverse((o) => { if (o.isMesh) o.material = mat; });
@@ -132,6 +144,25 @@ function shapeObject(s, defaultShape) {
     }).catch((e) => showError(`mesh ${s.file}: ${e.message}`));
   }
   return holder;
+}
+
+// An RBE2 (joint colour) or RBE3 (point colour) spider: its nodes and lines to the interface
+// node; a click selects the joint or force at it.
+function spiderObject(sp) {
+  const color = sp.type === "rbe3" ? POINT_COLOR : JOINT_COLOR;
+  const p = float32(sp.points), c = sp.center, g = new THREE.Group();
+  const pts = new THREE.BufferGeometry();
+  pts.setAttribute("position", new THREE.BufferAttribute(p, 3));
+  g.add(new THREE.Points(pts, new THREE.PointsMaterial({ color, size: 4, sizeAttenuation: false, depthTest: false })));
+  const seg = new Float32Array(2 * p.length);
+  for (let i = 0; i < p.length; i += 3) seg.set([c[0], c[1], c[2], p[i], p[i + 1], p[i + 2]], 2 * i);
+  const lines = new THREE.BufferGeometry();
+  lines.setAttribute("position", new THREE.BufferAttribute(seg, 3));
+  g.add(new THREE.LineSegments(lines, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.35, depthTest: false })));
+  g.renderOrder = 11;
+  g.userData.spider = true;
+  if (sp.elements.length) g.userData.jointName = sp.elements[0];
+  return g;
 }
 
 function jointGlyph(j) {
@@ -200,6 +231,8 @@ function bodyPose(b, k) {
 function build(scene) {
   root.clear();
   updaters = [];
+  deformables = [];
+  $("deform-row").hidden = !scene.bodies.some((b) => b.flex);
   state.mode = null;
   model = scene;
   // size of the model at t = 0: positions and shape extents of the bodies
@@ -207,7 +240,7 @@ function build(scene) {
   for (const b of scene.bodies) {
     box.expandByPoint(new THREE.Vector3(...b.position));
     for (const s of b.shapes) {
-      const e = s.size ? Math.max(...s.size) / 2 : (s.radius || 0) + (s.length || 0) / 2;
+      const e = s.extent ?? (s.size ? Math.max(...s.size) / 2 : (s.radius || 0) + (s.length || 0) / 2);
       box.expandByPoint(new THREE.Vector3(...b.position).addScalar(e));
       box.expandByPoint(new THREE.Vector3(...b.position).addScalar(-e));
     }
@@ -218,7 +251,7 @@ function build(scene) {
     const g = new THREE.Group();
     g.name = b.name;
     g.userData.body = b.name;
-    for (const s of b.shapes) g.add(shapeObject(s, b.default_shapes));
+    b.shapes.forEach((s, i) => g.add(shapeObject(s, b.default_shapes, b.flex?.modes?.[String(i)], b.name)));
     const axes = new THREE.AxesHelper(0.15 * modelSize);
     axes.material.depthTest = false; axes.renderOrder = 12; axes.userData.frame = true;
     g.add(axes);
@@ -233,10 +266,16 @@ function build(scene) {
       ghost.userData.ghost = true;
       root.add(ghost);
     }
-    const entry = { ...b, group: g, cols, ghost, prevCols, color: b.shapes[0]?.color || "#888" };
+    const etaCols = b.flex ? b.flex.eta.map((c) => column(c)) : null;
+    const entry = { ...b, group: g, cols, ghost, prevCols, etaCols, color: b.shapes[0]?.color || "#888" };
     byName.set(b.name, entry);
     return entry;
   });
+  for (const b of scene.bodies) {  // spiders of the interfaces of flexible bodies, on the body
+    const parent = byName.get(b.name);
+    for (const sp of b.flex?.spiders || []) parent.group.add(spiderObject(sp));
+  }
+  $("spiders-row").hidden = !scene.bodies.some((b) => b.flex?.spiders?.length);
   const ground = new THREE.Group();
   for (const s of scene.ground_shapes) ground.add(shapeObject(s, false));
   root.add(ground);
@@ -339,6 +378,7 @@ function applyToggles() {
     if (o.userData.joint) o.visible = $("show-joints").checked;
     if (o.userData.frame) o.visible = $("show-frames").checked;
     if (o.userData.point) o.visible = $("show-points").checked;
+    if (o.userData.spider) o.visible = $("show-spiders").checked;
   });
   const f = root.getObjectByName("forces"); if (f) f.visible = $("show-forces").checked;
   const a = root.getObjectByName("arrows"); if (a) a.visible = $("show-arrows").checked;
@@ -347,8 +387,13 @@ function applyToggles() {
   for (const b of bodies) if (b.ghost) b.ghost.visible = $("show-reference").checked;
   render();
 }
-for (const id of ["show-joints", "show-forces", "show-points", "show-frames", "show-trace", "show-arrows"]) $(id).addEventListener("change", applyToggles);
+for (const id of ["show-joints", "show-forces", "show-points", "show-frames", "show-trace", "show-arrows", "show-spiders"]) $(id).addEventListener("change", applyToggles);
 $("arrow-scale").addEventListener("input", (e) => { state.arrowScale = Math.pow(10, +e.target.value); refresh(); });
+$("deform-scale").addEventListener("input", (e) => {
+  state.deform = Math.pow(10, +e.target.value);
+  $("deform-label").textContent = `× ${state.deform < 10 ? state.deform.toFixed(1) : Math.round(state.deform)}`;
+  refresh();
+});
 
 // ---------- force arrows ----------
 // Arrows at the points of application, from the force outputs of the elements: force and torque
@@ -421,6 +466,63 @@ function forceArrows(scene, worldPoint, byName) {
 }
 $("show-reference").addEventListener("change", applyToggles);
 
+// ---------- deformation of flexible bodies ----------
+// u = sum_m eta_m phi_m in the shape's coordinates. The modes have no mean rigid motion (the body
+// frame floats with the body), so u carries the offset between the frame and the deformed body:
+// magnified by factor, only the deformation relative to the rigid motion that fits u best (least
+// squares over the vertices) is magnified, the rigid part is shown as it is.
+function deform(eta, factor = state.deform) {  // eta: Map body -> modal coordinates
+  for (const d of deformables) {
+    const e = eta.get(d.body), pos = d.geo.attributes.position.array, n = d.base.length;
+    pos.set(d.base);
+    if (e) {
+      const u = d.u || (d.u = new Float32Array(n));
+      u.fill(0);
+      for (let m = 0; m < d.nm; m++) {
+        const a = e[m] || 0;
+        if (a === 0) continue;
+        const off = m * n;
+        for (let i = 0; i < n; i++) u[i] += a * d.phi[off + i];
+      }
+      if (factor === 1) for (let i = 0; i < n; i++) pos[i] += u[i];
+      else {
+        const [t, w, c] = rigidFit(d.base, u);
+        for (let i = 0; i < n; i += 3) {
+          const rx = d.base[i] - c[0], ry = d.base[i + 1] - c[1], rz = d.base[i + 2] - c[2];
+          const g = [t[0] + w[1] * rz - w[2] * ry, t[1] + w[2] * rx - w[0] * rz, t[2] + w[0] * ry - w[1] * rx];
+          for (let j = 0; j < 3; j++) pos[i + j] += g[j] + factor * (u[i + j] - g[j]);
+        }
+      }
+    }
+    d.geo.attributes.position.needsUpdate = true;
+    d.geo.computeVertexNormals();
+  }
+}
+function rigidFit(x, u) {  // translation t and small rotation w about the centre c: u ~ t + w x (x - c)
+  const n = x.length / 3, c = [0, 0, 0], t = [0, 0, 0];
+  for (let i = 0; i < x.length; i += 3) for (let j = 0; j < 3; j++) { c[j] += x[i + j] / n; t[j] += u[i + j] / n; }
+  const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], b = [0, 0, 0];
+  for (let i = 0; i < x.length; i += 3) {
+    const r = [x[i] - c[0], x[i + 1] - c[1], x[i + 2] - c[2]], v = [u[i] - t[0], u[i + 1] - t[1], u[i + 2] - t[2]];
+    const rr = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+    for (let a = 0; a < 3; a++) for (let k = 0; k < 3; k++) A[a][k] += (a === k ? rr : 0) - r[a] * r[k];
+    b[0] += r[1] * v[2] - r[2] * v[1]; b[1] += r[2] * v[0] - r[0] * v[2]; b[2] += r[0] * v[1] - r[1] * v[0];
+  }
+  return [t, solve3(A, b), c];
+}
+function solve3(A, b) {  // Cramer's rule; a degenerate A (all vertices on a line) gives w = 0
+  const det = (M) => M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0])
+    + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+  const D = det(A);
+  if (!(Math.abs(D) > 0)) return [0, 0, 0];
+  return [0, 1, 2].map((k) => det(A.map((row, i) => row.map((v, j) => (j === k ? b[i] : v)))) / D);
+}
+function etaAt(k) {
+  const eta = new Map();
+  for (const b of bodies) if (b.etaCols && b.etaCols.every((c) => c)) eta.set(b.name, b.etaCols.map((c) => c[k]));
+  return eta;
+}
+
 // ---------- time ----------
 let lastFollow = null;
 function setTime(time) {
@@ -438,6 +540,7 @@ function setTime(time) {
     }
   }
   for (const u of updaters) u(k);
+  if (deformables.length) deform(etaAt(k));
   const fb = bodies.find((b) => b.name === state.follow);
   if (fb) {
     const p = fb.group.position.clone();
@@ -471,8 +574,19 @@ function showMode(mode, time, amplitude = 1) {
     rmax = Math.max(rmax, Math.hypot(x.rRe.length(), x.rIm.length()));
     shapes.set(name, x);
   }
+  const etas = new Map(Object.entries(mode.flex || {}));  // modal coordinates of the flexible bodies
+  for (const d of deformables) {  // largest vertex motion of the mode (real and imaginary part)
+    const e = etas.get(d.body);
+    if (!e) continue;
+    const n = d.base.length;
+    for (const part of [0, 1]) {
+      const u = new Float32Array(n);
+      for (let m = 0; m < d.nm; m++) { const a = e[m]?.[part] || 0; for (let i = 0; i < n; i++) u[i] += a * d.phi[m * n + i]; }
+      for (let i = 0; i < n; i += 3) tmax = Math.max(tmax, Math.hypot(u[i], u[i + 1], u[i + 2]));
+    }
+  }
   const scale = 0.08 * modelSize / Math.max(tmax, 0.5 * modelSize * rmax, 1e-30);
-  state.mode = { mode, k0: results ? index(results.t, time) : 0, shapes, scale, amplitude, phase: 0, offsets: new Map() };
+  state.mode = { mode, k0: results ? index(results.t, time) : 0, shapes, etas, scale, amplitude, phase: 0, offsets: new Map() };
   modeFrame();
 }
 function modeFrame() {
@@ -485,6 +599,14 @@ function modeFrame() {
   }
   for (const b of bodies) { const [R, Q] = bodyPose(b, m.k0); b.group.position.copy(R); b.group.quaternion.copy(Q); }
   for (const u of updaters) u(m.k0);
+  if (deformables.length) {  // the state at k0 plus the mode, at the scale of the mode
+    const eta = etaAt(m.k0);
+    for (const [name, e] of m.etas) {
+      const base = eta.get(name) || [];
+      eta.set(name, e.map((z, i) => (base[i] || 0) + A * (z[0] * c - z[1] * s)));
+    }
+    deform(eta, 1);
+  }
   render();
 }
 function stopMode() { if (state.mode) setTime(state.time); }
@@ -821,6 +943,15 @@ function showInspector() {
     html += `<div class="kind">${sel.kind} · ${esc(d.type)}${d.fix ? " · fixes " + d.fix.join(" ") : ""}</div>` +
       `<div>between ${link(d.body1)} and ${link(d.body2)}</div>`;
   }
+  for (const b of model.bodies) for (const sp of b.flex?.spiders || []) {  // at an interface of a flexible body
+    if (!sp.elements.includes(sel.name)) continue;
+    const p = float32(sp.points), c = sp.center;
+    let rmin = Infinity, rmax = 0;
+    for (let i = 0; i < p.length; i += 3) { const r = Math.hypot(p[i] - c[0], p[i + 1] - c[1], p[i + 2] - c[2]); rmin = Math.min(rmin, r); rmax = Math.max(rmax, r); }
+    html += `<div>at interface ${sp.node} of ${link(b.name)}: ${sp.type.toUpperCase()} to ${sp.n} surface nodes ` +
+      `(${fmtNum(rmin)} to ${fmtNum(rmax)} from it)${sp.elements.length > 1 ? ", with " + sp.elements.filter((e) => e !== sel.name).map(link).join(", ") : ""}. ` +
+      `<span style="color:var(--muted)">Another spider: <code>flex.interfaces</code> of ${esc(b.name)} with its point and <code>radius</code>, <code>type</code> or <code>axis</code>.</span></div>`;
+  }
   const findings = ((model.checks && model.checks.findings) || []).filter((f) => f.elements.includes(sel.name));
   for (const f of findings) html += `<div><span class="sev ${f.severity}" style="color:#fff;border-radius:3px;padding:0 4px;font-size:10px">${f.severity.toUpperCase()}</span> ${esc(f.message)}</div>`;
   if (results) {
@@ -878,8 +1009,8 @@ function motionBox() {
   // all positions of the bodies over the results (sampled), widened by their shapes
   const box = new THREE.Box3(), v = new THREE.Vector3();
   for (const b of bodies) {
-    const r = Math.max(0, ...b.shapes.map((s) => new THREE.Vector3(...s.position).length()
-      + (s.size ? new THREE.Vector3(...s.size).length() / 2 : (s.radius || 0) + (s.length || 0) / 2)));
+    const r = Math.max(0, ...b.shapes.map((s) => s.extent ?? (new THREE.Vector3(...s.position).length()
+      + (s.size ? new THREE.Vector3(...s.size).length() / 2 : (s.radius || 0) + (s.length || 0) / 2))));
     const n = b.cols ? results.n : 1, step = Math.max(1, Math.floor(n / 400));
     for (let k = 0; k < n; k += step) {
       v.copy(bodyPose(b, k)[0]);

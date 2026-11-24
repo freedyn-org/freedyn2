@@ -1,0 +1,134 @@
+%% freedyn2 test model: legacy check-in test 04_FlexRotUHackerl (me_testing), 0.2 s, MTX trimmed to node 1000001
+Header freeDynHeader
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+%FREEDYN                                                                +
+%                 ______             _____                              +
+%                |  ____|           |  __ \                             +
+%                | |__ _ __ ___  ___| |  | |_   _ _ __                  +
+%                |  __| '__/ _ \/ _ \ |  | | | | | '_ \                 +
+%                | |  | | |  __/  __/ |__| | |_| | | | |                +
+%                |_|  |_|  \___|\___|_____/ \__, |_| |_|                +
+%                                               __/ |                   +
+%                                              |___/                    +
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+
+% by mbs research group (WS, WW, KS, KN, FP, TL, SO)                    +
+% @FH OOE F&E GmbH, Stelzhamerstr. 23, 4600 Wels                        +
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+
+% version = 01|20                                                       +
+%                                                                       +
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+EndHeader
+%
+%---------------- Rigid Bodies ------------------------
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dmy_1000001
+	BodyID = 1
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.000000
+	LocationCenterMass = 0.000000,0.000000,0.000000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+%
+%---------------- Flexible Bodies ------------------------
+%
+Body MBS_FlexBody_Full
+	BodyID = 2
+	BodyName = struct1
+	Path2MtxFile = struct1_node1000001.mtx
+	Is_Itf_active = yes
+	Is_QuadraticTermOF_Itt_active = yes
+	LocationCenterMass = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+	InitialVelocityVector = 0,0,0
+	InitialOmegaVector = 0., 0., 0.
+	GlobalDampingFactor = 0.05000000
+EndBody
+%
+%
+%---------------- Generic Constraints ------------------------
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 1
+	Location = 155.517899, 0.000000, 0.000000
+	BodyIDs = 1, 2
+	InterfaceNode = 1000001
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 2
+	 BodyIDs = 1, 0
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 155.517900, 0.000000, 0.000000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+%
+%---------------- Gear Constraint ------------------------
+%
+%
+%---------------- Motion Constraint ------------------------
+%
+%
+%---------------- Forces ------------------------
+%
+Force Gravity
+    ForceID = 1
+    GravityAccVector = 0.000000, -9.810000, 0.000000
+    ActivationTime = 0.000000
+EndForce
+%
+Force GenericTorque
+	 ForceID = 2
+	 BodyIDs = 1,0
+	 AxisType = SpaceFixed
+	 Axis = 1.000000,0.000000,0.000000
+	 TorqueExpression = 500.0
+EndForce
+%
+%
+%---------------- Data Object ------------------------
+%
+%
+%---------------- Measures ------------------------
+%
+%
+%---------------- Solver ------------------------
+%
+Simulation Dynamic
+	 SimulationTimeEnd = 0.2
+	 OutputTimeBegin = 0.000000
+	 OutputTimeStepSize = 1.0e-3
+	 isExactOutputTimeEnforced = yes
+	 WriteConstraintForceResultFile = no
+	 WriteForceResultFile = no
+	 WriteVelocityResultFile = no
+	 WriteStateResultFile = yes
+	 WriteAccelerationResultFile = no
+	 WriteExtConstraintLagrangeResultFile = no
+	 WriteMeasureResultFile = yes
+EndSimulation
+%
+Solver HHT
+	 Alpha = -0.100000
+	 MaxNumberOfInnerIterations = 10, 10
+	 GlobalErrorTolerance = 1.000000e-05
+	 SolverMinTimeStep = 1.000000e-14
+	 SolverMaxTimeStep = 1.000000e-03
+	 ModifyNewmark = no
+	 MaxNumOfTimeStepsUsingSameFactorizedJacobian = 0
+	 UsePardisoScalingAndMatching = no
+	 DebugLevel = 0
+	 DebugTimeBegin = 0.000000
+	 DebugTimeEnd = 1.000000
+EndSolver
+%

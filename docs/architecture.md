@@ -75,6 +75,9 @@ Read in this order; each stop builds on the previous one.
 |---|---|
 | `fdgen/lagrange.py` | element function set; Lagrange elements (vector space) and Lie group elements |
 | `fdgen/rigid_body.py` | rigid body: Lie group R³×SO(3) (default), Euler parameters (legacy profile), Shabana Eq. 2.13 |
+| `fdgen/flex_body.py` | flexible body (floating frame, modal coordinates), split into element types of fixed size (frame, mode, pair); joint primitives at a node; parameters from the modal data |
+| `fdgen/flex/` | modal data (`modal.py`: inertia invariants), Adams MTX reader and writer (`mtx.py`) |
+| `fdgen/fem/` | linear FEM of a part: Nastran bulk data (`nastran.py`), elements (`elements.py`), assembly with RBE2 / RBE3 (`assemble.py`), Craig-Bampton and invariants (`reduce.py`) with `freedyn2_modal` (`runtime/app/modal.cpp`) |
 | `fdgen/kinematics.py` | `Body`, `Ground`, `Connector`: kinematics of connected bodies, virtual power, exact rates |
 | `fdgen/joints.py` | translational / rotational constraint primitives; presets fixed, spherical, revolute, cylindrical, prismatic |
 | `fdgen/forces.py` | library forces: spring-damper, force, torque, torsion spring, bushing, tires (one function per law) |

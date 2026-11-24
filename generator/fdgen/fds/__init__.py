@@ -3,7 +3,8 @@
 Modules: blocks (block parser, values), bodies (bodies, joints), loads (measures, expressions,
 forces, splines, drivers), solver (simulation / solver blocks, profiles).
 
-Supported blocks: Body Rigid_EulerParameter_PAI, Constraint Generic, Constraint TimeMotion,
+Supported blocks: Body Rigid_EulerParameter_PAI, Body MBS_FlexBody_Full (bodies.flex_body; profile v2
+only), Constraint FixRiBoFleBo (bodies.flex_fixed_joint), Constraint Generic, Constraint TimeMotion,
 Force Gravity, Force GenericForce / GenericTorque, Measure Translational / Rotational,
 DataObject Parameter / Spline_1D, Simulation Dynamic, Solver HHT / HHT_Negrut.
 Header and Globals blocks are ignored; any other block is rejected, so that a model is never
@@ -100,7 +101,15 @@ def load_fds(path, profile="legacy"):
             for key in ("ID", "BodyID"):
                 if b[2].get(key):
                     body_ids[b[2][key]] = name
-        elif kind == ("Constraint", "Generic"):
+        elif kind == ("Body", "MBS_FlexBody_Full"):
+            name, body = _bodies.flex_body(b, path.parent)
+            if name in bodies:
+                raise ModelError(f"duplicate body name {name}")
+            bodies[name] = body
+            for key in ("ID", "BodyID"):
+                if b[2].get(key):
+                    body_ids[b[2][key]] = name
+        elif kind in (("Constraint", "Generic"), ("Constraint", "FixRiBoFleBo")):
             joint_blocks.append(b)
         elif kind == ("Constraint", "TimeMotion"):
             motion_blocks.append(b)
@@ -129,7 +138,15 @@ def load_fds(path, profile="legacy"):
     if not bodies or sim is None or solver is None:
         raise ModelError("a model needs bodies, a Simulation Dynamic and a Solver HHT block")
 
-    joints = [_bodies.joint(b, body_ids, bodies) for b in joint_blocks]
+    from ..model import _flex  # mass and inertia from the modal data, defaults
+    for name, body in bodies.items():
+        if "flex" in body:
+            _flex(name, body, path.parent)
+    joints = [(_bodies.flex_fixed_joint if b[1] == "FixRiBoFleBo" else _bodies.joint)(b, body_ids, bodies)
+              for b in joint_blocks]
+    from ..model import _joint_node  # node of a flexible body: checked, its modal data
+    for j, b in zip(joints, joint_blocks):
+        _joint_node(j, {"node": j["node"], "location": j["location"]} if "node" in j else {}, bodies)
     measures = {}
     for b in measure_blocks:
         make = _loads.translational_measure if b[1] == "Translational" else _loads.rotational_measure
@@ -144,7 +161,7 @@ def load_fds(path, profile="legacy"):
     _unique_names(forces)
     _unique_names(joints)
 
-    s = _solver.settings(sim, solver)
+    s = _solver.settings(sim, solver, profile)
     _solver.apply_profile(profile, s, bodies, solver)
     return {"model": path.stem, "bodies": bodies, "joints": joints, "forces": forces, "parameters": parameters,
             "measures": measures, "splines": used_splines, "drivers": drivers, "gravity": gravity, "solver": s}

@@ -57,7 +57,9 @@ set(FD_ELEMENT_TYPES
   torsion_ground torsion_ground_euler torsion_bb torsion_bb_euler
   bushing_ground bushing_ground_euler bushing_bb bushing_bb_euler
   tire tire_euler tire_local tire_local_euler
-  sensor sensor_euler)
+  sensor sensor_euler
+  flex_frame flex_coord flex_mode flex_pair
+  transfix_bb_node rotfix_bb_node transfix_ground_node rotfix_ground_node)
 set(FD_ELEMENT_SOURCES)
 foreach(t ${FD_ELEMENT_TYPES})
   list(APPEND FD_ELEMENT_SOURCES ${FD_GEN_DIR}/${t}.c)
@@ -153,6 +155,9 @@ fd_copy_runtime_dlls(freedyn2_road)
 # both copy the same DLLs into the same directory: one after the other, not at the same time
 # (parallel builds; file(COPY) of two programs at once fails on Windows)
 add_dependencies(freedyn2_road freedyn2_run)
+# modal reduction of linear FE models (fdgen.fem): Eigen only
+add_executable(freedyn2_modal runtime/app/modal.cpp)
+target_link_libraries(freedyn2_modal PRIVATE Eigen3::Eigen)
 
 # --- Tests -----------------------------------------------------------------------
 if(FD_TOP_LEVEL)
@@ -167,9 +172,9 @@ endif()
 # to fdgen/schema and fdgen/examples (fdgen.resources finds them there).
 if(SKBUILD)
   if(UNIX AND NOT APPLE)
-    set_target_properties(freedyn2_run freedyn2_road PROPERTIES INSTALL_RPATH "$ORIGIN")
+    set_target_properties(freedyn2_run freedyn2_road freedyn2_modal PROPERTIES INSTALL_RPATH "$ORIGIN")
   endif()
-  install(TARGETS freedyn2_run freedyn2_road RUNTIME DESTINATION fdgen/bin)
+  install(TARGETS freedyn2_run freedyn2_road freedyn2_modal RUNTIME DESTINATION fdgen/bin)
   set(FD_SHARED_DEPS)
   foreach(t SuiteSparse::KLU SuiteSparse::BTF SuiteSparse::AMD SuiteSparse::COLAMD SuiteSparse::SuiteSparseConfig)
     if(TARGET ${t})

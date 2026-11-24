@@ -97,6 +97,8 @@ def check_model(model):
         out.append(finding("warning", "units_length",
                            f"the model spans {summary['extent']:.0f} m: lengths in mm? (SI: m)"))
     for name, b in bodies.items():
+        if b.get("interface_of"):  # massless body at an interface of a flexible body
+            continue
         if b["mass"] > 1e5 or b["mass"] < 1e-6:
             out.append(finding("warning", "units_mass", f"body {name}: mass {b['mass']:g} kg (SI units?)", [name]))
     # topology

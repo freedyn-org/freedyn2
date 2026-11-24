@@ -5,6 +5,41 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Added
+
+- Flexible bodies (floating frame of reference, modal coordinates) from Adams MTX files:
+  `bodies.<name>.flex: {modal, damping, rotation_coupling, quadratic_inertia}`; joints at a node
+  of a flexible body (`node` of a joint, any joint type). The body is split into element types
+  of fixed size (rigid part, one mode, one pair of modes) that the runtime adds up: no model
+  plugin, no compiler, any number of modes. The `.fds` importer reads `Body MBS_FlexBody_Full`
+  and `Constraint FixRiBoFleBo` (default profile). Checked against the legacy check-in tests
+  03_FlyingFleBo and 04_FlexRotUHackerl, free and clamped beam frequencies, energy and momentum
+  conservation (docs/theory.md, 3.4).
+- Flexible bodies from a Nastran FE model of the part (`flex.fem`, `interfaces`, `modes`): own
+  linear FEM (TET4, TET10, HEX8 with incompatible modes, Timoshenko beams; RBE2, RBE3),
+  Craig-Bampton reduction orthonormalized as Adams/Flex, inertia invariants with the consistent
+  mass; the new program `freedyn2_modal` (Eigen only) does the sparse part. Checked against the
+  MSC Nastran / Adams MTX files of the legacy check-in tests (docs/findings.md).
+- Rigid to flex: `flex: {material, mesh_size}` on a body with an STL shape meshes it (Netgen,
+  quadratic tetrahedra; extra `fem`: `pip install "freedyn2[fem]"`), makes an interface node
+  with an RBE2 spider at every joint and force point, reduces and simulates it as a flexible
+  body; joints act at the nodes, forces on massless bodies fixed to them.
+- `freedyn2 flex-export model.yaml body`: the meshed body as Nastran bulk data, to change its
+  spiders or mesh and use it with `flex.fem`. Joints and forces without `node` attach to the
+  interface node at their point for every flexible body (also `fem` and `modal`); a torque and a
+  torsion spring at a flexible body need their point.
+- The CMS result of a reduction is kept next to the model in freedyn2's own modal data file
+  (`cms/<body>.fdflex`: a ZIP archive of NumPy arrays with the modal data, the mode shapes on
+  the surface and what it was made from), reused while its inputs are the same and usable by
+  other models with `flex.modal`; `flex.cms` gives another place. `freedyn2 flex-info` shows a
+  modal data file and converts between .fdflex and Adams MTX.
+- Spiders in bores: a revolute or cylindrical joint at a body meshed from its STL connects
+  to the bore around its axis (`interfaces[].axis` for others); the viewer shows the spiders
+  of flexible bodies, a click on one inspects its joint or force with the spider's size.
+- Viewer: flexible bodies deform (their STL, or the surface of the FE mesh), magnified with
+  *deformation* about their best-fitting rigid motion; eigenmodes with the deformation. Mesh
+  shapes count for the size of the scene and *fit view*.
+
 ## [0.1.0rc4] - 2026-11-07
 
 Release candidate with the Onshape import, element ids and renaming that follows every

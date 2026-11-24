@@ -64,3 +64,54 @@ references. The comparison models in `examples/compare` and the tests reproduce 
   (otherwise the equations depend on the wheel angle), and the lateral position must be left
   out as a cyclic coordinate (with the heading it forms a defective double eigenvalue 0 that
   round-off splits into +-sqrt(eps)).
+
+## Flexible bodies against legacy FreeDyn
+
+Checked once, when the flexible body was added (November 2026), with the legacy check-in tests
+of `me_testing` (Linux build of the legacy kernel, which reproduces the Windows reference
+results to 2e-8). The models are kept as golden results of freedyn2
+(`tests/data/flex`, `tests/python/test_flex_golden.py`); the legacy comparison is not repeated.
+
+- **03_FlyingFleBo** (free beam, 26 modes, full coupling, spinning at 5000 rad/s, 1e-4 s):
+  at the legacy step 1e-6 the modal coordinates differ by 2.5e-3 relative (mostly the dominant
+  mode at 13 kHz, omega h = 0.08), the orientation by 1e-5. With 1e-7 in both programs:
+  2.5e-5 and 1e-6, the differences shrink with the step size (discretization of the two HHT
+  forms, not a difference in the model).
+- **04_FlexRotUHackerl** (U-shaped part on a massless body with a revolute joint, driven by a
+  torque past its first natural frequency, 20 modes, full coupling, damping 5 %, 1 s): modal
+  coordinates 2e-5 relative, orientation 3e-4 rad after 66 rad of rotation. freedyn2 is the
+  same at steps 1e-3 and 1e-4 and closes the energy balance (work of the torque = kinetic +
+  elastic energy + modal damping) to 1e-6. **Legacy FreeDyn is not**: with the step 1e-4 and
+  the tolerance 1e-8 it moves away from its own result at 1e-3 (3e-2 rad after 1 s, growing in
+  time), so the converged legacy result is the one at the larger step.
+- **106_V8_FlexConRod** does not run in freedyn2, neither does the same model with rigid
+  connecting rods (breakdown at 5 ms) nor the rigid 101_V8Motion (very small steps): crank
+  drives built from generic joints and massless bodies are a problem of freedyn2 that is
+  independent of the flexible bodies (open). 05_FlexBodyJointForce and 105_Waegemaschine need
+  contact elements freedyn2 does not have.
+- The units in the title line of an MTX file are not reliable (`beam.mtx` says METER and is in
+  millimeters); like the legacy kernel, freedyn2 uses the values in the units of the model.
+- The legacy kernel builds with MKL up to 2024.2 only (`pip install "mkl-devel==2024.2.*"`):
+  later versions dropped the sparse routines it calls (`mkl_dcsrgemv`, `mkl_dcsrcoo`, ...).
+
+## Own FE reduction against Nastran / Adams
+
+Checked once with the FE models of the legacy check-in tests (`me_testing`), against their MTX
+files (made with MSC Nastran / Adams), November 2026:
+
+- **struct1** (04_FlexRotUHackerl; 6420 HEX8, one RBE3 with 600 nodes, 30000 dofs, Craig-Bampton
+  with 20 modes): mass 3e-8, inertia tensor 6e-5, frequencies within 0.9 % (the first five
+  within 0.04 %), the norms of the invariants I5, I8, I9 within 0.3 %, the mode shapes at the
+  interface node 0.3 %. The rotating hook of 04 with these modal data: largest modal amplitude
+  within 0.07 %, frame position within 0.1 % of its motion and orientation within 4e-4 rad
+  after 0.2 s. Reduction 17 s (Eigen's simplicial LDL^T; the dense coupling of the large RBE3
+  dominates the factor).
+- **DaBsp** (05_FlexBodyJointForce; two plates of 931 TET10, joined by two bolts of 40 CBAR
+  each (ROD, r = 1 mm, 4 mm long) with RBE2 spiders): with Euler-Bernoulli bars the frequencies
+  were up to 2 % high, with shear deformation in the bars (Timoshenko, as Nastran's CBAR) the
+  free-free frequencies are within 0.6 % of the first nine MTX frequencies. The MTX itself was
+  made with a different reduction (more retained dofs for the contact between the plates), so
+  only its frequencies are comparable.
+- HEX8 needs the incompatible modes: with full integration only, bending locks.
+- The shift for free-free modes must be scaled with the model (mm-t-s: M is 1e-9 of K); a
+  shift of -1 left K - shift M singular in round-off.
