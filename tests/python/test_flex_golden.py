@@ -19,6 +19,13 @@ from conftest import ROOT
 DATA = ROOT / "tests" / "data" / "flex"
 MODELS = {"flying_beam": ("flex_beam", 26, 1), "rotating_hook": ("struct1", 20, 20),  # body, modes, every n-th row
           "v8_flex_conrods": ("con_rod.1", 21, 5)}
+# Tolerances (body frame channels, modal coordinates), relative to the largest value of a
+# channel; default 1e-6 for both. 106_V8_FlexConRod runs Newton at the round-off floor
+# (massless bodies, mm-t-s): its results are defined to about 1e-6 (body frame) and 1e-5 (modal
+# coordinates) only. Another linear solver on the same machine (--linear-solver sparselu or
+# dense instead of klu) moves the body frame by 1.2e-6 and eta1 by 8e-6; MSVC on Windows eta1
+# by 4e-6.
+TOLERANCE = {"v8_flex_conrods": (5e-6, 3e-5)}
 
 
 @pytest.fixture
@@ -57,5 +64,7 @@ def test_golden(tmp_path, runtime, name):
     # per channel: relative to its largest value (round-off of other platforms and compilers)
     scale = np.maximum(np.abs(ref).max(axis=0), 1e-30)
     err = (np.abs(got - ref) / scale).max(axis=0)
-    worst = int(np.argmax(err))
-    assert err[worst] < 1e-6, f"{cols[worst]}: {err[worst]:.2e}"
+    body_tol, eta_tol = TOLERANCE.get(name, (1e-6, 1e-6))
+    tol = np.array([eta_tol if ".eta" in c else body_tol for c in cols])
+    worst = int(np.argmax(err / tol))
+    assert err[worst] < tol[worst], f"{cols[worst]}: {err[worst]:.2e}"
