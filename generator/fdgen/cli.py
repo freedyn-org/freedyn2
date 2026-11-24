@@ -11,6 +11,7 @@
   freedyn2 setup-mcp [--client claude-desktop|claude-code|all] [--remove] [--dry-run]  (fdgen.mcp_setup)
   freedyn2 config [key [value]] | freedyn2 doctor     (fdgen.doctor)
   freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]   (fdgen.convert)
+  freedyn2 flex-export model.yaml body [-o body.bdf]   (fdgen.fem.surface: the FE model of a meshed body)
   freedyn2 rename model.yaml old new [--section bodies|joints|...]   (fdgen.rename)
   freedyn2 import-onshape <assembly URL> [-o model.yaml] [--no-meshes] [--force | --update]  (fdgen.onshape)
 
@@ -184,6 +185,13 @@ def convert(args):
     return 0
 
 
+def flex_export(args):
+    from .fem.surface import export
+
+    print(f"wrote {export(args.model, args.body, args.output)}")
+    return 0
+
+
 def rename(args):
     from .rename import rename as rename_element
 
@@ -271,6 +279,11 @@ def main(argv=None):
     g.add_argument("value", nargs="?")
     g.add_argument("--unset", action="store_true", help="remove the key")
     sub.add_parser("doctor", help="what this installation finds: runtime, compiler, directories, MCP")
+    fx = sub.add_parser("flex-export", help="the FE model of a body meshed from its STL as Nastran bulk data "
+                                            "(to change its spiders or mesh, then flex.fem)")
+    fx.add_argument("model")
+    fx.add_argument("body")
+    fx.add_argument("-o", "--output", help="the .bdf file (default <body>.bdf next to the model)")
     cv = sub.add_parser("convert", help="write a legacy .fds model as a YAML model file")
     cv.add_argument("model", help="the .fds file")
     cv.add_argument("-o", "--output", help="YAML file or directory (default: <model>.yaml next to the .fds)")
@@ -316,7 +329,7 @@ def main(argv=None):
 
             return update_check()
         return {"view": view, "check": check, "examples": examples, "convert": convert,
-                "import-onshape": import_onshape, "rename": rename}.get(args.command, run)(args)
+                "import-onshape": import_onshape, "rename": rename, "flex-export": flex_export}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)
         return 1

@@ -24,6 +24,10 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   quadratic tetrahedra; extra `fem`: `pip install "freedyn2[fem]"`), makes an interface node
   with an RBE2 spider at every joint and force point, reduces and simulates it as a flexible
   body; joints act at the nodes, forces on massless bodies fixed to them.
+- `freedyn2 flex-export model.yaml body`: the meshed body as Nastran bulk data, to change its
+  spiders or mesh and use it with `flex.fem`. Joints and forces without `node` attach to the
+  interface node at their point for every flexible body (also `fem` and `mtx`); a torque and a
+  torsion spring at a flexible body need their point.
 - Viewer: flexible bodies deform (their STL, or the surface of the FE mesh), magnified with
   *deformation* about their best-fitting rigid motion; eigenmodes with the deformation. Mesh
   shapes count for the size of the scene and *fit view*.

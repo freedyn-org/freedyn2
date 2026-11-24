@@ -24,6 +24,7 @@ freedyn2 compare model.fds ... --legacy <FreeDyn>
 | `check` | the [checks](reference/checks.md) of the model and its results; exit status 1 on errors or failed references |
 | `examples` | list the example models that come with FreeDyn, or copy one into the current directory |
 | `convert` | write a legacy `.fds` model as a YAML model file ([below](#convert)) |
+| `flex-export` | the FE model of a body meshed from its STL as Nastran bulk data, to change it and use it with `flex.fem` ([bodies](reference/bodies.md#flexible-bodies)) |
 | `rename` | rename an element and every reference to it ([below](#rename)) |
 | `import-onshape` | write an Onshape assembly as a YAML model file ([Coming from Onshape](from-onshape.md)) |
 | `gui` | the [app](viewer.md#the-app): start page, recent models, examples, a window per model (`freedyn2-gui` is the same without a console); `--browser`: in the web browser; `--new-instance`: do not hand the models to a running app |

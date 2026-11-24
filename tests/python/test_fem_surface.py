@@ -121,3 +121,33 @@ def test_viewer_scene(env):
     assert np.abs(phi).max() > 0
     assert b["arm"]["shapes"][0]["extent"] == pytest.approx(np.sqrt((L / 2) ** 2 + (B / 2) ** 2 + (H / 2) ** 2), rel=1e-6)
     assert b["arm_if2"]["shapes"] == []
+
+
+def test_export_and_own_fe_model(env):
+    """flex-export writes the meshed body as Nastran bulk data; used with flex.fem the joints and
+    forces attach to its interface nodes by their points: the same frequencies."""
+    from fdgen.fem.surface import export
+    flex = {"material": {"E": E, "nu": 0.3, "rho": RHO}, "mesh_size": 0.005, "modes": 6}
+    m = arm(flex, name="meshed")
+    (env / "meshed.yaml").write_text(yaml.safe_dump(m))
+    bdf = export(env / "meshed.yaml", "arm")
+    text = bdf.read_text()
+    assert "90000001: [0.0, 0.0, 0.0]  rbe2  (joint pivot)" in text and "(force spring)" in text
+    f1, _ = frequencies(m, env)
+    m2 = arm({"fem": str(bdf), "modes": 6}, name="own")
+    f2, model = frequencies(m2, env)
+    assert model["joints"][0]["node"] == 90000001 and model["forces"][0]["body1"] == "arm_if2"
+    assert f2[:4] == pytest.approx(f1[:4], rel=1e-6)
+
+
+def test_torque_needs_a_point(env):
+    m = arm({"material": {"E": E, "nu": 0.3, "rho": RHO}, "mesh_size": 0.005, "modes": 2}, name="tq")
+    m["forces"]["drive"] = {"type": "torque", "body1": "arm", "vector": [0, 1.0, 0]}
+    path = env / "tq.yaml"
+    path.write_text(yaml.safe_dump(m))
+    with pytest.raises(ModelError, match="give point"):
+        cli.build(path, env, "v2")
+    m["forces"]["drive"]["point"] = [0.1, 0, 0]
+    path.write_text(yaml.safe_dump(m))
+    _, model, _ = cli.build(path, env, "v2")
+    assert model["forces"][1]["body1"] == "arm_if3"

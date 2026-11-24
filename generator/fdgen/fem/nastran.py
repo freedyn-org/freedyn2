@@ -144,3 +144,67 @@ def read_nastran(path):
         else:
             m.ignored[name] += 1
     return m
+
+
+def _large(key, values):
+    """Large field card: key* and 4 fields of 16 per line, continuations '*'."""
+    def f(v):
+        if isinstance(v, (int, np.integer)):
+            return f"{int(v):16d}"
+        if isinstance(v, str):
+            return f"{v:>16}"
+        return f"{float(v):16.9E}"
+    fields = [f(v) for v in values]
+    lines = []
+    for k in range(0, max(len(fields), 1), 4):
+        lines.append((f"{key + '*':<8}" if k == 0 else f"{'*':<8}") + "".join(fields[k:k + 4]))
+    return lines
+
+
+def _small(key, values):
+    """Small field card of integers / short strings: 8 fields of 8 per line, continuations '+'."""
+    fields = [f"{v:>8}" if isinstance(v, str) else f"{int(v):8d}" for v in values]
+    lines = []
+    for k in range(0, max(len(fields), 1), 8):
+        lines.append((f"{key:<8}" if k == 0 else f"{'+':<8}") + "".join(fields[k:k + 8]))
+    return lines
+
+
+def _real8(x):
+    """A real in 8 characters with a decimal point (Nastran: 1., .25, 1.5-3)."""
+    for p in range(6, 0, -1):
+        t = f"{x:.{p}g}"
+        if "e" in t:
+            m, e = t.split("e")
+            t = (m if "." in m else m + ".") + str(int(e)) if int(e) < 0 else (m if "." in m else m + ".") + "+" + str(int(e))
+        elif "." not in t:
+            t += "."
+        if len(t) <= 8:
+            return t.rjust(8)
+    raise ValueError(f"{x} does not fit 8 characters")
+
+
+def write_nastran(fe, path, comments=()):
+    """Bulk data of an FeModel (GRID, CTETRA / CHEXA, CBAR, PSOLID, MAT1, RBE2, RBE3), read back by
+    read_nastran and by the usual pre-processors. comments: lines written as $ comments first."""
+    out = [f"$ {c}" for c in comments] + ["BEGIN BULK"]
+    for nid, x in sorted(fe.nodes.items()):
+        out += _large("GRID", [nid, 0, *x, 0])
+    for eid, pid, ids in fe.solids:
+        out += _small("CTETRA" if len(ids) in (4, 10) else "CHEXA", [eid, pid, *ids])
+    for pid, mid in sorted(fe.psolid.items()):
+        out += _small("PSOLID", [pid, mid])
+    for mid, (E, nu, rho) in sorted(fe.materials.items()):
+        out += _large("MAT1", [mid, E, "", nu, rho])
+    for eid, master, comps, slaves in fe.rbe2:
+        out += _small("RBE2", [eid, master, comps, *slaves])
+    for eid, ref, refc, groups in fe.rbe3:
+        vals = [eid, "", ref, refc]
+        for w, comp, nodes in groups:
+            vals += [_real8(w), comp, *nodes]
+        out += _small("RBE3", vals)
+    if fe.bars:
+        raise ModelError("write_nastran: CBAR is not supported")
+    out.append("ENDDATA")
+    Path(path).write_text("\n".join(out) + "\n", encoding="latin-1")
+    return Path(path)

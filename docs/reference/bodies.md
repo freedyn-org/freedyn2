@@ -70,7 +70,8 @@ joints:
       flex: {material: steel, mesh_size: 0.004, modes: 10}
   ```
 
-  Every joint and force at the body gets an interface node at its point, connected to the
+  Every joint and force at the body gets an interface node at its point (a `torque` needs a
+  `point`, a `torsion_spring` a `location` there), connected to the
   surface nodes around it by an RBE2 (`interface_type: rbe3` for an interpolating one).
   Joints act at that node (a joint with the flexible body as body1 swaps its bodies); forces act
   on a massless body `<body>_if<k>` fixed to it, so that every force law works. The spider
@@ -81,6 +82,13 @@ joints:
   where it matters. Named materials are in SI units (m, kg, s); in other units give
   `{E, nu, rho}`. Position and orientation stay those of the rigid body; mass and inertia come
   from the FE model. Meshing and reduction are cached.
+
+- **Your own FE model and spiders.** `freedyn2 flex-export model.yaml arm` writes the meshed
+  body as Nastran bulk data (`arm.bdf`, in its body frame; its interfaces with their points and
+  the joints and forces at them as comments). Change it in a pre-processor or by hand (spiders,
+  mesh refinement, materials) and use it with `flex: {fem: arm.bdf}`. Any Nastran model works
+  the same way: joints and forces without `node` attach to the interface node (an RBE master or
+  reference node) at their point, within 1 % of the body size.
 
 - Joints act at a **node** of the modal data (`node` of the joint): its point and axes move and
   turn with the deformation. The flexible body is `body2`, or `body1` of a joint with the

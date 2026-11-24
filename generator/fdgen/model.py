@@ -118,8 +118,9 @@ def _flex(name, b, base_dir):
         data = load_modal(path)
     except ModelError as e:
         raise ModelError(f"body {name}: {e}") from None
-    if "mass" in b or "inertia" in b:
-        warnings.warn(f"body {name}: flexible, mass and inertia come from the modal data")
+    if "mass" in b and abs(data.mass / b["mass"] - 1) > 0.05:
+        warnings.warn(f"body {name}: flexible, its mass {data.mass:g} from the modal data differs from mass "
+                      f"{b['mass']:g} (density, units?)")
     c = data.center_of_mass()
     Jc = data.I7 - data.mass * (np.dot(c, c) * np.eye(3) - np.outer(c, c))
     b["mass"] = float(data.mass)
@@ -155,10 +156,7 @@ def _joint_node(out, j, bodies):
     if any("flex" in bodies[b] and "mtx" not in bodies[b]["flex"] for b in (out["body1"], out["body2"])
            if b != "ground"):
         return  # a body meshed from its surface: nodes are set by fem.surface.prepare
-    if "node" not in j:
-        for b in (out["body1"], out["body2"]):
-            if b != "ground" and "flex" in bodies[b]:
-                warnings.warn(f"joint {out['name']}: on the body frame of the flexible body {b} (no node)")
+    if "node" not in j:  # fem.surface.prepare attaches it to the interface node at its location
         return
     if "flex" not in bodies[flex]:
         raise ModelError(f"joint {out['name']}: node needs a flexible body as body2 (or body1 of a joint with the "
@@ -353,9 +351,11 @@ def _strip_ids(model):
         s.pop("id", None)
 
 
-def validate(model, base_dir=None):
+def validate(model, base_dir=None, prepare_flex=True):
     """Validate against the JSON schema and the model rules; fill defaults. base_dir: directory
-    relative data files (spline tables, .tir files) are read from (default: the current one)."""
+    relative data files (spline tables, .tir files) are read from (default: the current one).
+    prepare_flex: mesh and reduce the flexible bodies and attach joints and forces to their
+    interface nodes (fdgen.fem.surface); False for tools that need the model before that."""
     ids = {i: list(where) for i, where in element_ids(model).items()} if isinstance(model, dict) else {}
     if isinstance(model, dict):
         model = _short_forms(model)  # {value: 5000, id: ...} -> 5000
@@ -375,8 +375,8 @@ def validate(model, base_dir=None):
     joints = [_joint(name, j, bodies) for name, j in section("joints")]
     road = _road(model.get("road"), base_dir)
     forces = [_force(name, f, bodies, road, base_dir) for name, f in section("forces")]
-    if any("flex" in b and "material" in b["flex"] for b in bodies.values()):
-        from .fem.surface import prepare  # rigid to flex: mesh, interfaces, modal data
+    if prepare_flex and any("flex" in b for b in bodies.values()):
+        from .fem.surface import prepare  # rigid to flex, joints and forces at interface nodes
         prepare(bodies, joints, forces, base_dir)
     measures = {name: _measure(name, m, bodies) for name, m in section("measures")}
     sensors = [_sensor(name, sn, bodies) for name, sn in section("sensors")]
