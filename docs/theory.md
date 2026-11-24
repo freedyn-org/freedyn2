@@ -220,6 +220,43 @@ flexible body) plus one term per mode, linear in \(\eta_i\) (`transfix_bb_node`,
 The flexible body is body 2 (or the body of a joint with the ground): with the node on body 1
 the translational primitive would be quadratic in \(\eta\).
 
+### 3.5 Modal data from a linear FE model
+
+`fdgen/fem` and the program `freedyn2_modal` (`runtime/app/modal.cpp`, Eigen only). Input: a
+Nastran bulk data file of the part (`fdgen/fem/nastran.py`).
+
+**Elements** (`fdgen/fem/elements.py`, small strains, isotropic material, consistent mass):
+TET4 and TET10 (a collapsed 4 x 4 x 4 Gauss rule, exact for the mass of TET10 on straight
+tetrahedra), HEX8 with the incompatible modes of Wilson and Taylor (the Jacobian at the centre,
+condensed; passes the patch test and does not lock in bending, close to Nastran's CHEXA), and
+a 3D beam (CBAR with a ROD section) with shear deformation (Timoshenko, shear factor
+\(6(1+\nu)/(7+6\nu)\)).
+
+**Rigid elements as dependencies** \(u_d = G\, u_i\) (`assemble.py`): RBE2 makes the slave dofs
+follow the master node rigidly, \(u_s = u_m + \theta_m \times (x_s - x_m)\). RBE3 sets the
+reference node to the weighted least-squares rigid motion of its nodes,
+\([u_r; \theta_r] = (\sum w_k B_k^T B_k)^{-1} \sum w_k B_k^T u_k\), \(B_k = [I, -\tilde r_k]\); the
+reference node stays independent (it is a boundary node), and 6 of the slave dofs, chosen by
+pivoted Gram-Schmidt on the columns, become dependent. Then \(K \to T^T K T\), \(M \to T^T M T\).
+
+**Craig-Bampton** with the interface nodes (6 dofs each) as boundary \(b\), the rest interior
+\(i\): constraint modes \(\Psi = [-K_{ii}^{-1} K_{ib}; I]\) and \(n\) fixed-interface normal modes
+\(K_{ii} \phi = \lambda M_{ii} \phi\) (subspace iteration with the sparse \(LDL^T\) of \(K_{ii}\);
+for a free body without interfaces, of \(K - \sigma M\), \(\sigma < 0\)), convergence by the
+residual \(|K x - \lambda M x|\). The basis \(V = [\Psi, \Phi]\) is orthonormalized like Adams/Flex:
+the reduced eigenproblem \(V^T K V\, y = \lambda V^T M V\, y\) gives mass-normalized modes with a
+diagonal stiffness, of which the first 6 are the rigid body motions (contained exactly in the
+constraint modes) and are removed. These modes are Ritz approximations of the free modes from
+above; with the interface nodes in the basis, the body attached at an interface (a clamp, a
+joint) is represented exactly in the static limit.
+
+**Inertia invariants** (3.4) by quadrature over the elements with the consistent mass: at each
+quadrature point the mass \(\rho\, \det J\, w\), the position \(s\) and the interpolated mode
+shapes \(\phi\); \(I_1 = \sum m\), \(I_7 = \sum m\, \tilde s^T \tilde s\), \(I_9 = \sum m\, \tilde\phi_j \tilde\phi_k\)
+and so on. For the solids this is exact for the FE discretization (Adams uses lumped node
+masses). The result is written as an MTX file (cached per content of the mesh, interfaces and
+number of modes) and used as such.
+
 ## 4. Kinematics of connected bodies and derivatives
 
 ### 4.1 Body kinematics
@@ -731,6 +768,8 @@ that states each.
 9. The linearization from the iteration matrices and the elimination of the constraints (12).
 10. The flexible body: kinetic energy from the invariants, the Hamel form, the decomposition
     into terms of one mode and of a pair of modes, and the joint primitives at a node (3.4).
+11. The FE reduction: elements, RBE2 / RBE3 as dependencies, Craig-Bampton and its
+    orthonormalization, the invariants by quadrature (3.5).
 
 ## References
 

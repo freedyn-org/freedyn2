@@ -93,3 +93,25 @@ results to 2e-8). The models are kept as golden results of freedyn2
   millimeters); like the legacy kernel, freedyn2 uses the values in the units of the model.
 - The legacy kernel builds with MKL up to 2024.2 only (`pip install "mkl-devel==2024.2.*"`):
   later versions dropped the sparse routines it calls (`mkl_dcsrgemv`, `mkl_dcsrcoo`, ...).
+
+## Own FE reduction against Nastran / Adams
+
+Checked once with the FE models of the legacy check-in tests (`me_testing`), against their MTX
+files (made with MSC Nastran / Adams), November 2026:
+
+- **struct1** (04_FlexRotUHackerl; 6420 HEX8, one RBE3 with 600 nodes, 30000 dofs, Craig-Bampton
+  with 20 modes): mass 3e-8, inertia tensor 6e-5, frequencies within 0.9 % (the first five
+  within 0.04 %), the norms of the invariants I5, I8, I9 within 0.3 %, the mode shapes at the
+  interface node 0.3 %. The rotating hook of 04 with these modal data: largest modal amplitude
+  within 0.07 %, frame position within 0.1 % of its motion and orientation within 4e-4 rad
+  after 0.2 s. Reduction 17 s (Eigen's simplicial LDL^T; the dense coupling of the large RBE3
+  dominates the factor).
+- **DaBsp** (05_FlexBodyJointForce; two plates of 931 TET10, joined by two bolts of 40 CBAR
+  each (ROD, r = 1 mm, 4 mm long) with RBE2 spiders): with Euler-Bernoulli bars the frequencies
+  were up to 2 % high, with shear deformation in the bars (Timoshenko, as Nastran's CBAR) the
+  free-free frequencies are within 0.6 % of the first nine MTX frequencies. The MTX itself was
+  made with a different reduction (more retained dofs for the contact between the plates), so
+  only its frequencies are comparable.
+- HEX8 needs the incompatible modes: with full integration only, bending locks.
+- The shift for free-free modes must be scaled with the model (mm-t-s: M is 1e-9 of K); a
+  shift of -1 left K - shift M singular in round-off.

@@ -220,10 +220,13 @@
         "flex": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["mtx"],
+          "oneOf": [{"required": ["mtx"]}, {"required": ["fem"]}],
           "description": "Flexible body (floating frame of reference, modal coordinates). Mass and inertia come from the modal data (mass and inertia given as well are ignored); position, orientation and velocity are those of the body frame of the modal data.",
           "properties": {
             "mtx": {"type": "string", "description": "Adams MTX file with the modal data (inertia invariants, generalized stiffness, mode shapes at the nodes), relative to the model file. Its values are used in the units of the model."},
+            "fem": {"type": "string", "description": "Nastran bulk data file (GRID, CTETRA, CHEXA, CBAR with PBARL ROD, PSOLID, MAT1, RBE2, RBE3) of the part, relative to the model file, in the units of the model: the modal data are made from it (Craig-Bampton, cached)."},
+            "interfaces": {"type": "array", "items": {"type": "integer"}, "minItems": 1, "uniqueItems": true, "description": "fem: interface nodes (RBE2 master or RBE3 reference nodes): the boundary of the reduction, joints attach to them. Default: all of them."},
+            "modes": {"type": "integer", "minimum": 0, "default": 20, "description": "fem: fixed-interface normal modes (without interfaces: free-free modes) in addition to the 6 per interface node; the 6 rigid body modes are removed."},
             "damping": {"description": "Modal damping ratio: one value for all modes or one per mode (the last for the rest). Default 0.",
                         "oneOf": [{"type": "number", "minimum": 0}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1}]},
             "rotation_coupling": {"type": "boolean", "default": true, "description": "Coupling of rotation and deformation (invariants 4 and 5; legacy Is_Itf_active)."},

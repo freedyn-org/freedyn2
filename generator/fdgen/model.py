@@ -100,6 +100,16 @@ def _flex(name, b, base_dir):
     """Flexible body: the modal data file (absolute path), mass and principal moments from it
     (for checks, shapes and the viewer; the element uses the invariants)."""
     flex = b["flex"] = dict(b["flex"])
+    if "fem" in flex:  # own FE reduction: the modal data file is made (and cached) from the mesh
+        from .fem import modal_file
+        fem = _data_path(flex["fem"], base_dir)
+        if not fem.is_file():
+            raise ModelError(f"body {name}: FE model {fem} not found")
+        flex["fem"] = str(fem.resolve())
+        try:
+            flex["mtx"] = str(modal_file(fem, flex.get("interfaces"), flex.get("modes", 20)))
+        except (ModelError, FileNotFoundError, ValueError) as e:
+            raise ModelError(f"body {name}: {e}") from None
     path = _data_path(flex["mtx"], base_dir)
     if not path.is_file():
         raise ModelError(f"body {name}: modal data file {path} not found")

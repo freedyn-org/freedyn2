@@ -15,6 +15,11 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   and `Constraint FixRiBoFleBo` (default profile). Checked against the legacy check-in tests
   03_FlyingFleBo and 04_FlexRotUHackerl, free and clamped beam frequencies, energy and momentum
   conservation (docs/theory.md, 3.4).
+- Flexible bodies from a Nastran FE model of the part (`flex.fem`, `interfaces`, `modes`): own
+  linear FEM (TET4, TET10, HEX8 with incompatible modes, Timoshenko beams; RBE2, RBE3),
+  Craig-Bampton reduction orthonormalized as Adams/Flex, inertia invariants with the consistent
+  mass; the new program `freedyn2_modal` (Eigen only) does the sparse part. Checked against the
+  MSC Nastran / Adams MTX files of the legacy check-in tests (docs/findings.md).
 
 ## [0.1.0rc4] - 2026-11-07
 

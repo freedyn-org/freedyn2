@@ -43,6 +43,19 @@ joints:
   clamp: {type: fixed, body1: beam, node: 10001}   # at node 10001 of the modal data
 ```
 
+- Instead of `mtx`, `fem` reduces a **Nastran FE model** of the part (GRID, CTETRA with 4 or 10
+  nodes, CHEXA with 8, CBAR with a PBARL ROD section, PSOLID, MAT1, RBE2, RBE3) in the units of
+  the model: Craig-Bampton with the `interfaces` (RBE2 master or RBE3 reference nodes; default
+  all) and `modes` fixed-interface modes (default 20), orthonormalized as Adams/Flex does. The
+  result is cached; the first build of a large mesh takes a while (struct1, 30000 dofs: about
+  20 s).
+
+  ```yaml
+  bodies:
+    hook:
+      flex: {fem: hook.bdf, interfaces: [1000001], modes: 20, damping: 0.05}
+  ```
+
 - Joints act at a **node** of the modal data (`node` of the joint): its point and axes move and
   turn with the deformation. The flexible body is `body2`, or `body1` of a joint with the
   ground. Without `node` a joint acts on the body frame. `location` defaults to the node.
