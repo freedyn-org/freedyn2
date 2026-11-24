@@ -113,8 +113,8 @@ files (made with MSC Nastran / Adams), November 2026:
   within 0.04 %), the norms of the invariants I5, I8, I9 within 0.3 %, the mode shapes at the
   interface node 0.3 %. The rotating hook of 04 with these modal data: largest modal amplitude
   within 0.07 %, frame position within 0.1 % of its motion and orientation within 4e-4 rad
-  after 0.2 s. Reduction 17 s (Eigen's simplicial LDL^T; the dense coupling of the large RBE3
-  dominates the factor).
+  after 0.2 s. Reduction 9 s (Eigen's simplicial LDL^T, 3 s; the dense coupling of the large RBE3
+  dominates the factor; Lanczos for the modes).
 - **DaBsp** (05_FlexBodyJointForce; two plates of 931 TET10, joined by two bolts of 40 CBAR
   each (ROD, r = 1 mm, 4 mm long) with RBE2 spiders): with Euler-Bernoulli bars the frequencies
   were up to 2 % high, with shear deformation in the bars (Timoshenko, as Nastran's CBAR) the
@@ -124,3 +124,13 @@ files (made with MSC Nastran / Adams), November 2026:
 - HEX8 needs the incompatible modes: with full integration only, bending locks.
 - The shift for free-free modes must be scaled with the model (mm-t-s: M is 1e-9 of K); a
   shift of -1 left K - shift M singular in round-off.
+
+## Reduction time
+
+The modes of the reduction come from Lanczos with shift-invert in the M inner product and full
+reorthogonalization (`runtime/app/modal.cpp`); a subspace iteration before needed about 2 m
+solves per iteration for m modes and 8 iterations. Box beam meshed with TET10, 70 000 dofs, 2
+interfaces, 20 fixed-interface modes: elimination 3 s, LDL^T 12 s (28 million entries in the
+factor), constraint modes 0.2 s (in parallel), modes 10 s with 60 solves (before: 46 s, 320
+solves), the same eigenvalues to 2e-11. The factorization is next: CHOLMOD (supernodal) would
+need BLAS / LAPACK in the Windows build.

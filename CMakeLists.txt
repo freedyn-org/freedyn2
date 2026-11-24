@@ -156,8 +156,9 @@ fd_copy_runtime_dlls(freedyn2_road)
 # (parallel builds; file(COPY) of two programs at once fails on Windows)
 add_dependencies(freedyn2_road freedyn2_run)
 # modal reduction of linear FE models (fdgen.fem): Eigen only
+find_package(Threads REQUIRED)
 add_executable(freedyn2_modal runtime/app/modal.cpp)
-target_link_libraries(freedyn2_modal PRIVATE Eigen3::Eigen)
+target_link_libraries(freedyn2_modal PRIVATE Eigen3::Eigen Threads::Threads)
 
 # --- Tests -----------------------------------------------------------------------
 if(FD_TOP_LEVEL)

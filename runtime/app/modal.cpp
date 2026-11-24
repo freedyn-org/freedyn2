@@ -36,6 +36,7 @@
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 using Sp = Eigen::SparseMatrix<double>;
@@ -152,51 +153,89 @@ int main(int argc, char** argv) {
 
     lap("factorize");
     if (verbose) std::cerr << "n " << ni << ", nnz(K_ii) " << Kii.nonZeros() << ", nnz(L) " << ldlt.matrixL().nestedExpression().nonZeros() << "\n";
+    // constraint modes: the columns solved in parallel (the factor is only read)
     Mat Psi(ni, nb);
-    if (nb > 0) Psi = -ldlt.solve(Mat(Kib));
+    if (nb > 0) {
+      const Mat Kibd = Mat(Kib);
+      const int nt = static_cast<int>(std::max(1u, std::min<unsigned>(std::thread::hardware_concurrency(), 16)));
+      std::vector<std::thread> pool;
+      for (int t = 0; t < nt; ++t)
+        pool.emplace_back([&, t] {
+          for (int c = t; c < nb; c += nt) Psi.col(c) = -ldlt.solve(Vec(Kibd.col(c)));
+        });
+      for (auto& th : pool) th.join();
+      lap("constraint modes");
+    }
 
-    // subspace iteration
+    // Lanczos with shift-invert in the M inner product, full reorthogonalization: the Krylov
+    // space of (K_ii - s M_ii)^-1 M_ii grows until the m eigenpairs nearest the shift converge
+    // (residual |K x - lambda M x| / |(K - s M) x| < tol); a few solves per mode instead of the
+    // 2m per iteration of a subspace iteration.
     const int m = static_cast<int>(std::min<int64_t>(nmodes, ni));
-    const int p = std::min(ni, std::max(2 * m, m + 8));
-    Mat X(ni, p);
-    std::mt19937 gen(12345);
-    std::normal_distribution<double> nd;
-    for (int j = 0; j < p; ++j)
-      for (int i = 0; i < ni; ++i) X(i, j) = nd(gen);
-    Vec lam = Vec::Zero(p);
-    double best = 1e300;
-    int best_it = 0;
-    int it = 0;
+    Vec lam = Vec::Zero(std::max(m, 1));
     Mat Phi(ni, m);
+    int it = 0;
     if (m > 0) {
-      for (it = 1; it <= maxit; ++it) {
-        Mat Y = ldlt.solve(Mat(Mii * X));
-        Mat Kr = Y.transpose() * (Kii * Y), Mr = Y.transpose() * (Mii * Y);
-        Kr = (Kr + Kr.transpose()) / 2, Mr = (Mr + Mr.transpose()) / 2;
-        Eigen::GeneralizedSelfAdjointEigenSolver<Mat> es(Kr, Mr);
-        if (es.info() != Eigen::Success) throw std::runtime_error("Rayleigh-Ritz eigenproblem failed");
-        lam = es.eigenvalues();
-        X = Y * es.eigenvectors();
-        // residuals of the first m Ritz pairs: |K x - lambda M x| / |K x| (shift: of the
-        // shifted problem, so that rigid body modes of a free body converge as well)
-        const Mat Xm = X.leftCols(m);
-        const Mat MX = Mii * Xm, KX = Kii * Xm;
-        double err = 0;
-        for (int k = 0; k < m; ++k) {
-          const Vec res = KX.col(k) - lam(k) * MX.col(k);
-          const double ref = (KX.col(k) - s * MX.col(k)).norm();
-          err = std::max(err, res.norm() / std::max(ref, 1e-300));
+      const int kmax = std::min(ni, std::max(4 * m + 40, 3 * m + 60) * 4);
+      Mat Q(ni, std::min(kmax + 1, ni));
+      std::vector<double> alpha, beta;
+      std::mt19937 gen(12345);
+      std::normal_distribution<double> nd;
+      Vec q(ni);
+      for (int i = 0; i < ni; ++i) q(i) = nd(gen);
+      Vec Mq = Mii * q;
+      q /= std::sqrt(q.dot(Mq));
+      Q.col(0) = q;
+      int k = 0, next_check = std::min(ni, 2 * m + 20);
+      double best = 1e300;
+      int best_k = 0;
+      for (;;) {
+        // one Lanczos step: w = A^-1 M q_k, orthogonalized (M) against all q (twice)
+        Vec w = ldlt.solve(Vec(Mii * Q.col(k)));
+        for (int pass = 0; pass < 2; ++pass) {
+          const Vec c = Q.leftCols(k + 1).transpose() * (Mii * w);
+          w -= Q.leftCols(k + 1) * c;
+          if (pass == 0) alpha.push_back(c(k));
         }
-        if (verbose) std::cerr << "it " << it << " residual " << err << " lam0 " << lam(0) << " lam_m " << lam(m - 1) << "\n";
-        if (err < tol) break;
-        // stagnation at the round-off level: stop
-        if (err < 0.9 * best) best = err, best_it = it;
-        if (it - best_it >= 3 && best < 1e3 * tol) break;
+        const double b = std::sqrt(std::max(w.dot(Mii * w), 0.0));
+        ++k, ++it;
+        if (k < next_check && k < ni && b > 1e-14) {
+          beta.push_back(b);
+          Q.col(k) = w / b;
+          continue;
+        }
+        // Ritz values of T (k x k): theta = 1 / (lambda - s), the largest nearest the shift
+        Mat Tm = Mat::Zero(k, k);
+        for (int i = 0; i < k; ++i) Tm(i, i) = alpha[i];
+        for (int i = 0; i + 1 < k; ++i) Tm(i, i + 1) = Tm(i + 1, i) = beta[i];
+        Eigen::SelfAdjointEigenSolver<Mat> es(Tm);
+        const int mm = std::min(m, k);
+        Mat S = es.eigenvectors().rightCols(mm).rowwise().reverse();
+        Vec th = es.eigenvalues().tail(mm).reverse();
+        Mat X = Q.leftCols(k) * S;
+        const Mat MX = Mii * X, KX = Kii * X;
+        double err = 0;
+        for (int j = 0; j < mm; ++j) {
+          lam(j) = s + 1.0 / th(j);
+          const double ref = (KX.col(j) - s * MX.col(j)).norm();
+          err = std::max(err, (KX.col(j) - lam(j) * MX.col(j)).norm() / std::max(ref, 1e-300));
+        }
+        if (verbose) std::cerr << "lanczos " << k << " residual " << err << "\n";
+        const bool done = mm == m && (err < tol || (best < 1e3 * tol && err > 0.9 * best && k - best_k >= m));
+        if (err < 0.9 * best) best = err, best_k = k;
+        if (done || k >= kmax || k >= ni || b <= 1e-14) {
+          if (!done) std::cerr << "freedyn2_modal: Lanczos residual " << err << " after " << k << " vectors\n";
+          // M-orthonormal Ritz vectors (reorthogonalized Lanczos: Q is M-orthonormal)
+          Phi = X;
+          for (int j = 0; j < mm; ++j) Phi.col(j) /= std::sqrt(Phi.col(j).dot(MX.col(j)));
+          break;
+        }
+        beta.push_back(b);
+        Q.col(k) = w / b;
+        next_check = std::min(ni, k + std::max(10, m / 2));
       }
-      lap("subspace iteration");
-      if (verbose) std::cerr << "iterations " << it << "\n";
-      if (it > maxit) std::cerr << "freedyn2_modal: no convergence in " << maxit << " iterations\n";
-      Phi = X.leftCols(m);
+      lap("lanczos");
+      if (verbose) std::cerr << "solves " << it << "\n";
     }
 
     // basis in the independent dofs, then all dofs

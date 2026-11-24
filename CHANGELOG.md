@@ -13,6 +13,9 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 - Model plugins with very large generated sources (a driver on a spline of 1000 points) took
   20 minutes to compile: sources above 256 kB are compiled without optimization.
 - `freedyn2_run --step-log` also writes the log when the run fails.
+- The modal reduction finds its modes by Lanczos (shift-invert, full reorthogonalization)
+  instead of a subspace iteration, and solves the constraint modes in parallel: 70 000 dofs
+  and 20 modes in 26 s instead of 62 s.
 
 ### Added
 
