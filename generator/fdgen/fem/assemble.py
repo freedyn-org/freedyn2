@@ -27,6 +27,7 @@ class Assembly:
     masters: dict = field(default_factory=dict)  # RBE master / reference node -> element id
     surface: tuple = None                # boundary of the solids: (node indices, triangles into them)
     spiders: list = field(default_factory=list)  # [(master / reference node, "rbe2" | "rbe3", [node ids])]
+    solids: list = field(default_factory=list)   # [(node indices (ne, nn), E, nu)] per element type and material
 
     def index(self, node):
         k = np.searchsorted(self.node_ids, node)
@@ -84,6 +85,7 @@ def assemble(fe, chunk=4000):
             raise ModelError(f"material {mid} (MAT1) missing")
         E, nu, rho = fe.materials[mid]
         conn = np.array(conn)
+        a.solids.append((np.searchsorted(node_ids, conn), E, nu))
         for c0 in range(0, len(conn), chunk):
             c = conn[c0:c0 + chunk]
             k = np.searchsorted(node_ids, c)

@@ -15,6 +15,11 @@ Format: a ZIP archive of NumPy arrays (.npy, numpy.savez_compressed), readable w
     spider_node, spider_type, spider_start, spider_xyz   optional: the RBE2 / RBE3 of the
                   interfaces: node, "rbe2" or "rbe3", the positions of the nodes it connects
                   (spider_xyz[spider_start[k]:spider_start[k + 1]])
+    mesh_node, mesh_xyz, mesh_tet4, mesh_tet10, mesh_hex8, stress
+                  optional: the solids of the FE model (node labels, positions, elements as
+                  indices into them, Nastran node order) and the modal stresses at its nodes
+                  (nn_mesh, 6, nm) float32, components xx yy zz xy yz zx, averaged over the
+                  elements at a node; for fatigue by modal superposition (freedyn2 femfat)
 
 The inertia invariants are those of fdgen.flex.modal (Adams' definitions).
 """
@@ -30,6 +35,7 @@ from .modal import ModalData
 FORMAT = "fdflex 1"
 _ARRAYS = ("I2", "I3", "I4", "I5", "I6", "I7", "I8", "I9", "K", "frequencies", "node_labels", "node_positions",
            "Phi", "Psi")
+_CELLS = {4: "tet4", 10: "tet10", 8: "hex8"}
 
 
 def write_fdflex(data, path, meta=None):
@@ -49,6 +55,12 @@ def write_fdflex(data, path, meta=None):
                       spider_type=np.array([s[1] for s in spiders]),
                       spider_start=np.cumsum([0] + [len(s[2]) for s in spiders]),
                       spider_xyz=np.concatenate([np.asarray(s[2], float).reshape(-1, 3) for s in spiders]))
+    mesh = getattr(data, "mesh", None)
+    if mesh is not None:
+        arrays.update(mesh_node=np.asarray(mesh[0], np.int64), mesh_xyz=np.asarray(mesh[1], float),
+                      stress=np.asarray(mesh[3], np.float32))
+        for nn, cells in mesh[2].items():
+            arrays[f"mesh_{_CELLS[nn]}"] = np.asarray(cells, np.int32)
     tmp = path.with_name(path.name + ".tmp")
     with open(tmp, "wb") as f:
         np.savez_compressed(f, **arrays)
@@ -83,4 +95,8 @@ def read_fdflex(path):
             st = z["spider_start"]
             data.spiders = [(int(n), str(t), z["spider_xyz"][st[k]:st[k + 1]])
                             for k, (n, t) in enumerate(zip(z["spider_node"], z["spider_type"]))]
+        data.mesh = None
+        if "mesh_node" in z.files:
+            cells = {nn: z[f"mesh_{t}"] for nn, t in _CELLS.items() if f"mesh_{t}" in z.files}
+            data.mesh = (z["mesh_node"], z["mesh_xyz"], cells, z["stress"])
     return data

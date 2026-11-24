@@ -19,6 +19,12 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- Fatigue output of flexible bodies (FEMFAT and the like, modal superposition):
+  `freedyn2 femfat model.yaml body [result.csv]` and the MCP tool `flex_femfat` write the
+  FE mesh with the stress tensor of each mode (Universal file) and the modal coordinates of the
+  run (CSV). The reduction computes the modal stresses at the nodes and keeps them in the
+  `.fdflex` (fdgen.fem.stress; HEX8 with its incompatible modes). Checked against a cantilever
+  under a tip load.
 - Viewer: the inspector of a joint or force at a spider of a body meshed from its STL sets the
   spider's radius and type (RBE2 / RBE3) or makes it automatic again (`flex.interfaces` in the
   model file, fdgen.flex.edit).

@@ -79,6 +79,7 @@ here: a tire force that cannot pull – and `answer_note`s; you see the answer u
 | `flex_info` | the flexible bodies: source, elastic modes and frequencies, mass, each interface with its spider (RBE2 / RBE3, bore or patch, size) and what is attached |
 | `flex_convergence` | the frequencies of a flexible body for several mesh sizes or numbers of modes, to choose them |
 | `flex_deformation` | the largest deformation of the flexible bodies in a run, when and where, and the most active modes |
+| `flex_femfat` | fatigue output of a flexible body in a run: mode shapes' stresses as a Universal file, modal coordinates as CSV (FEMFAT) |
 | `flex_export` | the FE model of a body meshed from its STL as Nastran bulk data, to change spiders or mesh by hand |
 | `view` | the viewer in your browser, reloading on every save |
 | `screenshot` | a picture of the viewer, for the assistant itself (needs `pip install playwright` and `playwright install chromium`) |

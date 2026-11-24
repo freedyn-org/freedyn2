@@ -19,6 +19,7 @@ import numpy as np
 
 from ..errors import ModelError
 from ..flex.modal import ModalData
+from . import stress
 
 
 def find_modal(path=None):
@@ -119,6 +120,14 @@ def reduce(a, interfaces, nmodes, output_nodes=None, rigid="auto", shift=None, t
     if a.surface is not None and len(a.surface[0]):  # mode shapes on the boundary, for the viewer
         k = a.surface[0]
         data.viz = (a.xyz[k], a.surface[1], np.stack([Phi[a.start[i]:a.start[i] + 3] for i in k]))
+    if a.solids:  # the mesh of the solids and the modal stresses at its nodes (fatigue: FEMFAT)
+        used, sig = stress.nodal_stresses(a, Phi)
+        remap = np.full(len(a.node_ids), -1)
+        remap[used] = np.arange(len(used))
+        cells = {}
+        for conn, _, _ in a.solids:  # one array per node count (several materials)
+            cells[conn.shape[1]] = np.vstack([cells[conn.shape[1]], remap[conn]]) if conn.shape[1] in cells else remap[conn]
+        data.mesh = (a.node_ids[used], a.xyz[used], cells, sig)
     data.fixed_interface_frequencies = np.sqrt(np.maximum(lam_fixed, 0)) / (2 * np.pi)
     return data
 

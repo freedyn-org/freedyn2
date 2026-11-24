@@ -6,7 +6,7 @@ screenshots for the assistant). The person checks; the assistant does the work.
 
 Tools: guide, schema, validate, simulate, channels, results, compare, check, view, screenshot,
 modes, locus, sweep, notes, note_image, answer_note; flexible bodies: flex_info,
-flex_convergence, flex_deformation, flex_export.
+flex_convergence, flex_deformation, flex_export, flex_femfat.
 Runs are kept for the session (run ids r1, r2, ...) so results can be compared after a change.
 
 The tool logic is the class Session (plain Python, tested without MCP); serve() registers it
@@ -85,7 +85,7 @@ Named materials (steel, aluminium, titanium) are SI. Tools: flex_info (modes, in
 their spiders: check them, they decide how stiff a connection is), flex_convergence (frequencies
 over mesh sizes or numbers of modes: choose them with it), flex_deformation (largest deformation
 in a run), flex_export (the FE model as Nastran bulk data, to change spiders by hand, then
-flex.fem). Channels: <body>.eta<i>.eta / etadot / etaddot (modal coordinates); the body frame
+flex.fem), flex_femfat (modal stresses and modal coordinates of a run for fatigue, FEMFAT). Channels: <body>.eta<i>.eta / etadot / etaddot (modal coordinates); the body frame
 channels as for a rigid body (it is the frame of the FE model, not the center of mass).
 Spiders differently: flex.interfaces [{point, radius, type: rbe2 | rbe3, axis}].
 
@@ -495,6 +495,18 @@ class Session:
         return (f"wrote {out}: change it (spiders, mesh) and use it with flex: {{fem: {out.name}}}; joints and forces "
                 "attach to the interface node at their point")
 
+    def flex_femfat(self, model_file, run_id, body, output=None):
+        """Modal stresses (Universal file) and modal coordinates (CSV) of a flexible body in a run."""
+        from pathlib import Path
+
+        from .flex.femfat import export
+        model = cli.load(model_file)
+        out = Path(output) if output else Path(model_file).parent / "femfat"
+        paths, text = export(model, body, self.run(run_id).results, out)
+        return text + "\n" + "\n".join(f"wrote {p}" for p in paths) + (
+            "\nfatigue by modal superposition: sigma(t) = sum_i sigma_i eta_i(t); in FEMFAT ChannelMAX / TransMAX "
+            "the .unv as FE results (one load case per mode), the CSV as their load-time histories")
+
     def _runtime_or_none(self):
         try:
             return self.runtime()
@@ -644,6 +656,13 @@ def serve(workdir=None):
         """Write the FE model of a body meshed from its STL as Nastran bulk data (mesh, material, interface nodes,
         RBE2 / RBE3 spiders): to change spiders or mesh by hand, then flex: {fem: file}."""
         return session.flex_export(model_file, body, output or None)
+
+    @mcp.tool()
+    def flex_femfat(model_file: str, run_id: str, body: str, output: str = "") -> str:
+        """Fatigue output of a flexible body (FE model or meshed from its STL) in a run: the mesh with the stress tensor
+        of each mode as a Universal file (.unv) and the modal coordinates over time (CSV), for modal superposition in
+        FEMFAT or similar. Default directory femfat/ next to the model."""
+        return session.flex_femfat(model_file, run_id, body, output or None)
 
     @mcp.tool()
     def notes(model_file: str, everything: bool = False) -> str:
