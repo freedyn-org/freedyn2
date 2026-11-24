@@ -19,7 +19,7 @@ Format: a ZIP archive of NumPy arrays (.npy, numpy.savez_compressed), readable w
                   optional: the solids of the FE model (node labels, positions, elements as
                   indices into them, Nastran node order) and the modal stresses at its nodes
                   (nn_mesh, 6, nm) float32, components xx yy zz xy yz zx, averaged over the
-                  elements at a node; for fatigue by modal superposition (freedyn2 femfat)
+                  elements at a node; for fatigue by modal superposition (freedyn2 modal-stress)
 
 The inertia invariants are those of fdgen.flex.modal (Adams' definitions).
 """

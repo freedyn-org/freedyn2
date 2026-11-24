@@ -243,8 +243,8 @@ def test_stress_recovery_pure_bending(tmp_path, tet):
     assert np.abs(s[:, :, 0] - exact).max() < 1e-9 * E * k * H
 
 
-def test_femfat_cantilever(tmp_path, modal_tool, monkeypatch):
-    """freedyn2 femfat of a cantilever under a tip load F (critically damped modes: static at the
+def test_modal_stress_cantilever(tmp_path, modal_tool, monkeypatch):
+    """freedyn2 modal-stress of a cantilever under a tip load F (critically damped modes: static at the
     end): the superposed modal stresses sigma_xx = M z / I at mid span, the Universal file and
     the modal coordinates."""
     try:
@@ -262,7 +262,7 @@ def test_femfat_cantilever(tmp_path, modal_tool, monkeypatch):
          "solver": {"type": "HHT", "alpha": -0.05, "step": 1e-4, "end_time": 0.06}}
     path = tmp_path / "cantilever.yaml"
     path.write_text(yaml.safe_dump(m))
-    assert cli.main(["femfat", str(path), "beam", "-o", str(tmp_path / "out")]) == 0
+    assert cli.main(["modal-stress", str(path), "beam", "-o", str(tmp_path / "out")]) == 0
     from fdgen.flex import load_modal
     unv = (tmp_path / "out" / "beam_modes.unv").read_text().split("\n")
     eta = np.loadtxt(tmp_path / "out" / "beam_eta.csv", delimiter=",", skiprows=1)

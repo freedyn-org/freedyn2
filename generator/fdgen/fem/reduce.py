@@ -120,7 +120,7 @@ def reduce(a, interfaces, nmodes, output_nodes=None, rigid="auto", shift=None, t
     if a.surface is not None and len(a.surface[0]):  # mode shapes on the boundary, for the viewer
         k = a.surface[0]
         data.viz = (a.xyz[k], a.surface[1], np.stack([Phi[a.start[i]:a.start[i] + 3] for i in k]))
-    if a.solids:  # the mesh of the solids and the modal stresses at its nodes (fatigue: FEMFAT)
+    if a.solids:  # the mesh of the solids and the modal stresses at its nodes (fatigue)
         used, sig = stress.nodal_stresses(a, Phi)
         remap = np.full(len(a.node_ids), -1)
         remap[used] = np.arange(len(used))

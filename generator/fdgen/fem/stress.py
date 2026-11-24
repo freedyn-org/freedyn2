@@ -1,5 +1,5 @@
 """Modal stresses: the stress tensor of each mode shape at the nodes of the solids, for fatigue
-(FEMFAT: modal superposition sigma(t) = sum_i sigma_i eta_i(t)).
+(modal superposition sigma(t) = sum_i sigma_i eta_i(t)).
 
 Per element the stress sigma = D B(xi_node) u_e at its own nodes (the strain of the displacement
 interpolation there), then averaged over the elements at a node. For TET10 the strain is linear

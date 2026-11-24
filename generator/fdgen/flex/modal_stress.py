@@ -1,5 +1,5 @@
-"""Output of a flexible body for fatigue by modal superposition (FEMFAT ChannelMAX / TransMAX and
-the like): sigma(x, t) = sum_i sigma_i(x) eta_i(t).
+"""Output of a flexible body for fatigue by modal superposition (fatigue tools that
+take modal stresses and load histories): sigma(x, t) = sum_i sigma_i(x) eta_i(t).
 
   <body>_modes.unv   the solids of the FE model (Universal file: nodes 2411, elements 2412) and,
                      per elastic mode, the stress tensor at the nodes (2414, normal mode, stress,

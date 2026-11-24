@@ -296,7 +296,7 @@ def test_mcp_flex_tools(env):
         assert "deforms mostly in its mode" in s.modes(str(path), "r1")
         out = s.flex_export(str(path), "arm", str(env / "arm.bdf"))
         assert out.startswith("wrote") and (env / "arm.bdf").is_file()
-        ff = s.flex_femfat(str(path), "r1", "arm", str(env / "ff"))
+        ff = s.flex_modal_stress(str(path), "r1", "arm", str(env / "ff"))
         assert "largest von Mises stress" in ff and (env / "ff" / "arm_modes.unv").is_file()
         assert (env / "ff" / "arm_eta.csv").read_text().startswith("time,mode1,")
         with pytest.raises(ValueError, match="not a flexible body"):
