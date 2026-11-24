@@ -8,7 +8,7 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 ### Added
 
 - Flexible bodies (floating frame of reference, modal coordinates) from Adams MTX files:
-  `bodies.<name>.flex: {mtx, damping, rotation_coupling, quadratic_inertia}`; joints at a node
+  `bodies.<name>.flex: {modal, damping, rotation_coupling, quadratic_inertia}`; joints at a node
   of a flexible body (`node` of a joint, any joint type). The body is split into element types
   of fixed size (rigid part, one mode, one pair of modes) that the runtime adds up: no model
   plugin, no compiler, any number of modes. The `.fds` importer reads `Body MBS_FlexBody_Full`
@@ -26,11 +26,13 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   body; joints act at the nodes, forces on massless bodies fixed to them.
 - `freedyn2 flex-export model.yaml body`: the meshed body as Nastran bulk data, to change its
   spiders or mesh and use it with `flex.fem`. Joints and forces without `node` attach to the
-  interface node at their point for every flexible body (also `fem` and `mtx`); a torque and a
+  interface node at their point for every flexible body (also `fem` and `modal`); a torque and a
   torsion spring at a flexible body need their point.
-- The CMS result of a reduction is kept next to the model (`cms/<body>.mtx`, `.viz.npz`,
-  `.json`), reused while its inputs are the same and usable by other models with `flex.mtx`;
-  `flex.cms` gives another place.
+- The CMS result of a reduction is kept next to the model in freedyn2's own modal data file
+  (`cms/<body>.fdflex`: a ZIP archive of NumPy arrays with the modal data, the mode shapes on
+  the surface and what it was made from), reused while its inputs are the same and usable by
+  other models with `flex.modal`; `flex.cms` gives another place. `freedyn2 flex-info` shows a
+  modal data file and converts between .fdflex and Adams MTX.
 - Viewer: flexible bodies deform (their STL, or the surface of the FE mesh), magnified with
   *deformation* about their best-fitting rigid motion; eigenmodes with the deformation. Mesh
   shapes count for the size of the scene and *fit view*.

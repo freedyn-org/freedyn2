@@ -92,7 +92,7 @@ def test_rigid_to_flex(env):
     f_weak = 3.9266 ** 2 / (2 * np.pi * L ** 2) * np.sqrt(E * I / (RHO * B * H))
     assert any(abs(f / f_weak - 1) < 0.03 for f in f_flex[1:4])
     # the CMS result is kept next to the model
-    assert {f.name for f in (env / "cms").iterdir()} == {"arm.mtx", "arm.viz.npz", "arm.json"}
+    assert {f.name for f in (env / "cms").iterdir()} == {"arm.fdflex"}
 
 
 def test_material_name_and_errors(env):
@@ -154,16 +154,16 @@ def test_torque_needs_a_point(env):
 
 
 def test_cms_result_kept_and_reused(env):
-    """The reduction is kept in cms/<body>.* and reused while the inputs are the same (made again
+    """The reduction is kept in cms/<body>.fdflex and reused while the inputs are the same (made again
     when they change); another model uses it with flex.mtx, the viewer data come with it."""
-    import json
+    from fdgen.flex.fdflex import read_meta
     from fdgen.view.scene import scene
     flex = {"material": {"E": E, "nu": 0.3, "rho": RHO}, "mesh_size": 0.005, "modes": 4}
     path = env / "a.yaml"
     path.write_text(yaml.safe_dump(arm(flex, name="a")))
     cli.build(path, env, "v2")
-    mtx, meta = env / "cms" / "arm.mtx", env / "cms" / "arm.json"
-    info = json.loads(meta.read_text())
+    mtx = env / "cms" / "arm.fdflex"
+    info = read_meta(mtx)
     assert info["modes"] == 10 and info["source"] == "surface" and len(info["interfaces"]) == 2
     stamp = mtx.stat().st_mtime_ns
     cli.build(path, env, "v2")
@@ -171,14 +171,14 @@ def test_cms_result_kept_and_reused(env):
     flex["modes"] = 6
     path.write_text(yaml.safe_dump(arm(flex, name="a")))
     cli.build(path, env, "v2")
-    assert json.loads(meta.read_text())["modes"] == 12  # made again
+    assert read_meta(mtx)["modes"] == 12  # made again
     # reuse in another model, with its own place for it
-    m = arm({"mtx": "cms/arm.mtx"}, name="b")
+    m = arm({"modal": "cms/arm.fdflex"}, name="b")
     (env / "b.yaml").write_text(yaml.safe_dump(m))
     _, model, _ = cli.build(env / "b.yaml", env, "v2")
     assert model["joints"][0]["node"] == 90000001
     assert scene(model)["bodies"][0]["flex"]["modes"]  # deformation in the viewer
-    flex["cms"] = "parts/arm_cms.mtx"
+    flex["cms"] = "parts/arm_cms.fdflex"
     path.write_text(yaml.safe_dump(arm(flex, name="a")))
     cli.build(path, env, "v2")
-    assert (env / "parts" / "arm_cms.json").is_file()
+    assert (env / "parts" / "arm_cms.fdflex").is_file()

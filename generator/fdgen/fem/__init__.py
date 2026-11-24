@@ -9,48 +9,31 @@ from .reduce import reduce
 __all__ = ["assemble", "read_nastran", "reduce"]
 
 
-FEM_VERSION = 2  # part of the cache key: raise it when the results of the reduction change
-
-
-def viz_path(mtx):
-    """The mode shapes on the surface of the FE model, next to its MTX file (for the viewer)."""
-    from pathlib import Path
-    return Path(mtx).with_suffix(".viz.npz")
-
-
-def save_viz(data, mtx):
-    viz = getattr(data, "viz", None)
-    if viz is not None:
-        import numpy as np
-        tmp = viz_path(mtx).with_suffix(".tmp.npz")
-        np.savez_compressed(tmp, xyz=viz[0], tri=viz[1], phi=viz[2].astype(np.float32))
-        tmp.replace(viz_path(mtx))
+FEM_VERSION = 3  # part of the cache key: raise it when the results of the reduction change
 
 
 def cms_file(base_dir, name, flex, key, compute, describe):
-    """The CMS (Craig-Bampton) result of a flexible body as files next to the model, made once:
-
-        <base_dir>/cms/<body>.mtx       modal data (MTX: usable by any model, flex.mtx)
-        <base_dir>/cms/<body>.viz.npz   mode shapes on the surface (viewer)
-        <base_dir>/cms/<body>.json      what it was made from (key), frequencies, sizes, date
-
-    flex.cms: another path for the .mtx (relative to the model). The files are reused while the
-    key of the inputs is the same, else made again. A model directory that cannot be written
-    (installed examples): the user cache instead. compute() -> (ModalData, info dict);
-    describe: title line of the MTX file."""
-    import json
+    """The CMS (Craig-Bampton) result of a flexible body as a file next to the model, made once:
+    <base_dir>/cms/<body>.fdflex (fdgen.flex.fdflex: modal data, mode shapes on the surface for
+    the viewer, and in its meta what it was made from: the key of the inputs, frequencies,
+    sizes, time). flex.cms: another path (relative to the model). It is reused while the key is
+    the same, else made again; other models use it with flex.modal. A model directory that
+    cannot be written (installed examples): the user cache instead. compute() -> (ModalData,
+    info dict); describe: a line for the meta."""
     import time
     from pathlib import Path
 
-    from ..flex.mtx import write_mtx
+    from ..errors import ModelError
+    from ..flex.fdflex import read_meta, write_fdflex
     from ..userdirs import cache_dir
 
-    target = Path(base_dir or ".") / flex.get("cms", f"cms/{name}.mtx")
-    meta = target.with_suffix(".json")
+    target = Path(base_dir or ".") / flex.get("cms", f"cms/{name}.fdflex")
+    if target.suffix.lower() != ".fdflex":
+        raise ModelError(f"body {name}: cms must be a .fdflex file")
     try:
-        if target.is_file() and json.loads(meta.read_text(encoding="utf-8")).get("key") == key:
+        if target.is_file() and read_meta(target).get("key") == key:
             return target
-    except (OSError, ValueError):
+    except (OSError, ValueError, KeyError, ModelError):
         pass
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -58,27 +41,22 @@ def cms_file(base_dir, name, flex, key, compute, describe):
         probe.write_text("")
         probe.unlink()
     except OSError:
-        target = cache_dir() / "flex" / f"{name}_{key[:16]}.mtx"
-        meta = target.with_suffix(".json")
+        target = cache_dir() / "flex" / f"{name}_{key[:16]}.fdflex"
         if target.is_file():
             return target
         target.parent.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     data, info = compute()
-    tmp = target.with_suffix(".tmp")
-    write_mtx(data, tmp, title=describe)
-    tmp.replace(target)
-    save_viz(data, target)
-    record = {"key": key, "body": name, "made": time.strftime("%Y-%m-%d %H:%M:%S"),
+    record = {"key": key, "body": name, "description": describe, "made": time.strftime("%Y-%m-%d %H:%M:%S"),
               "seconds": round(time.time() - t0, 1), "modes": int(data.nm),
               "frequencies_hz": [float(f) for f in data.frequencies],
               "interface_nodes": [int(i) for i in data.node_labels], "mass": float(data.mass), **info}
-    meta.write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
+    write_fdflex(data, target, record)
     return target
 
 
 def modal_file(path, interfaces=None, modes=20, log=None, base_dir=None, name=None, flex=None):
-    """The modal data of a Nastran FE model as an MTX file (cms_file): Craig-Bampton with the
+    """The modal data of a Nastran FE model as a .fdflex file (cms_file): Craig-Bampton with the
     interface nodes (default: all RBE2 master and RBE3 reference nodes), `modes`
     fixed-interface normal modes, mode shapes kept at the interface nodes."""
     import hashlib

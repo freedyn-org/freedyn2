@@ -52,10 +52,11 @@ and let it settle, or prescribe the motion with drivers), co-simulation interfac
 importer for Adams `.adm` (and `.cmd` with design variables) is planned; until then a model is
 quickest rebuilt by an assistant from the Adams listing.
 
-Flexible bodies read the MTX file of an Adams flexible body (`bodies.<name>.flex.mtx`, the
+Flexible bodies read the MTX file of an Adams flexible body (`bodies.<name>.flex.modal`, the
 modal data from MSC Nastran or Adams/Flex) and attach joints at its nodes (`node` of a joint).
 MNF files are not read; write the MTX file alongside (Adams/Flex, or Nastran with the MTX
-option).
+option). `freedyn2 flex-info file.fdflex --mtx file.mtx` writes freedyn2's modal data (also
+those of its own FE reduction) as an MTX file for Adams.
 
 ## A first translation
 

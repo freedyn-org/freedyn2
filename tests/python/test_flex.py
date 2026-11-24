@@ -162,7 +162,7 @@ def build_run(model, work):
 
 
 def beam_model(name, **extra):
-    m = {"model": name, "bodies": {"beam": {"flex": {"mtx": str(MTX)}}},
+    m = {"model": name, "bodies": {"beam": {"flex": {"modal": str(MTX)}}},
          "solver": {"type": "HHT", "alpha": -0.05, "step": 1e-6, "end_time": 2e-6}}
     m.update(extra)
     return m
@@ -222,3 +222,20 @@ def test_flying_beam_conserves_energy(tmp_path, runtime, beam):
     eta = max(abs(float(rows[-1][f"beam.eta{i + 1}.eta"])) for i in range(beam.nm))
     assert eta > 1e-4  # the beam deforms
     assert np.max(np.abs(E - E[0])) < 1e-6 * E[0]
+
+
+def test_fdflex_roundtrip(tmp_path, beam):
+    """.fdflex keeps the modal data exactly and its meta; MTX -> fdflex -> MTX."""
+    from fdgen.flex import read_fdflex, write_fdflex, write_mtx
+    from fdgen.flex.fdflex import read_meta
+    f = write_fdflex(beam, tmp_path / "b.fdflex", {"source": "test"})
+    d = read_fdflex(f)
+    for k in ("I2", "I3", "I4", "I5", "I6", "I7", "I8", "I9", "K", "frequencies", "node_labels", "node_positions",
+              "Phi", "Psi"):
+        assert np.array_equal(getattr(d, k), getattr(beam, k)), k
+    assert d.mass == beam.mass and d.has_I5 and read_meta(f) == {"source": "test"} and d.viz is None
+    write_mtx(d, tmp_path / "b.mtx")
+    assert np.allclose(read_mtx(tmp_path / "b.mtx").I9, beam.I9, rtol=1e-13, atol=0)
+    (tmp_path / "x.fdflex").write_bytes(b"PK no")
+    with pytest.raises(Exception):
+        read_fdflex(tmp_path / "x.fdflex")

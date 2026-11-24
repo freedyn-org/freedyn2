@@ -139,10 +139,10 @@ def _connect(name, body, owners, nodes, positions, joints, model_bodies, added):
 
 
 def _existing_interfaces(name, body, joints, forces):
-    """Joints and forces without a node at a body with modal data (mtx, fem): each at the
+    """Joints and forces without a node at a body with modal data (modal, fem): each at the
     interface node at its point (nodes with rotations, within 1 % of the body size)."""
     from ..flex import load_modal
-    d = load_modal(body["flex"]["mtx"])
+    d = load_modal(body["flex"]["modal"])
     R, A = body_frame(body)
     has_rot = np.abs(d.Psi).reshape(len(d.node_labels), -1).max(axis=1) > 0
     labels, pos = d.node_labels[has_rot], d.node_positions[has_rot]
@@ -174,7 +174,7 @@ def prepare(model_bodies, joints, forces, base_dir, log=None):
             flex = body["flex"]
             tri, specs, owners = plan(name, body, joints, forces, base_dir)
             material, h, modes = _material(flex, name), float(flex["mesh_size"]), int(flex.get("modes", 20))
-            flex["mtx"] = str(_modal_file(name, tri, material, h, specs, modes, log, base_dir, flex))
+            flex["modal"] = str(_modal_file(name, tri, material, h, specs, modes, log, base_dir, flex))
             nodes = [INTERFACE_IDS + k + 1 for k in range(len(specs))]
             flex["nodes"] = nodes
             _flex(name, body, base_dir)  # mass and inertia from the FE model (a warning if they differ)

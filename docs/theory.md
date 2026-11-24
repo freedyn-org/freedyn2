@@ -254,9 +254,10 @@ joint) is represented exactly in the static limit.
 quadrature point the mass \(\rho\, \det J\, w\), the position \(s\) and the interpolated mode
 shapes \(\phi\); \(I_1 = \sum m\), \(I_7 = \sum m\, \tilde s^T \tilde s\), \(I_9 = \sum m\, \tilde\phi_j \tilde\phi_k\)
 and so on. For the solids this is exact for the FE discretization (Adams uses lumped node
-masses). The result is written as an MTX file next to the model (`cms/<body>.mtx`, with the
-mode shapes on the surface and a record of its inputs), reused while the mesh, interfaces and
-number of modes stay the same, and used as such.
+masses). The result is written next to the model as freedyn2's modal data file
+(`cms/<body>.fdflex`, `fdgen/flex/fdflex.py`: a ZIP archive of NumPy arrays with the mode
+shapes on the surface and a record of its inputs), reused while the mesh, interfaces and
+number of modes stay the same.
 
 ### 3.6 Flexible bodies from a surface (rigid to flex)
 

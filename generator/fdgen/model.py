@@ -107,14 +107,14 @@ def _flex(name, b, base_dir):
             raise ModelError(f"body {name}: FE model {fem} not found")
         flex["fem"] = str(fem.resolve())
         try:
-            flex["mtx"] = str(modal_file(fem, flex.get("interfaces"), flex.get("modes", 20), base_dir=base_dir,
+            flex["modal"] = str(modal_file(fem, flex.get("interfaces"), flex.get("modes", 20), base_dir=base_dir,
                                          name=name, flex=flex))
         except (ModelError, FileNotFoundError, ValueError) as e:
             raise ModelError(f"body {name}: {e}") from None
-    path = _data_path(flex["mtx"], base_dir)
+    path = _data_path(flex["modal"], base_dir)
     if not path.is_file():
         raise ModelError(f"body {name}: modal data file {path} not found")
-    flex["mtx"] = str(path.resolve())
+    flex["modal"] = str(path.resolve())
     try:
         data = load_modal(path)
     except ModelError as e:
@@ -154,7 +154,7 @@ def _joint_node(out, j, bodies):
     """A joint at a node of a flexible body: the node label (checked), location defaults to the
     node position at t = 0. Flexible bodies without a node: the joint acts on the body frame."""
     flex = out["body2"] if out["body2"] != "ground" else out["body1"]
-    if any("flex" in bodies[b] and "mtx" not in bodies[b]["flex"] for b in (out["body1"], out["body2"])
+    if any("flex" in bodies[b] and "modal" not in bodies[b]["flex"] for b in (out["body1"], out["body2"])
            if b != "ground"):
         return  # a body meshed from its surface: nodes are set by fem.surface.prepare
     if "node" not in j:  # fem.surface.prepare attaches it to the interface node at its location
@@ -165,7 +165,7 @@ def _joint_node(out, j, bodies):
     if out["body2"] != "ground" and "flex" in bodies[out["body1"]]:
         raise ModelError(f"joint {out['name']}: two flexible bodies, the node is on body2 ({flex}); body1 "
                          "would act on its body frame")
-    data = load_modal(bodies[flex]["flex"]["mtx"])
+    data = load_modal(bodies[flex]["flex"]["modal"])
     try:
         k = data.node_index(j["node"])
     except KeyError as e:
@@ -501,7 +501,7 @@ def write_fdm(model, path):
                                f"joint {joint['name']}")
             if "node" in joint:  # mode terms of the primitive at the node, same constraint row
                 flex = names[-1]
-                data = load_modal(model["bodies"][flex]["flex"]["mtx"])
+                data = load_modal(model["bodies"][flex]["flex"]["modal"])
                 k = data.node_index(joint["node"])
                 ec, ed = flex_layout[flex]
                 _, idx = _connected(names, layout)

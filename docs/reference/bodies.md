@@ -36,14 +36,14 @@ file; `position`, `orientation` and `velocity` are those of the body frame of th
 bodies:
   beam:
     flex:
-      mtx: data/flex_beam.mtx    # relative to the model file, values in the units of the model
+      modal: data/flex_beam.mtx  # .fdflex, or an Adams MTX file (values in the units of the model)
       damping: 0.02              # modal damping ratio, or one per mode: [0.02, 0.05]
     position: [0, 0, 0]
 joints:
   clamp: {type: fixed, body1: beam, node: 10001}   # at node 10001 of the modal data
 ```
 
-- Instead of `mtx`, `fem` reduces a **Nastran FE model** of the part (GRID, CTETRA with 4 or 10
+- Instead of `modal`, `fem` reduces a **Nastran FE model** of the part (GRID, CTETRA with 4 or 10
   nodes, CHEXA with 8, CBAR with a PBARL ROD section, PSOLID, MAT1, RBE2, RBE3) in the units of
   the model: Craig-Bampton with the `interfaces` (RBE2 master or RBE3 reference nodes; default
   all) and `modes` fixed-interface modes (default 20), orthonormalized as Adams/Flex does. The
@@ -84,11 +84,14 @@ joints:
   from the FE model.
 
 - **The CMS result is kept** next to the model, for `fem` and `material` bodies:
-  `cms/<body>.mtx` (the modal data), `cms/<body>.viz.npz` (mode shapes on the surface, for the
-  viewer) and `cms/<body>.json` (what it was made from, frequencies, mesh size, time). A build
+  `cms/<body>.fdflex`, the freedyn2 modal data file: modal data, mode shapes on the surface for
+  the viewer, and what it was made from (frequencies, mesh size, time). A build
   reuses it while mesh, material, interfaces and modes are the same, and makes it again when
-  they change. Other models use it with `flex: {mtx: cms/arm.mtx}`; put it under version
+  they change. Other models use it with `flex: {modal: cms/arm.fdflex}`; put it under version
   control or pass it on like any data file. `cms` gives another place.
+  `freedyn2 flex-info cms/arm.fdflex` shows what it holds; `--mtx arm.mtx` writes it as an
+  Adams MTX file (and `--fdflex` the other way). The format: a ZIP archive of NumPy arrays,
+  documented in `fdgen/flex/fdflex.py`.
 
 - **Your own FE model and spiders.** `freedyn2 flex-export model.yaml arm` writes the meshed
   body as Nastran bulk data (`arm.bdf`, in its body frame; its interfaces with their points and

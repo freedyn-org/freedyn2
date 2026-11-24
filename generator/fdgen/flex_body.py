@@ -262,7 +262,7 @@ def fdm_elements(name, body, gravity, nq, nv):
 
     fmt = lambda v: " ".join(repr(float(x)) for x in v)
     flex = body["flex"]
-    data = load_modal(flex["mtx"])
+    data = load_modal(flex["modal"])
     frame, modes, pairs = instance_params(data, gravity, flex.get("damping", 0.0),
                                           flex.get("rotation_coupling", True), flex.get("quadratic_inertia", True))
     fc, fd = list(range(nq, nq + 7)), list(range(nv, nv + 6))

@@ -105,7 +105,7 @@ def flex_body(block, base_dir):
     A = [[cols[3 * j + i] for j in range(3)] for i in range(3)]
     damping = numbers(block, "GlobalDampingFactor", None, [0.0])
     return name, {
-        "flex": {"mtx": legacy_file(block[2].get("Path2MtxFile", ""), base_dir),
+        "flex": {"modal": legacy_file(block[2].get("Path2MtxFile", ""), base_dir),
                  "damping": damping[0] if len(damping) == 1 else damping,
                  "rotation_coupling": flag(block, "Is_Itf_active", False),
                  "quadratic_inertia": flag(block, "Is_QuadraticTermOF_Itt_active", False)},

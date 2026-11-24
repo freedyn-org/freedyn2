@@ -223,4 +223,4 @@ def test_cantilever_from_fem(tmp_path, modal_tool, monkeypatch):
     f = np.sort(np.abs(lam.imag[lam.imag > 1e-6])) / (2 * np.pi)
     assert f[0] == pytest.approx(f[1], rel=1e-6)
     assert f[0] == pytest.approx(euler_bernoulli(1.8751), rel=0.02)
-    assert (tmp_path / "cms" / "beam.mtx").is_file() and (tmp_path / "cms" / "beam.json").is_file()  # kept
+    assert (tmp_path / "cms" / "beam.fdflex").is_file()  # kept

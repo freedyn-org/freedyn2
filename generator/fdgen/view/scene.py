@@ -83,7 +83,7 @@ def _flex(name, b, shapes):
     shapes on the vertices of its STL shapes (fdgen.flex.viz), base64 float32 (nm, nv, 3)."""
     from ..flex import load_modal
     from ..flex.viz import shape_modes
-    nm = load_modal(b["flex"]["mtx"]).nm
+    nm = load_modal(b["flex"]["modal"]).nm
     try:
         modes, extra = shape_modes(b, shapes)
     except (OSError, ValueError):

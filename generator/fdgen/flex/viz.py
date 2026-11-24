@@ -1,16 +1,14 @@
 """Mode shapes of a flexible body on the vertices of its shapes, for the viewer.
 
-Source: the mode shapes on the surface of the FE model (<mtx>.viz.npz, written by the own FE
+Source: the mode shapes on the surface of the FE model (in the .fdflex file of the own FE
 reduction), else those at the nodes of the modal data (an MTX file with all nodes; with only a
 few interface nodes there is nothing to show). Each vertex of an STL shape gets the inverse
 distance weighted mode shapes of the 4 nearest of those nodes; vertices farther from them than
 5 % of the body size get none (the shape and the FE model do not match).
 
 A flexible body without an STL shape but with an FE surface gets that surface as its shape
-(an STL file next to the modal data).
+(an STL file in the user cache).
 """
-
-from pathlib import Path
 
 import numpy as np
 
@@ -22,12 +20,10 @@ K_NEAREST = 4
 
 def source(flex):
     """(node positions (n, 3) body frame, triangles or None, mode shapes (n, 3, nm)) or None."""
-    from ..fem import viz_path
-    p = viz_path(flex["mtx"])
-    if p.is_file():
-        z = np.load(p)
-        return z["xyz"], z["tri"], z["phi"]
-    d = load_modal(flex["mtx"])
+    d = load_modal(flex["modal"])
+    viz = getattr(d, "viz", None)
+    if viz is not None:
+        return viz
     if len(d.node_labels) < 8:
         return None
     return d.node_positions, None, d.Phi
@@ -77,8 +73,12 @@ def shape_modes(body, shapes):
     nodes, tri, phi = src
     extra = []
     if not any(s["type"] == "mesh" for s in shapes) and tri is not None and len(tri):
-        f = Path(body["flex"]["mtx"]).with_suffix(".surface.stl")
+        import hashlib
+        from ..userdirs import cache_dir
+        h = hashlib.sha256(np.ascontiguousarray(nodes, float).tobytes() + np.ascontiguousarray(tri).tobytes())
+        f = cache_dir() / "flex" / f"surface_{h.hexdigest()[:16]}.stl"
         if not f.is_file():
+            f.parent.mkdir(parents=True, exist_ok=True)
             write_surface_stl(f, nodes, tri)
         extra = [{"type": "mesh", "file": str(f), "position": [0.0, 0.0, 0.0], "orientation": [1.0, 0.0, 0.0, 0.0],
                   "scale": [1.0, 1.0, 1.0]}]
