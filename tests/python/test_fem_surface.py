@@ -184,16 +184,56 @@ def test_cms_result_kept_and_reused(env):
     assert (env / "parts" / "arm_cms.fdflex").is_file()
 
 
-def plate_with_hole(path, r=0.005):
-    """STL of the arm with a bore of radius r through it at the origin (axis z), by OpenCASCADE."""
-    occ = pytest.importorskip("netgen.occ")
+def plate_with_hole(path, r=0.005, n=32, m=4, nz=2, nx=12):
+    """Closed STL of the arm [-a, L] x [-a, a] x [-H/2, H/2] with a bore of radius r at the
+    origin (axis z): the surface of a structured hexahedral mesh, an O-grid from the bore to
+    the square of half width a (n around, a multiple of 8, m across) and the rest of the arm on
+    the square's right edge (nx along). Independent of a CAD kernel."""
+    from fdgen.fem.assemble import boundary
+    from fdgen.fem.nastran import FeModel
     from fdgen.fem.stl import write_stl
-    arm = occ.Box(occ.Pnt(-0.015, -B, -H / 2), occ.Pnt(L, B, H / 2)) - occ.Cylinder(occ.Pnt(0, 0, -H), occ.Dir(0, 0, 1),
-                                                                               r, 2 * H)
-    m = occ.OCCGeometry(arm).GenerateMesh(maxh=0.004)
-    pts = np.array([p.p for p in m.Points()])
-    tri = np.array([[p.nr - 1 for p in el.points][:3] for el in m.Elements2D()])
-    write_stl(path, pts[tri])
+    a = 0.015
+    phi = 2 * np.pi * np.arange(n) / n
+    c, s_ = np.cos(phi), np.sin(phi)
+    sq = np.column_stack([c, s_]) / np.maximum(np.abs(c), np.abs(s_))[:, None] * a
+    rg = np.column_stack([c, s_]) * r
+    zs = np.linspace(-H / 2, H / 2, nz + 1)
+    fe, nid = FeModel(), {}
+
+    def node(key, x, y, z):
+        if key not in nid:
+            nid[key] = len(nid) + 1
+            fe.nodes[nid[key]] = (x, y, z)
+        return nid[key]
+    for i in range(n):  # O-grid: radial lines from the bore to the square
+        for j in range(m + 1):
+            p = rg[i] + (sq[i] - rg[i]) * j / m
+            for k, z in enumerate(zs):
+                node(("o", i, j, k), p[0], p[1], z)
+    right = [i for i in range(n) if abs(sq[i][0] - a) < 1e-12]
+    right = sorted(right, key=lambda i: sq[i][1])
+    for q, i in enumerate(right):  # the arm: from the square's right edge to x = L
+        for g in range(1, nx + 1):
+            for k, z in enumerate(zs):
+                node(("a", q, g, k), a + (L - a) * g / nx, sq[i][1], z)
+    hexes = []
+    for i in range(n):
+        i1 = (i + 1) % n
+        for j in range(m):
+            for k in range(nz):
+                hexes.append([nid[("o", ii, jj, kk)] for kk in (k, k + 1) for ii, jj in
+                              ((i, j), (i1, j), (i1, j + 1), (i, j + 1))])
+    edge = lambda q, g, k: nid[("o", right[q], m, k)] if g == 0 else nid[("a", q, g, k)]
+    for q in range(len(right) - 1):
+        for g in range(nx):
+            for k in range(nz):
+                hexes.append([edge(qq, gg, kk) for kk in (k, k + 1) for qq, gg in
+                              ((q, g), (q, g + 1), (q + 1, g + 1), (q + 1, g))])
+    fe.solids = [(e + 1, 1, h) for e, h in enumerate(hexes)]
+    ids = np.array(sorted(fe.nodes))
+    xyz = fe.node_array(ids)
+    used, tri = boundary(fe, ids, xyz)
+    write_stl(path, xyz[used][tri])
     return path
 
 
@@ -206,7 +246,7 @@ def test_bore_spider(env):
     r = 0.005
     plate_with_hole(env / "hole.stl", r)
     m = {"model": "bore", "gravity": [0, -9.81, 0],
-         "bodies": {"arm": {"mass": 0.67, "inertia": [1e-5, 1e-4, 1e-4],
+         "bodies": {"arm": {"mass": 0.5, "inertia": [1e-5, 1e-4, 1e-4],
                             "shapes": [{"type": "mesh", "file": "hole.stl", "frame": "body"}],
                             "flex": {"material": "steel", "mesh_size": 0.004, "modes": 4}}},
          "joints": {"pivot": {"type": "revolute", "body1": "arm", "location": [0, 0, 0]}},
