@@ -239,6 +239,7 @@
             "mesh_size": {"type": "number", "exclusiveMinimum": 0, "description": "material: largest element size of the volume mesh (Netgen, quadratic tetrahedra)."},
             "stl": {"description": "material: the surface to mesh, an STL file placed as a mesh shape (a file name: global coordinates at t = 0, like a shape; or a shape with type mesh). Default: the body's one STL shape.",
                     "oneOf": [{"type": "string"}, {"$ref": "#/$defs/shape"}]},
+            "cms": {"type": "string", "description": "fem, material: where the result of the reduction is kept (MTX file, relative to the model; beside it .viz.npz for the viewer and .json with what it was made from). Default cms/<body>.mtx. Reused while the inputs are the same; usable by other models with mtx."},
             "interface_type": {"enum": ["rbe2", "rbe3"], "default": "rbe2", "description": "material: type of the interfaces made for joints and forces: rbe2 rigid, rbe3 interpolating (adds no stiffness)."},
             "modes": {"type": "integer", "minimum": 0, "default": 20, "description": "fem, material: fixed-interface normal modes (without interfaces: free-free modes) in addition to the 6 per interface node; the 6 rigid body modes are removed."},
             "damping": {"description": "Modal damping ratio: one value for all modes or one per mode (the last for the rest). Default 0.",

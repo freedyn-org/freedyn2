@@ -27,33 +27,76 @@ def save_viz(data, mtx):
         tmp.replace(viz_path(mtx))
 
 
-def modal_file(path, interfaces=None, modes=20, log=None):
-    """The modal data of a Nastran FE model as an MTX file in the user cache (made once per
-    content of the file, interfaces and number of modes): Craig-Bampton with the interface nodes
-    (default: all RBE2 master and RBE3 reference nodes), `modes` fixed-interface normal modes,
-    mode shapes kept at the interface nodes."""
-    import hashlib
+def cms_file(base_dir, name, flex, key, compute, describe):
+    """The CMS (Craig-Bampton) result of a flexible body as files next to the model, made once:
+
+        <base_dir>/cms/<body>.mtx       modal data (MTX: usable by any model, flex.mtx)
+        <base_dir>/cms/<body>.viz.npz   mode shapes on the surface (viewer)
+        <base_dir>/cms/<body>.json      what it was made from (key), frequencies, sizes, date
+
+    flex.cms: another path for the .mtx (relative to the model). The files are reused while the
+    key of the inputs is the same, else made again. A model directory that cannot be written
+    (installed examples): the user cache instead. compute() -> (ModalData, info dict);
+    describe: title line of the MTX file."""
+    import json
+    import time
     from pathlib import Path
 
-    from ..userdirs import cache_dir
     from ..flex.mtx import write_mtx
+    from ..userdirs import cache_dir
+
+    target = Path(base_dir or ".") / flex.get("cms", f"cms/{name}.mtx")
+    meta = target.with_suffix(".json")
+    try:
+        if target.is_file() and json.loads(meta.read_text(encoding="utf-8")).get("key") == key:
+            return target
+    except (OSError, ValueError):
+        pass
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        probe = target.with_suffix(".probe")
+        probe.write_text("")
+        probe.unlink()
+    except OSError:
+        target = cache_dir() / "flex" / f"{name}_{key[:16]}.mtx"
+        meta = target.with_suffix(".json")
+        if target.is_file():
+            return target
+        target.parent.mkdir(parents=True, exist_ok=True)
+    t0 = time.time()
+    data, info = compute()
+    tmp = target.with_suffix(".tmp")
+    write_mtx(data, tmp, title=describe)
+    tmp.replace(target)
+    save_viz(data, target)
+    record = {"key": key, "body": name, "made": time.strftime("%Y-%m-%d %H:%M:%S"),
+              "seconds": round(time.time() - t0, 1), "modes": int(data.nm),
+              "frequencies_hz": [float(f) for f in data.frequencies],
+              "interface_nodes": [int(i) for i in data.node_labels], "mass": float(data.mass), **info}
+    meta.write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
+    return target
+
+
+def modal_file(path, interfaces=None, modes=20, log=None, base_dir=None, name=None, flex=None):
+    """The modal data of a Nastran FE model as an MTX file (cms_file): Craig-Bampton with the
+    interface nodes (default: all RBE2 master and RBE3 reference nodes), `modes`
+    fixed-interface normal modes, mode shapes kept at the interface nodes."""
+    import hashlib
+    from pathlib import Path
 
     path = Path(path)
     key = hashlib.sha256(path.read_bytes())
     key.update(repr((FEM_VERSION, None if interfaces is None else sorted(int(i) for i in interfaces),
                      int(modes))).encode())
-    out = cache_dir() / "flex" / f"{path.stem}_{key.hexdigest()[:16]}.mtx"
-    if out.is_file():
-        return out
-    fe = read_nastran(path)
-    a = assemble(fe)
-    ifs = sorted(a.masters) if interfaces is None else [int(i) for i in interfaces]
-    if log:
-        log(f"{path.name}: {a.n} dofs, interfaces {ifs}, {modes} modes")
-    data = reduce(a, ifs, int(modes), output_nodes=ifs)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out.with_suffix(".tmp")
-    write_mtx(data, tmp, title=f"{path.name}, freedyn2 FEM, Craig-Bampton, interfaces {' '.join(map(str, ifs))}")
-    tmp.replace(out)
-    save_viz(data, out)
-    return out
+
+    def compute():
+        fe = read_nastran(path)
+        a = assemble(fe)
+        ifs = sorted(a.masters) if interfaces is None else [int(i) for i in interfaces]
+        if log:
+            log(f"{path.name}: {a.n} dofs, interfaces {ifs}, {modes} modes")
+        return reduce(a, ifs, int(modes), output_nodes=ifs), {"source": str(path), "dofs": int(a.n),
+                                                              "elements": len(fe.solids) + len(fe.bars)}
+
+    return cms_file(base_dir or path.parent, name or path.stem, flex or {}, key.hexdigest(), compute,
+                    f"{path.name}, freedyn2 FEM, Craig-Bampton")

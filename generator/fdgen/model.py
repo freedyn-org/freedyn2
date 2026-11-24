@@ -107,7 +107,8 @@ def _flex(name, b, base_dir):
             raise ModelError(f"body {name}: FE model {fem} not found")
         flex["fem"] = str(fem.resolve())
         try:
-            flex["mtx"] = str(modal_file(fem, flex.get("interfaces"), flex.get("modes", 20)))
+            flex["mtx"] = str(modal_file(fem, flex.get("interfaces"), flex.get("modes", 20), base_dir=base_dir,
+                                         name=name, flex=flex))
         except (ModelError, FileNotFoundError, ValueError) as e:
             raise ModelError(f"body {name}: {e}") from None
     path = _data_path(flex["mtx"], base_dir)

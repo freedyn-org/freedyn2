@@ -21,7 +21,7 @@ import numpy as np
 
 from ..errors import ModelError
 from ..geometry import body_frame, rotation_matrix
-from . import FEM_VERSION, assemble, reduce, save_viz
+from . import FEM_VERSION, assemble, reduce
 from .stl import INTERFACE_IDS, MATERIALS, fe_model, mesh_stl, read_surface
 
 SYMMETRIC_JOINTS = ("fixed", "spherical", "revolute", "cylindrical", "prismatic")
@@ -174,7 +174,7 @@ def prepare(model_bodies, joints, forces, base_dir, log=None):
             flex = body["flex"]
             tri, specs, owners = plan(name, body, joints, forces, base_dir)
             material, h, modes = _material(flex, name), float(flex["mesh_size"]), int(flex.get("modes", 20))
-            flex["mtx"] = str(_modal_file(name, tri, material, h, specs, modes, log))
+            flex["mtx"] = str(_modal_file(name, tri, material, h, specs, modes, log, base_dir, flex))
             nodes = [INTERFACE_IDS + k + 1 for k in range(len(specs))]
             flex["nodes"] = nodes
             _flex(name, body, base_dir)  # mass and inertia from the FE model (a warning if they differ)
@@ -198,28 +198,25 @@ def fe_of(name, tri, material, h, specs):
     return fe_model(xyz, tets, surf, material, specs, h)
 
 
-def _modal_file(name, tri, material, h, specs, modes, log):
-    from ..flex.mtx import write_mtx
-    from ..userdirs import cache_dir
+def _modal_file(name, tri, material, h, specs, modes, log, base_dir=None, flex=None):
+    from . import cms_file
     key = hashlib.sha256(np.ascontiguousarray(tri, float).tobytes())
     key.update(repr((FEM_VERSION, "surface", tuple(material), h, modes,
                      [(tuple(np.round(u, 12)), t, r) for u, t, r in specs])).encode())
-    out = cache_dir() / "flex" / f"{name}_{key.hexdigest()[:16]}.mtx"
-    if out.is_file():
-        return out
-    fe = fe_of(name, tri, material, h, specs)
-    a = assemble(fe)
-    tets = fe.solids
-    ifs = [INTERFACE_IDS + k + 1 for k in range(len(specs))]
-    if log:
-        log(f"body {name}: {len(tets)} TET10, {a.n} dofs, {len(ifs)} interfaces, {modes} modes")
-    data = reduce(a, ifs, modes, output_nodes=ifs)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out.with_suffix(".tmp")
-    write_mtx(data, tmp, title=f"body {name}: Netgen TET10 h = {h}, freedyn2 FEM, Craig-Bampton")
-    tmp.replace(out)
-    save_viz(data, out)
-    return out
+
+    def compute():
+        fe = fe_of(name, tri, material, h, specs)
+        a = assemble(fe)
+        ifs = [INTERFACE_IDS + k + 1 for k in range(len(specs))]
+        if log:
+            log(f"body {name}: {len(fe.solids)} TET10, {a.n} dofs, {len(ifs)} interfaces, {modes} modes")
+        return reduce(a, ifs, modes, output_nodes=ifs), {
+            "source": "surface", "mesh_size": h, "material": list(material), "dofs": int(a.n),
+            "elements": len(fe.solids), "interfaces": [{"node": n, "point_body": [float(x) for x in sp[0]],
+                                                         "type": sp[1], "radius": sp[2]} for n, sp in zip(ifs, specs)]}
+
+    return cms_file(base_dir, name, flex or {}, key.hexdigest(), compute,
+                    f"body {name}: Netgen TET10 h = {h}, freedyn2 FEM, Craig-Bampton")
 
 
 def export(model_path, body_name, out=None):

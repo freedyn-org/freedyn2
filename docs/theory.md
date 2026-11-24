@@ -254,8 +254,9 @@ joint) is represented exactly in the static limit.
 quadrature point the mass \(\rho\, \det J\, w\), the position \(s\) and the interpolated mode
 shapes \(\phi\); \(I_1 = \sum m\), \(I_7 = \sum m\, \tilde s^T \tilde s\), \(I_9 = \sum m\, \tilde\phi_j \tilde\phi_k\)
 and so on. For the solids this is exact for the FE discretization (Adams uses lumped node
-masses). The result is written as an MTX file (cached per content of the mesh, interfaces and
-number of modes) and used as such.
+masses). The result is written as an MTX file next to the model (`cms/<body>.mtx`, with the
+mode shapes on the surface and a record of its inputs), reused while the mesh, interfaces and
+number of modes stay the same, and used as such.
 
 ### 3.6 Flexible bodies from a surface (rigid to flex)
 

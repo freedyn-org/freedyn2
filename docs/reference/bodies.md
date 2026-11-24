@@ -47,8 +47,8 @@ joints:
   nodes, CHEXA with 8, CBAR with a PBARL ROD section, PSOLID, MAT1, RBE2, RBE3) in the units of
   the model: Craig-Bampton with the `interfaces` (RBE2 master or RBE3 reference nodes; default
   all) and `modes` fixed-interface modes (default 20), orthonormalized as Adams/Flex does. The
-  result is cached; the first build of a large mesh takes a while (struct1, 30000 dofs: about
-  20 s).
+  result is kept in `cms/` (below); the first build of a large mesh takes a while (struct1,
+  30000 dofs: about 20 s).
 
   ```yaml
   bodies:
@@ -81,7 +81,14 @@ joints:
   bending mode at 260 Hz; with the whole end face: 440 Hz); give `interfaces` with a `radius`
   where it matters. Named materials are in SI units (m, kg, s); in other units give
   `{E, nu, rho}`. Position and orientation stay those of the rigid body; mass and inertia come
-  from the FE model. Meshing and reduction are cached.
+  from the FE model.
+
+- **The CMS result is kept** next to the model, for `fem` and `material` bodies:
+  `cms/<body>.mtx` (the modal data), `cms/<body>.viz.npz` (mode shapes on the surface, for the
+  viewer) and `cms/<body>.json` (what it was made from, frequencies, mesh size, time). A build
+  reuses it while mesh, material, interfaces and modes are the same, and makes it again when
+  they change. Other models use it with `flex: {mtx: cms/arm.mtx}`; put it under version
+  control or pass it on like any data file. `cms` gives another place.
 
 - **Your own FE model and spiders.** `freedyn2 flex-export model.yaml arm` writes the meshed
   body as Nastran bulk data (`arm.bdf`, in its body frame; its interfaces with their points and

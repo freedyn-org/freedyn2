@@ -28,6 +28,9 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   spiders or mesh and use it with `flex.fem`. Joints and forces without `node` attach to the
   interface node at their point for every flexible body (also `fem` and `mtx`); a torque and a
   torsion spring at a flexible body need their point.
+- The CMS result of a reduction is kept next to the model (`cms/<body>.mtx`, `.viz.npz`,
+  `.json`), reused while its inputs are the same and usable by other models with `flex.mtx`;
+  `flex.cms` gives another place.
 - Viewer: flexible bodies deform (their STL, or the surface of the FE mesh), magnified with
   *deformation* about their best-fitting rigid motion; eigenmodes with the deformation. Mesh
   shapes count for the size of the scene and *fit view*.
