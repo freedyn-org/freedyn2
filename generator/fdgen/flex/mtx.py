@@ -145,3 +145,48 @@ def read_mtx(path, rigid_modes="auto"):
         data = data.select(range(n, nm))
         data.removed_modes = [int(x) for x in sel[:n, 0]]
     return data
+
+
+def _fmt(x):
+    return f"{x:22.14E}"
+
+
+def write_mtx(data, path, nodes=None, title="written by freedyn2"):
+    """Write modal data as an MTX file (FULL RORDER blocks, three values per line, each row on a
+    new line; read back by read_mtx). nodes: the node labels to keep (default all); everything
+    else (invariants, stiffness) is independent of them."""
+    keep = list(range(len(data.node_labels))) if nodes is None else [data.node_index(n) for n in nodes]
+    nm = data.nm
+    blocks = [
+        ("SELNOD", np.column_stack([data.node_labels[keep], data.node_positions[keep]]), True),
+        ("SELMOD", np.column_stack([np.arange(7, 7 + nm), data.frequencies]), True),
+        ("INVAR1", np.array([[data.mass]]), False),
+        ("INVAR2", data.I2.reshape(1, 3), False),
+        ("INVAR3", data.I3, False),
+        ("INVAR4", data.I4, False),
+    ]
+    if data.has_I5:
+        blocks.append(("INVAR5", data.I5.reshape(3 * nm, nm), False))
+    if data.has_I9:
+        blocks.append(("INVAR9", data.I9.reshape(3 * nm * nm, 3), False))
+    blocks += [("INVAR6", data.I6, False), ("INVAR7", data.I7, False), ("INVAR8", data.I8.reshape(nm, 9), False),
+               ("GENSTIFF", data.K, False)]
+    T = data.Phi[keep].transpose(1, 0, 2).reshape(3, -1)
+    R = data.Psi[keep].transpose(1, 0, 2).reshape(3, -1)
+    lines = [f"ADAMSMAT2 {title}  {'  '.join(data.units)}", str(len(blocks) + 2)]
+    names = [b[0] for b in blocks] + ["T_MODE", "R_MODE"]
+    for k in range(0, len(names), 4):
+        lines.append("".join(f"{n:<18}" for n in names[k:k + 4]))
+    for name, a, labeled in blocks:
+        nrow, ncol = a.shape
+        if labeled:
+            lines.append(f"{name:<10}FULL    RORDER {nrow:6d} {ncol:4d} {nrow * ncol:4d}   ( 1I8, {ncol - 1}E22.14 )")
+            lines += [f"{int(r[0]):8d}" + "".join(_fmt(x) for x in r[1:]) for r in a]
+        else:
+            lines.append(f"{name:<10}FULL    RORDER {nrow:6d} {ncol:4d} {nrow * ncol:4d}   ( 3E22.14 )")
+            for r in a:
+                lines += ["".join(_fmt(x) for x in r[c:c + 3]) for c in range(0, ncol, 3)]
+    for name, a in (("T_MODE", T), ("R_MODE", R)):
+        lines.append(f"{name:<10}FULL    CORDER {3:6d} {a.shape[1]:4d} {a.size:4d}   ( 3E22.14 )")
+        lines += ["".join(_fmt(x) for x in a[:, c]) for c in range(a.shape[1])]
+    Path(path).write_text("\n".join(lines) + "\n", encoding="latin-1")

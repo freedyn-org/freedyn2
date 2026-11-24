@@ -79,12 +79,14 @@ def joint(block, body_ids, bodies):
 
 def legacy_file(value, base_dir):
     """A file named in a .fds model, often with an absolute Windows path of the machine it was
-    made on: the path itself if it exists, else its last components relative to the model
-    directory (longest first), else its name next to the model."""
+    made on: the path itself if it exists (also relative to the model directory), else its last
+    components relative to the model directory (longest first), else its name next to the model."""
     from pathlib import Path, PureWindowsPath
     p = Path(value)
     if p.is_file():
         return str(p)
+    if (Path(base_dir) / p).is_file():  # relative to the model
+        return str(Path(base_dir) / p)
     parts = PureWindowsPath(value).parts
     for k in range(len(parts) - 1, 0, -1):
         cand = Path(base_dir).joinpath(*parts[-k:])
