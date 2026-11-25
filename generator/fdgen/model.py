@@ -133,6 +133,23 @@ def _flex(name, b, base_dir):
         raise ModelError(f"body {name}: the modal data has no elastic modes")
 
 
+def _warn_body_frame(bodies, measures, sensors):
+    """Measures and sensors use the body frame of a flexible body (its floating reference
+    frame, not a material point): the deformation is not in them."""
+    flex = {b for b, body in bodies.items() if "flex" in body}
+    if not flex:
+        return
+    for name, m in measures.items():
+        used = sorted(flex & {m.get("body1"), m.get("body2"), m.get("frame")})
+        if used:
+            warnings.warn(f"measure {name}: on the body frame of the flexible body {', '.join(used)} (its floating "
+                          "frame): the deformation is not in it")
+    for sn in sensors:
+        if sn["body1"] in flex:
+            warnings.warn(f"sensor {sn['name']}: on the body frame of the flexible body {sn['body1']}: the "
+                          "deformation is not in it")
+
+
 def _joint(name, j, bodies):
     fix = joint_types.PRESETS.get(j["type"]) if j["type"] != "generic" else j.get("fix")
     if fix is None:
@@ -382,6 +399,7 @@ def validate(model, base_dir=None, prepare_flex=True):
         prepare(bodies, joints, forces, base_dir)
     measures = {name: _measure(name, m, bodies) for name, m in section("measures")}
     sensors = [_sensor(name, sn, bodies) for name, sn in section("sensors")]
+    _warn_body_frame(bodies, measures, sensors)
     parameters = dict(model.get("parameters") or {})
     inputs = {name: float(v) for name, v in (model.get("inputs") or {}).items()}
     model_splines = {name: _spline(name, sp, base_dir) for name, sp in section("splines")}

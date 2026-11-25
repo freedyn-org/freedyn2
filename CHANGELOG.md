@@ -7,6 +7,18 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Fixed
 
+- Flexible bodies, from a review:
+  - The Nastran reader no longer leaves out cards silently: elements, point masses (CONM2),
+    rigid elements and MPC it does not support are an error; INCLUDE files are read (and are
+    in the cache key of the reduction); the case control before BEGIN BULK is skipped.
+  - The modal reduction checks the modes by a Sturm count (no eigenvalue below the highest
+    missing; kept modes that end inside a multiple eigenvalue warn); modes that did not
+    converge are an error, a residual above the tolerance a warning (it was only printed).
+  - Forces, measures and sensors on the body frame of a flexible body (not at an interface
+    node) warn: they do not see the deformation.
+  - `freedyn2 check` warns when a flexible body spins faster than 10 % of its first elastic
+    frequency (`spin_stiffening`: no geometric stiffening). The limits of the model are
+    documented (docs/reference/bodies.md).
 - Splines are data, not code: the runtime looks up the segment (binary search) and the
   compiled law evaluates one cubic. A driver on an Akima spline of 1000 points (legacy
   101_V8Motion) builds in 0.3 s instead of 20 minutes (1.9 MB of C before, 45 kB now), with
