@@ -74,8 +74,19 @@ class ModalData:
         return np.diag(2 * z * omega * np.diag(self.I6))
 
     def select(self, keep):
-        """Modal data with only the modes keep (indices)."""
+        """Modal data with only the modes keep (indices), with the viewer and stress data of a
+        .fdflex (viz, mesh, spiders, meta) selected too."""
         k = np.asarray(keep, int)
+        out = self._select(k)
+        viz = getattr(self, "viz", None)
+        out.viz = None if viz is None else (viz[0], viz[1], viz[2][:, :, k])
+        mesh = getattr(self, "mesh", None)
+        out.mesh = None if mesh is None else (mesh[0], mesh[1], mesh[2], mesh[3][:, :, k])
+        out.spiders = getattr(self, "spiders", [])
+        out.meta = dict(getattr(self, "meta", None) or {})
+        return out
+
+    def _select(self, k):
         return ModalData(
             mass=self.mass, I2=self.I2, I3=self.I3[:, k], I4=self.I4[:, k], I5=self.I5[np.ix_(k, range(3), k)],
             I6=self.I6[np.ix_(k, k)], I7=self.I7, I8=self.I8[k], I9=self.I9[np.ix_(k, k)], K=self.K[np.ix_(k, k)],

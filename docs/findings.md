@@ -151,3 +151,13 @@ at 63 %, 04_FlexRotUHackerl at 38 % (`freedyn2 check`: `spin_stiffening`). Witho
 stiffening (neither in legacy FreeDyn nor here) their deformation is too soft by a share of the
 order of 40 % and 14 %: the agreement with legacy is that of the same model, not with the real
 parts.
+
+## Forces at interface nodes: the massless interface bodies
+
+A force at an interface node acts on a massless body `<body>_if<k>` fixed to the node (6 dofs
+and 6 constraints per interface). A force element at the node itself would see the node through
+all modes (its size would depend on the number of modes, against the element types of fixed
+size). Measured on the flexible arm with a spring at its tip (1000 steps, 8 modes): massless
+2168 Newton iterations, with 1e-4 kg 2167, with 1e-2 kg 2162, no step rejected; the massless
+body costs nothing in convergence. (The round-off floor of 106_V8_FlexConRod came from the
+massless dummy bodies of the legacy model, in mm-t-s.) So it stays.

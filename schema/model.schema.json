@@ -243,7 +243,9 @@
             "cms": {"type": "string", "description": "fem, material: where the result of the reduction is kept, a .fdflex file relative to the model (modal data, mode shapes on the surface for the viewer, what it was made from). Default cms/<body>.fdflex. Reused while the inputs are the same; other models use it with modal."},
             "interface_type": {"enum": ["rbe2", "rbe3"], "default": "rbe2", "description": "material: type of the interfaces made for joints and forces: rbe2 rigid, rbe3 interpolating (adds no stiffness)."},
             "modes": {"type": "integer", "minimum": 0, "default": 20, "description": "fem, material: fixed-interface normal modes (without interfaces: free-free modes) in addition to the 6 per interface node; the 6 rigid body modes are removed."},
-            "damping": {"description": "Modal damping ratio: one value for all modes or one per mode (the last for the rest). Default 0.",
+            "max_frequency": {"type": "number", "exclusiveMinimum": 0, "description": "Keep only the elastic modes up to this frequency [Hz] (after the reduction; the modes are numbered from 1 again)."},
+            "exclude_modes": {"type": "array", "items": {"type": "integer", "minimum": 1}, "description": "Leave out these elastic modes (numbers from 1, in the order of the modal data)."},
+            "damping": {"description": "Modal damping ratio of the (free-free) modes: one value for all modes or one per mode (the last for the rest). Default as Adams/Flex: 0.01 below 100 Hz, 0.1 from 100 to 1000 Hz, 1.0 from 1000 Hz; 0 for none.",
                         "oneOf": [{"type": "number", "minimum": 0}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1}]},
             "rotation_coupling": {"type": "boolean", "default": true, "description": "Coupling of rotation and deformation (invariants 4 and 5; legacy Is_Itf_active)."},
             "quadratic_inertia": {"type": "boolean", "default": true, "description": "Inertia tensor quadratic in the modal coordinates (invariant 9; legacy Is_QuadraticTermOF_Itt_active)."}

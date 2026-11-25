@@ -13,6 +13,7 @@ nodes that are not on one line.
 
 import struct
 import tempfile
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -176,6 +177,10 @@ def spider_nodes(xyz, surf, point, radius=None, h=1.0, axis=None):
         if sel is not None and len(sel) >= 6:
             return sel
     d = np.linalg.norm(xyz[surf] - point, axis=1)
+    size = float(np.ptp(xyz, axis=0).max())
+    if radius is None and d.min() > max(3 * h, 0.1 * size):
+        warnings.warn(f"interface at {[round(float(x), 9) for x in point]}: {d.min():.3g} away from the surface of "
+                      f"the part (mesh size {h:g}): its spider is a rigid lever of that length (is the point right?)")
     r = d.min() + h if radius is None else float(radius)
     while True:
         sel = surf[d <= r * (1 + 1e-9)]
@@ -190,6 +195,32 @@ def spider_nodes(xyz, surf, point, radius=None, h=1.0, axis=None):
         r *= 1.25
 
 
+# the faces of a TET10 (corners) and their midside nodes (local indices)
+_TET10_FACES = [((0, 1, 2), (4, 5, 6)), ((0, 1, 3), (4, 8, 7)), ((1, 2, 3), (5, 9, 8)), ((0, 2, 3), (6, 9, 7))]
+
+
+def node_areas(xyz, tets):
+    """Surface area of each node (n,): the boundary faces of the TET10 mesh, the area of each
+    shared equally by its six nodes (zero for nodes inside)."""
+    faces = {}
+    for t in tets:
+        for corners, mids in _TET10_FACES:
+            key = tuple(sorted(t[list(corners)]))
+            if key in faces:
+                faces[key] = None  # inner face: two tetrahedra
+            else:
+                faces[key] = (t[list(corners)], t[list(mids)])
+    area = np.zeros(len(xyz))
+    for f in faces.values():
+        if f is None:
+            continue
+        c, m = f
+        a = 0.5 * np.linalg.norm(np.cross(xyz[c[1]] - xyz[c[0]], xyz[c[2]] - xyz[c[0]]))
+        area[c] += a / 6
+        area[m] += a / 6
+    return area
+
+
 def fe_model(xyz, tets, surf, material, interfaces, h):
     """FeModel of the tet mesh with material (E, nu, rho) and interfaces [(point, type,
     radius, axis)]: interface nodes INTERFACE_IDS + 1, ... in that order."""
@@ -198,14 +229,17 @@ def fe_model(xyz, tets, surf, material, interfaces, h):
     fe.solids = [(k + 1, 1, list(t + 1)) for k, t in enumerate(tets)]
     fe.psolid = {1: 1}
     fe.materials = {1: tuple(material)}
+    area = node_areas(xyz, tets) if any(kind == "rbe3" for _, kind, _, _ in interfaces) else None
     for k, (point, kind, radius, axis) in enumerate(interfaces):
         nid = INTERFACE_IDS + k + 1
         fe.nodes[nid] = tuple(float(x) for x in point)
         sel = [int(i) + 1 for i in spider_nodes(xyz, surf, np.asarray(point, float), radius, h, axis)]
         if kind == "rbe2":
             fe.rbe2.append((nid, nid, "123456", sel))
-        elif kind == "rbe3":
-            fe.rbe3.append((nid, nid, "123456", [(1.0, "123", sel)]))
+        elif kind == "rbe3":  # weighted by the surface area of the nodes (a uniform pressure)
+            w = area[np.asarray(sel) - 1]
+            w = w / w.mean()
+            fe.rbe3.append((nid, nid, "123456", [(float(wi), "123", [n]) for wi, n in zip(w, sel)]))
         else:
             raise ModelError(f"interface type {kind}: rbe2 or rbe3")
     return fe

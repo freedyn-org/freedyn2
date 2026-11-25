@@ -37,6 +37,11 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- Flexible bodies: `max_frequency` and `exclude_modes` select modes (the selection is a
+  `.fdflex` of its own in the user cache); without `damping` the modes are damped as in
+  Adams/Flex (1 % below 100 Hz, 10 % to 1000 Hz, 100 % above; `damping: 0` for none, the
+  `.fds` import keeps the legacy value); RBE3 spiders of meshed bodies weight their nodes by
+  surface area; an interface far from the surface warns.
 - Splines as library items: `spring_damper` and `torsion_spring` take a spline name as
   `stiffness` or `damping` (force over the deflection, over the rate), and drivers along a
   curve of time (`motion: <spline>(t)`) on angles, distances and displacements are built into

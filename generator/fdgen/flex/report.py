@@ -78,15 +78,20 @@ def summary(model, name, frequencies=20):
     elif src:
         how = f"FE model {src} ({meta.get('elements')} elements, {meta.get('dofs')} dofs)"
     else:
-        how = f"modal data file {flex['modal']}"
+        how = f"modal data file {flex.get('modal_all', flex['modal'])}"
     lines = [f"body {name}: flexible, {how}"]
-    if meta:
+    if meta.get("made"):
         lines.append(f"  reduced (Craig-Bampton) {meta.get('made')} in {meta.get('seconds')} s; kept in {flex['modal']} "
                      "(reused while mesh, material, interfaces and modes stay the same)")
     f = d.frequencies
     shown = ", ".join(f"{x:.4g}" for x in f[:frequencies]) + (" ..." if len(f) > frequencies else "")
     lines.append(f"  {d.nm} elastic modes, free-free (Hz): {shown}")
-    lines.append(f"  mass {d.mass:.6g}, damping ratio {flex.get('damping', 0.0)}, coupling: rotation "
+    damping = ("default (1 % / 10 % / 100 % below 100 Hz / below 1000 Hz / above)" if flex.get("damping_default")
+               else flex.get("damping", 0.0))
+    if flex.get("modal_all"):
+        lines.append(f"  modes selected from {flex['modal_all']}: {d.meta.get('kept_modes')} (max_frequency "
+                     f"{flex.get('max_frequency')}, exclude_modes {flex.get('exclude_modes')})")
+    lines.append(f"  mass {d.mass:.6g}, damping ratio {damping}, coupling: rotation "
                  f"{'on' if flex.get('rotation_coupling', True) else 'off'}, quadratic inertia "
                  f"{'on' if flex.get('quadratic_inertia', True) else 'off'}")
     for i in interfaces(model, name):
