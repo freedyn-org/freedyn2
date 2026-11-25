@@ -309,10 +309,6 @@ def _handler(app):
         def _json(self, data, code=200):
             self._send(json.dumps(data).encode(), "application/json", code)
 
-        def _local(self):
-            host = self.headers.get("Host", "")
-            return host in (f"127.0.0.1:{app.port}", f"localhost:{app.port}")
-
         def _route(self):
             app.last_seen = time.monotonic()
             m = _VIEW.match(self.path.split("?", 1)[0])

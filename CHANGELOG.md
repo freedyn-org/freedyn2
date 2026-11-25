@@ -7,6 +7,10 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Fixed
 
+- The viewer of `freedyn2 view` (and of the MCP tools) answers requests for 127.0.0.1 or
+  localhost only, as the app does: a web page whose host name resolves to 127.0.0.1 (DNS
+  rebinding) could read the model file and results and post to the viewer, since the Origin
+  check of the POSTs passes when Origin and Host are both that name.
 - Splines are data, not code: the runtime looks up the segment (binary search) and the
   compiled law evaluates one cubic. A driver on an Akima spline of 1000 points (legacy
   101_V8Motion) builds in 0.3 s instead of 20 minutes (1.9 MB of C before, 45 kB now), with
