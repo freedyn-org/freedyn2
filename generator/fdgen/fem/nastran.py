@@ -5,8 +5,12 @@ field format, continuations):
     ROD section: a 3D Euler-Bernoulli beam), PSOLID, PBARL, MAT1 (E, G or nu, rho), RBE2, RBE3
     (one weight and component set per group).
 
-Other cards are ignored and listed (FeModel.ignored), so that a model is never reduced with
-parts silently missing: the caller decides.
+INCLUDE files are read (relative to the including file). The executive and case control before
+BEGIN BULK are skipped. Cards that would change mass or stiffness and are not supported
+(elements of other types, point masses, other rigid elements, MPC, other materials:
+STRUCTURAL) are an error, so that a model is never reduced with parts silently missing; any
+other card (loads, SPC, PARAM, output requests) does not enter a modal reduction and is listed
+in FeModel.ignored.
 """
 
 from collections import Counter
@@ -49,10 +53,51 @@ def _fields(line):
     return key, [line[8 + 8 * i:16 + 8 * i] for i in range(8)]
 
 
-def cards(text):
-    """[(NAME, [fields])] with the continuations joined."""
+def bulk_files(path, _seen=None):
+    """(text with the INCLUDE files inserted, [all files read]) of a Nastran input file."""
+    path = Path(path)
+    seen = _seen if _seen is not None else []
+    if path.resolve() in [p.resolve() for p in seen]:
+        raise ModelError(f"{path}: included twice (an INCLUDE loop?)")
+    seen.append(path)
+    try:
+        lines = path.read_text(encoding="latin-1").splitlines()
+    except OSError as e:
+        raise ModelError(f"Nastran INCLUDE {path}: {e.strerror}") from None
     out = []
-    for raw in text.splitlines():
+    for line in lines:
+        if line[:7].upper() == "INCLUDE":
+            name = line[7:].split("$", 1)[0].strip().strip("'\"").strip()
+            if not name:
+                raise ModelError(f"{path}: INCLUDE without a file name (continued over lines is not supported)")
+            sub = Path(name)
+            text, _ = bulk_files(sub if sub.is_absolute() else path.parent / sub, seen)
+            out.append(text)
+        else:
+            out.append(line)
+    return "\n".join(out), seen
+
+
+# cards that change mass or stiffness and are not supported: an error (see the module docstring)
+# (properties and materials alone change nothing: the elements that use them are the error)
+_RIGID_OTHER = {"RBAR", "RBAR1", "RBE1", "RROD", "RSPLINE", "RTRPLT", "RTRPLT1", "MPC", "MPCADD", "GENEL", "DMIG"}
+
+
+def structural(name):
+    """A card that changes mass or stiffness (elements, point masses, rigid elements, MPC)."""
+    return (name.startswith("C") and not name.startswith("CORD")) or name in _RIGID_OTHER
+
+
+def cards(text):
+    """[(NAME, [fields])] of the bulk data (after BEGIN BULK, if there is one), with the
+    continuations joined."""
+    out = []
+    lines = text.splitlines()
+    for k, raw in enumerate(lines):
+        if raw.strip().upper().replace(" ", "").startswith("BEGINBULK"):
+            lines = lines[k + 1:]
+            break
+    for raw in lines:
         if not raw.strip() or raw.lstrip().startswith("$"):
             continue
         raw = raw.split("$", 1)[0]
@@ -95,7 +140,8 @@ def read_nastran(path):
     """FeModel of a Nastran bulk data file (.bdf, .fem, .nas, .dat)."""
     path = Path(path)
     m = FeModel()
-    for name, f in cards(path.read_text(encoding="latin-1")):
+    text, _ = bulk_files(path)
+    for name, f in cards(text):
         if name == "GRID":
             if integer(f[1]) or (len(f) > 5 and integer(f[5])):
                 raise ModelError(f"{path}: GRID {f[0].strip()} in a local coordinate system (CP / CD) is not supported")
@@ -143,6 +189,11 @@ def read_nastran(path):
             m.rbe3.append((eid, ref, refc, groups))
         else:
             m.ignored[name] += 1
+    bad = sorted(n for n in m.ignored if structural(n))
+    if bad:
+        raise ModelError(f"{path}: cards that change mass or stiffness are not supported: "
+                         + ", ".join(f"{n} ({m.ignored[n]})" for n in bad)
+                         + ". Supported: GRID, CTETRA (4 / 10), CHEXA (8), CBAR (PBARL ROD), PSOLID, MAT1, RBE2, RBE3")
     return m
 
 

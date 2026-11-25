@@ -128,6 +128,32 @@ joints:
 - Any number of modes, no compiler needed. The cost grows with the square of the number of
   modes (full coupling); high-frequency modes need small time steps.
 
+**Limits of the model** (the floating frame of reference with linear modes, as Adams/Flex and
+legacy FreeDyn):
+
+- **Small, linear deformation** about the body frame: the deformation is a sum of mode shapes,
+  node rotations are linearized.
+- **No geometric stiffening.** The centrifugal stiffening of a spinning part (and the
+  stiffening by a preload) is not modelled: a body that spins at Omega lacks a stiffness share of
+  the order of (Omega / omega_1)^2, omega_1 its first elastic frequency, and very fast spin can
+  even make it unstable. `freedyn2 check` warns from 10 % of omega_1 (`spin_stiffening`). For
+  rotors, turbine blades or crankshafts at high speed the results are then too soft.
+- **The body frame is a floating reference frame**, not a material point (the mode shapes are
+  orthogonal to the rigid body motions, nearly the mean axes). Joints, forces, measures and
+  sensors that are not at an interface node act on that frame and do not see the deformation:
+  joints and forces warn, measures and sensors too. Use the interface nodes (a force at a node
+  acts through a massless body `<body>_if<k>` fixed to it; a measure on that body moves with the
+  node).
+- **Modal damping** `damping` acts on the free-free modes of the body, not on the modes of the
+  system it is built into: a clamped body with `damping: 1` is not critically damped.
+- **The modes** are those of the Craig-Bampton basis: `modes` fixed-interface modes plus 6 per
+  interface node. The reduction checks by a Sturm count that they are the lowest ones; kept
+  modes that end inside a multiple eigenvalue (a symmetric part) give a warning, as do modes
+  that converged to a residual above the tolerance only.
+- **FE models** (`fem`): solids (CTETRA, CHEXA), rods (CBAR with PBARL ROD), RBE2, RBE3 and
+  INCLUDE files. Other elements, point masses (CONM2), other rigid elements and MPC are an
+  error, not left out; loads, SPC and output requests are ignored.
+
 ## Shapes
 
 Geometry is for the [viewer](../viewer.md) only; it does not change the simulation. Without

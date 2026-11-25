@@ -163,7 +163,11 @@ def _existing_interfaces(name, body, joints, forces):
         u = A.T @ (p - R)
         k = int(np.argmin(np.linalg.norm(pos - u, axis=1)))
         if np.linalg.norm(pos[k] - u) > 0.01 * size:
-            continue  # stays on the body frame (fdgen.model warns)
+            if what[0] == "force":  # joints: fdgen.fem.surface.prepare warns
+                warnings.warn(f"force {what[1]['name']}: {what[2]} is at no interface node of the flexible body "
+                              f"{name} (nearest {labels[k]}, {np.linalg.norm(pos[k] - u):.3g} away): it acts on the "
+                              "body frame, without the deformation")
+            continue
         if labels[k] not in nodes:
             nodes.append(int(labels[k])), positions.append(R + A @ pos[k]), owners.append([])
         owners[nodes.index(int(labels[k]))].append(what)

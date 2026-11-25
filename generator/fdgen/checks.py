@@ -223,7 +223,36 @@ def check_results(model, results):
             out.append(finding("info", "start_transient",
                                f"{len(names)} bodies accelerate by more than g/2 at the start (not in equilibrium "
                                f"at t = 0), e.g. {names[0]} {moving[0][1]:.3g} m/s^2", names))
+    out += _spin_of_flexible_bodies(model, results)
     return {"findings": out, "references": check_references(model, results)}
+
+
+SPIN_RATIO = 0.1  # spin rate / first elastic frequency from which geometric stiffening matters (1 %)
+
+
+def _spin_of_flexible_bodies(model, results):
+    """Flexible bodies that spin fast against their first elastic frequency: the linear
+    deformation (floating frame of reference) has no geometric stiffening, the centrifugal
+    stiffening of rotating parts is missing (relative error of the order (Omega / omega_1)^2;
+    a fast spin can make the body unstable)."""
+    out = []
+    for name, b in model["bodies"].items():
+        if "flex" not in b or "modal" not in b["flex"]:
+            continue
+        w = [results.get(f"{name}.omega_{c}") for c in "xyz"]
+        if any(c is None for c in w):
+            continue
+        from .flex import load_modal
+        f1 = float(load_modal(b["flex"]["modal"]).frequencies.min())
+        spin = float(np.max(np.linalg.norm(np.column_stack(w), axis=1)))
+        ratio = spin / (2 * np.pi * f1)
+        if ratio > SPIN_RATIO:
+            out.append(finding("warning", "spin_stiffening",
+                               f"flexible body {name} spins at up to {spin:.4g} rad/s, {100 * ratio:.0f} % of its "
+                               f"first elastic frequency ({f1:.4g} Hz): the centrifugal (geometric) stiffening is not "
+                               f"modelled (linear deformation), the stiffness lacks a share of the order of "
+                               f"(spin / frequency)^2 = {100 * ratio ** 2:.1f} %", [name]))
+    return out
 
 
 def _read_curve(path, x, y):

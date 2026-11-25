@@ -62,8 +62,10 @@ def modal_file(path, interfaces=None, modes=20, log=None, base_dir=None, name=No
     import hashlib
     from pathlib import Path
 
+    from .nastran import bulk_files
+
     path = Path(path)
-    key = hashlib.sha256(path.read_bytes())
+    key = hashlib.sha256(bulk_files(path)[0].encode("latin-1"))  # with the INCLUDE files
     key.update(repr((FEM_VERSION, None if interfaces is None else sorted(int(i) for i in interfaces),
                      int(modes))).encode())
 

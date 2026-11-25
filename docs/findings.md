@@ -136,3 +136,18 @@ interfaces, 20 fixed-interface modes: elimination 3 s, LDL^T 12 s (28 million en
 factor), constraint modes 0.2 s (in parallel), modes 10 s with 60 solves (before: 46 s, 320
 solves), the same eigenvalues to 2e-11. The factorization is next: CHOLMOD (supernodal) would
 need BLAS / LAPACK in the Windows build.
+
+A Sturm count checks the modes since then: the negative pivots of K_ii - sigma M_ii just above
+the highest eigenvalue must be the number of modes (Lanczos with one start vector can miss one
+of a multiple eigenvalue; on the test beams it did not, against SciPy to 1e-10 with the double
+bending eigenvalues and the six rigid body modes found). It costs one more numeric
+factorization (the pattern analysis is reused): box beam with TET10, 64 000 dofs, factor 35
+million entries: elimination 3 s, analysis 1 s, LDL^T 22 s, modes 11 s, Sturm count 22 s,
+the reduction 79 s with the invariants and stresses. The reduction is kept (cms) and made again
+only when its inputs change.
+
+The legacy flexible body tests spin fast against their first elastic frequency: 03_FlyingFleBo
+at 63 %, 04_FlexRotUHackerl at 38 % (`freedyn2 check`: `spin_stiffening`). Without geometric
+stiffening (neither in legacy FreeDyn nor here) their deformation is too soft by a share of the
+order of 40 % and 14 %: the agreement with legacy is that of the same model, not with the real
+parts.

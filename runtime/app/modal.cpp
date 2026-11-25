@@ -18,8 +18,13 @@
 //   d: Kr, Mr (ncols x ncols, column major): V^T K V, V^T M V
 //
 // Constraint modes: interior response to a unit displacement of one boundary dof (K_ii Psi =
-// -K_ib), normal modes: K_ii phi = lambda M_ii phi with the boundary fixed, by subspace iteration
-// with (K_ii - shift M_ii)^-1 (sparse LDL^T); shift < 0 for a free body (nb = 0).
+// -K_ib), normal modes: K_ii phi = lambda M_ii phi with the boundary fixed, by shift-invert
+// Lanczos with (K_ii - shift M_ii)^-1 (sparse LDL^T, full reorthogonalization); shift < 0 for a
+// free body (nb = 0). A Sturm count (the negative pivots of K_ii - sigma M_ii just above the
+// highest eigenvalue) checks that no eigenvalue below it is missing.
+//
+// Exit status 1 with a message on stderr: no result. Lines "freedyn2_modal: warning: ..." on
+// stderr with exit status 0: a result to use with care (fdgen.fem.reduce shows them).
 
 #include <Eigen/Dense>
 #include <Eigen/SparseCholesky>
@@ -45,6 +50,41 @@ using Vec = Eigen::VectorXd;
 using Trip = Eigen::Triplet<double>;
 
 namespace {
+
+// Number of eigenvalues of K x = lambda M x below sigma: the negative pivots of K - sigma M
+// (Sylvester's law of inertia); -1 if the factorization fails.
+// f: a factorization whose pattern analysis is reused (K - sigma M has the pattern it was made for).
+int count_below(Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>>& f, const Eigen::SparseMatrix<double>& K,
+                const Eigen::SparseMatrix<double>& M, double sigma) {
+  f.factorize(K - sigma * M);
+  if (f.info() != Eigen::Success) return -1;
+  return static_cast<int>((f.vectorD().array() < 0).count());
+}
+
+// The m eigenvalues lam (ascending) found must be the m lowest: no eigenvalue below the highest
+// is missing (Lanczos can miss one of a multiple eigenvalue). An eigenvalue equal to the highest
+// that is not kept (the kept modes end inside a multiple eigenvalue) is a warning.
+void sturm_check(Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>>& f, const Eigen::SparseMatrix<double>& K,
+                 const Eigen::SparseMatrix<double>& M, const Eigen::VectorXd& lam) {
+  const int m = static_cast<int>(lam.size());
+  const double top = lam(m - 1), scale = std::max(std::abs(top), lam.cwiseAbs().maxCoeff());
+  const double eps = 1e-6 * scale + 1e-300;
+  const int above = count_below(f, K, M, top + eps);
+  if (above < 0) {
+    std::cerr << "freedyn2_modal: warning: Sturm count not possible (factorization of K - sigma M failed)\n";
+    return;
+  }
+  if (above == m) return;
+  const int below = count_below(f, K, M, top - eps);
+  if (above > m && below >= 0 && below <= m - 1) {
+    std::cerr << "freedyn2_modal: warning: the highest mode kept is one of " << (above - below)
+              << " equal eigenvalues (kept: " << (m - below) << "), the reduced body is less symmetric than the part: "
+              << "ask for " << above << " modes to keep them all\n";
+    return;
+  }
+  throw std::runtime_error("eigenvalues missing: " + std::to_string(above) + " below " + std::to_string(top) +
+                           ", " + std::to_string(m) + " found (a multiple eigenvalue?)");
+}
 
 struct Reader {
   std::ifstream in;
@@ -144,8 +184,11 @@ int main(int argc, char** argv) {
     Sp Kii = select(Kn, in, in), Mii = select(Mn, in, in), Kib = select(Kn, in, b);
 
     const double s = nb > 0 ? 0.0 : shift;
-    Sp A = Kii - s * Mii;
-    Eigen::SimplicialLDLT<Sp> ldlt(A);
+    Sp A = Kii - s * Mii;  // the pattern of K_ii and M_ii (also for s = 0): the Sturm count reuses its analysis
+    Eigen::SimplicialLDLT<Sp> ldlt;
+    ldlt.analyzePattern(A);
+    lap("analyze");
+    ldlt.factorize(A);
     if (ldlt.info() != Eigen::Success) throw std::runtime_error("factorization failed (body not restrained by the boundary?)");
     if ((ldlt.vectorD().array() <= 0).any() && s <= 0)
       throw std::runtime_error("matrix not positive definite: the boundary does not restrain all rigid body motions"
@@ -224,7 +267,12 @@ int main(int argc, char** argv) {
         const bool done = mm == m && (err < tol || (best < 1e3 * tol && err > 0.9 * best && k - best_k >= m));
         if (err < 0.9 * best) best = err, best_k = k;
         if (done || k >= kmax || k >= ni || b <= 1e-14) {
-          if (!done) std::cerr << "freedyn2_modal: Lanczos residual " << err << " after " << k << " vectors\n";
+          if (!done && (mm < m || err > 1e-3))
+            throw std::runtime_error("the modes did not converge (residual " + std::to_string(err) + " after " +
+                                     std::to_string(k) + " Lanczos vectors): ask for fewer modes");
+          if (!done)
+            std::cerr << "freedyn2_modal: warning: modes converged to a residual of " << err << " only (tolerance "
+                      << tol << ")\n";
           // M-orthonormal Ritz vectors (reorthogonalized Lanczos: Q is M-orthonormal)
           Phi = X;
           for (int j = 0; j < mm; ++j) Phi.col(j) /= std::sqrt(Phi.col(j).dot(MX.col(j)));
@@ -236,6 +284,8 @@ int main(int argc, char** argv) {
       }
       lap("lanczos");
       if (verbose) std::cerr << "solves " << it << "\n";
+      sturm_check(ldlt, Kii, Mii, lam.head(m));  // the factor is not needed any more
+      lap("sturm count");
     }
 
     // basis in the independent dofs, then all dofs

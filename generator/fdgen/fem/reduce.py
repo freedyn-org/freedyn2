@@ -13,6 +13,7 @@ unlike the lumped node masses of Adams).
 
 import subprocess
 import tempfile
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -48,6 +49,9 @@ def _solve(a, boundary, nmodes, shift, tol=1e-5, maxit=200, tool=None):
         r = subprocess.run([str(tool), str(fin), str(fout)], capture_output=True, text=True)
         if r.returncode != 0:
             raise ModelError(r.stderr.strip() or "freedyn2_modal failed")
+        for line in r.stderr.splitlines():
+            if line.startswith("freedyn2_modal: warning:"):
+                warnings.warn(line.removeprefix("freedyn2_modal: warning:").strip())
         raw = fout.read_bytes()
     n, nc, nb, _ = np.frombuffer(raw[:32], np.int64)
     m = nc - nb
