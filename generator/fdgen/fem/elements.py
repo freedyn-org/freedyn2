@@ -149,18 +149,31 @@ def _incompatible_condensed(p, w, J, det, B, D):
     """Wilson-Taylor incompatible modes of HEX8 (1 - xi^2 per direction and component, 9
     internal dofs), condensed: K_uu - K_ua K_aa^-1 K_au; returns K_ua K_aa^-1 K_au. The modes
     use the Jacobian at the centre (Taylor), scaled by det J0 / det J: the patch test holds."""
-    J0 = np.einsum("eqjk->ejk", J * w[None, :, None, None]) / w.sum()  # mean Jacobian (= centre for a parallelepiped)
-    det0 = np.linalg.det(J0)
-    J0inv = np.linalg.inv(J0)
+    Kaa, Kau = incompatible_matrices(p, w, J, det, B, D)
+    return np.einsum("eki,ekl->eil", Kau, np.linalg.solve(Kaa, Kau), optimize=True)
+
+
+def centre_jacobian(J, w):
+    """Mean Jacobian (= centre for a parallelepiped) of HEX8 from J at the Gauss points."""
+    return np.einsum("eqjk->ejk", J * w[None, :, None, None]) / w.sum()
+
+
+def incompatible_strain(p, J, det, J0):
+    """Strain matrices (ne, np, 6, 9) of the 9 incompatible modes at points p."""
     dP = np.zeros((len(p), 3, 3))  # d(1 - xi_k^2)/dxi_k per point, modes k
     for k in range(3):
         dP[:, k, k] = -2 * p[:, k]
-    dPdx = np.einsum("qmk,ekj->eqmj", dP, J0inv) * (det0[:, None] / det)[:, :, None, None]
-    G = _bmat(dPdx)  # (ne, nq, 6, 9)
+    dPdx = np.einsum("qmk,ekj->eqmj", dP, np.linalg.inv(J0)) * (np.linalg.det(J0)[:, None] / det)[:, :, None, None]
+    return _bmat(dPdx)
+
+
+def incompatible_matrices(p, w, J, det, B, D):
+    """K_aa (ne, 9, 9), K_au (ne, 9, 24) of the incompatible modes of HEX8."""
+    G = incompatible_strain(p, J, det, centre_jacobian(J, w))
     dv = det * w
     Kaa = np.einsum("eqik,ij,eqjl,eq->ekl", G, D, G, dv, optimize=True)
     Kau = np.einsum("eqik,ij,eqjl,eq->ekl", G, D, B, dv, optimize=True)
-    return np.einsum("eki,ekl->eil", Kau, np.linalg.solve(Kaa, Kau), optimize=True)
+    return Kaa, Kau
 
 
 # --- beams --------------------------------------------------------------------------------------

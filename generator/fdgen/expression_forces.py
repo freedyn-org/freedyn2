@@ -51,8 +51,11 @@ def _torque_loads(cx, f, s):
 def expression_elements(model):
     """[(force name, element type, [bodies], p values, ElementFunctions)] of the model's
     expression forces, in model order."""
+    from . import curve_forces
     out = []
     for f in model.get("forces", []):
+        if f["type"] in curve_forces.CURVE_TYPES and curve_forces.element(f, model) is None:
+            f = curve_forces.as_expression(f)  # no library type covers it: the same law, compiled
         if f["type"] not in EXPRESSION_TYPES:
             continue
         is_force = f["type"] == "expression_force"
@@ -64,5 +67,5 @@ def expression_elements(model):
         name = f"x_{model['model']}_{f['name']}" + ("_euler" if cx.rep == "euler" else "")
         vec_name = "force" if is_force else "torque"
         elem = cx.element(name, out={"value": s, vec_name: s * e}, Q=cx.c.generalized_force(loads))
-        out.append(PluginElement(f["name"], name, cx.bodies, cx.consts.values, elem, cx.consts.inputs))
+        out.append(PluginElement(f["name"], name, cx.bodies, cx.consts.values, elem, cx.consts.inputs, cx.spline_slots()))
     return out

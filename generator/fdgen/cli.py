@@ -12,6 +12,7 @@
   freedyn2 config [key [value]] | freedyn2 doctor     (fdgen.doctor)
   freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]   (fdgen.convert)
   freedyn2 flex-export model.yaml body [-o body.bdf]   (fdgen.fem.surface: the FE model of a meshed body)
+  freedyn2 modal-stress model.yaml body [result.csv] [-o dir]   (fdgen.flex.modal_stress: modal stresses for fatigue)
   freedyn2 flex-info file.fdflex|file.mtx [--mtx out.mtx] [--fdflex out.fdflex]   (modal data: show, convert)
   freedyn2 rename model.yaml old new [--section bodies|joints|...]   (fdgen.rename)
   freedyn2 import-onshape <assembly URL> [-o model.yaml] [--no-meshes] [--force | --update]  (fdgen.onshape)
@@ -193,6 +194,29 @@ def flex_export(args):
     return 0
 
 
+def modal_stress(args):
+    from .flex.modal_stress import export
+    from .view.scene import read_results
+
+    model_path = Path(args.model)
+    out = Path(args.output or model_path.parent / "modal_stress")
+    if args.results:
+        model = load(model_path)
+        results = read_results(args.results)
+    else:
+        runtime = find_runtime(args.runtime)
+        with tempfile.TemporaryDirectory() as tmp:
+            fdm, model, _ = build(model_path, tmp)
+            csv_path = Path(tmp) / "r.csv"
+            simulate(runtime, fdm, csv_path, args.options)
+            results = read_results(csv_path)
+    paths, text = export(model, args.body, results, out)
+    print(text)
+    for p in paths:
+        print(f"wrote {p}")
+    return 0
+
+
 def flex_info(args):
     import json
 
@@ -307,6 +331,14 @@ def main(argv=None):
     fx.add_argument("model")
     fx.add_argument("body")
     fx.add_argument("-o", "--output", help="the .bdf file (default <body>.bdf next to the model)")
+    ff = sub.add_parser("modal-stress", help="modal stresses (Universal file) and modal coordinates (CSV) of a flexible "
+                                       "body, for fatigue by modal superposition")
+    ff.add_argument("model")
+    ff.add_argument("body")
+    ff.add_argument("results", nargs="?", help="result CSV of a run (default: simulate the model)")
+    ff.add_argument("-o", "--output", help="directory (default modal_stress/ next to the model)")
+    ff.add_argument("--runtime")
+    ff.epilog = "Runtime options follow after --, as for freedyn2 run"
     fi = sub.add_parser("flex-info", help="what a modal data file (.fdflex, .mtx) holds; --mtx writes it as an "
                                           "Adams MTX file, --fdflex an MTX file as .fdflex")
     fi.add_argument("file")
@@ -357,7 +389,7 @@ def main(argv=None):
 
             return update_check()
         return {"view": view, "check": check, "examples": examples, "convert": convert,
-                "import-onshape": import_onshape, "rename": rename, "flex-export": flex_export,
+                "import-onshape": import_onshape, "rename": rename, "flex-export": flex_export, "modal-stress": modal_stress,
                 "flex-info": flex_info}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)

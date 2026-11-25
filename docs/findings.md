@@ -84,11 +84,22 @@ results to 2e-8). The models are kept as golden results of freedyn2
   elastic energy + modal damping) to 1e-6. **Legacy FreeDyn is not**: with the step 1e-4 and
   the tolerance 1e-8 it moves away from its own result at 1e-3 (3e-2 rad after 1 s, growing in
   time), so the converged legacy result is the one at the larger step.
-- **106_V8_FlexConRod** does not run in freedyn2, neither does the same model with rigid
-  connecting rods (breakdown at 5 ms) nor the rigid 101_V8Motion (very small steps): crank
-  drives built from generic joints and massless bodies are a problem of freedyn2 that is
-  independent of the flexible bodies (open). 05_FlexBodyJointForce and 105_Waegemaschine need
-  contact elements freedyn2 does not have.
+- **106_V8_FlexConRod** (8 flexible connecting rods on 16 massless bodies, mm-t-s) broke down at
+  5 ms, with rigid rods too: the constraints were fine (full rank, one degree of freedom,
+  condition number 2.5e5 from the mm lever arms), but Newton's velocity criterion (1e-10
+  relative) lay below the round-off of the massless dofs, so no step size converged. With a
+  Newton correction that stagnates below 1e3 times the tolerance accepted as converged (round-off
+  floor, `hht.cpp`) it runs with 2.0 Newton iterations per step; its pistons agree with legacy
+  FreeDyn to 0.6 % of the stroke, freedyn2 at 1e-4 against 5e-4 to 0.01 % (the legacy result at
+  its step is the less accurate one). Kept as a golden (0.05 s).
+- **101_V8Motion** (rigid, driven along an Akima spline of 1000 points) took 20 minutes: not
+  the simulation (4 s for 10 s) but compiling the driver, 1.9 MB of C (the spline as a chain of
+  if_else with its time derivatives): gcc -O2 20 min, -O1 10 min, -O0 11 s. Generated sources
+  above 256 kB are now compiled with -O0 (`plugin.LARGE_SOURCE`); the run agrees with legacy
+  FreeDyn to 1e-7 mm. Since then splines are data (the runtime looks up the segment, the
+  code holds one cubic) and the driver is a library type: no plugin, built in 0.2 s, bitwise
+  the same results.
+- 05_FlexBodyJointForce and 105_Waegemaschine need contact elements freedyn2 does not have.
 - The units in the title line of an MTX file are not reliable (`beam.mtx` says METER and is in
   millimeters); like the legacy kernel, freedyn2 uses the values in the units of the model.
 - The legacy kernel builds with MKL up to 2024.2 only (`pip install "mkl-devel==2024.2.*"`):
@@ -104,8 +115,8 @@ files (made with MSC Nastran / Adams), November 2026:
   within 0.04 %), the norms of the invariants I5, I8, I9 within 0.3 %, the mode shapes at the
   interface node 0.3 %. The rotating hook of 04 with these modal data: largest modal amplitude
   within 0.07 %, frame position within 0.1 % of its motion and orientation within 4e-4 rad
-  after 0.2 s. Reduction 17 s (Eigen's simplicial LDL^T; the dense coupling of the large RBE3
-  dominates the factor).
+  after 0.2 s. Reduction 9 s (Eigen's simplicial LDL^T, 3 s; the dense coupling of the large RBE3
+  dominates the factor; Lanczos for the modes).
 - **DaBsp** (05_FlexBodyJointForce; two plates of 931 TET10, joined by two bolts of 40 CBAR
   each (ROD, r = 1 mm, 4 mm long) with RBE2 spiders): with Euler-Bernoulli bars the frequencies
   were up to 2 % high, with shear deformation in the bars (Timoshenko, as Nastran's CBAR) the
@@ -115,3 +126,13 @@ files (made with MSC Nastran / Adams), November 2026:
 - HEX8 needs the incompatible modes: with full integration only, bending locks.
 - The shift for free-free modes must be scaled with the model (mm-t-s: M is 1e-9 of K); a
   shift of -1 left K - shift M singular in round-off.
+
+## Reduction time
+
+The modes of the reduction come from Lanczos with shift-invert in the M inner product and full
+reorthogonalization (`runtime/app/modal.cpp`); a subspace iteration before needed about 2 m
+solves per iteration for m modes and 8 iterations. Box beam meshed with TET10, 70 000 dofs, 2
+interfaces, 20 fixed-interface modes: elimination 3 s, LDL^T 12 s (28 million entries in the
+factor), constraint modes 0.2 s (in parallel), modes 10 s with 60 solves (before: 46 s, 320
+solves), the same eigenvalues to 2e-11. The factorization is next: CHOLMOD (supernodal) would
+need BLAS / LAPACK in the Windows build.

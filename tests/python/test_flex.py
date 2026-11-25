@@ -239,3 +239,25 @@ def test_fdflex_roundtrip(tmp_path, beam):
     (tmp_path / "x.fdflex").write_bytes(b"PK no")
     with pytest.raises(Exception):
         read_fdflex(tmp_path / "x.fdflex")
+
+
+def test_set_interface_edits_only_the_flex_block():
+    """fdgen.flex.edit: an explicit interface set, changed and removed again; flow and block
+    style kept, the rest of the file (comments) untouched."""
+    from fdgen.flex.edit import set_interface
+    flow = "model: a  # c\nbodies:\n  arm:\n    mass: 1   # rigid\n    flex: {material: steel, mesh_size: 0.004}   # f\n" \
+           "    position: [0, 0, 0]\n  other: {mass: 1}\n"
+    block = "bodies:\n  arm:\n    flex:\n      material: steel\n      mesh_size: 0.004\n    position: [0, 0, 0]\nsolver: {type: HHT}\n"
+    for text in (flow, block):
+        a = set_interface(text, "arm", [0, 0, 0.1], radius=0.01, kind="rbe3")
+        assert yaml.safe_load(a)["bodies"]["arm"]["flex"]["interfaces"] == [
+            {"point": [0.0, 0.0, 0.1], "radius": 0.01, "type": "rbe3"}]
+        b = set_interface(a, "arm", [0, 0, 0.1], radius=0.02)
+        assert yaml.safe_load(b)["bodies"]["arm"]["flex"]["interfaces"] == [{"point": [0.0, 0.0, 0.1], "radius": 0.02}]
+        c = set_interface(b, "arm", [0, 0, 0.1], remove=True)
+        assert yaml.safe_load(c) == yaml.safe_load(text)
+    f = set_interface(flow, "arm", [1, 0, 0], radius=1)
+    assert "# c" in f and "# rigid" in f and "# f" in f and "  other: {mass: 1}" in f
+    assert "      - point: [0.0, 0.0, 0.1]" in set_interface(block, "arm", [0, 0, 0.1], radius=0.01)
+    with pytest.raises(ModelError, match="no flex block"):
+        set_interface(flow, "other", [0, 0, 0])

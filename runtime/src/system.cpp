@@ -26,7 +26,8 @@ System::Instance::Instance(const ElementSpec& s, const fd_element_type& t)
       out(optional(t.out)),
       update(optional(t.update)),
       scale(optional(t.scale)),
-      post(optional(t.post)) {
+      post(optional(t.post)),
+      spline(optional(t.spline)) {
   if (init && !(update && scale))
     throw std::runtime_error("element type " + s.type + ": init without update and scale functions");
   if (s.newmark == "modified") {
@@ -98,6 +99,15 @@ System::System(const Model& model) : nq_(model.nq()), nv_(model.nv()), nc_(model
       check(s.p.size(), e.post->sparsity_out(0).nrow, "post function output (parameters)");
       e.post_buf.resize(e.post->sparsity_out(0).nnz());
     }
+    if (e.spline || !s.splines.empty()) {
+      if (!e.spline || e.spline->sparsity_out(0).nrow != static_cast<int>(s.splines.size()))
+        throw std::runtime_error("element " + s.name + ": spline calls and spline function do not match");
+      for (const auto& c : s.splines)
+        if (c.segment < 0 || c.segment + 5 > static_cast<int>(s.p.size()))
+          throw std::runtime_error("element " + s.name + ": spline segment outside p");
+      e.spline_buf.resize(s.splines.size());
+      spline_users_.push_back(static_cast<int>(elems_.size()) - 1);
+    }
     for (const auto& [index, offset] : s.inputs) {
       if (index < 0 || index >= n_inputs() || offset < 0 || offset >= static_cast<int>(s.p.size()))
         throw std::runtime_error("element " + s.name + ": input slot outside the inputs or p");
@@ -158,6 +168,34 @@ void System::update_roads() {
   }
 }
 
+void System::update_splines() {
+  for (int k : spline_users_) {
+    Instance& e = elems_[k];
+    gather(e);
+    const std::vector<ElementSpec::SplineCall>& calls = e.spec.splines;
+    const Sparsity& sp = e.spline->sparsity_out(0);
+    // calls in order; a call whose argument holds another spline needs that segment first
+    for (size_t pass = 0; pass < calls.size(); ++pass) {
+      const double* in[] = {e.q.data(), e.qd.data(), e.spec.p.data(), &t};
+      double* out[] = {e.spline_buf.data()};
+      e.spline->eval(in, out);
+      bool changed = false;
+      for (int j = 0; j < sp.nnz(); ++j) {
+        const ElementSpec::SplineCall& c = calls[sp.row[j]];
+        const double* x = c.table.data();
+        const double xv = e.spline_buf[j];
+        // the largest i with x[i] <= xv, 0 below the first point (fdgen.splines.segment)
+        const int i = std::max(static_cast<int>(std::upper_bound(x, x + c.n, xv) - x) - 1, 0);
+        double* seg = e.spec.p.data() + c.segment;
+        if (seg[0] == x[i] && seg[1] == x[c.n + i]) continue;
+        for (int m = 0; m < 5; ++m) seg[m] = x[m * c.n + i];
+        changed = true;
+      }
+      if (!changed) break;
+    }
+  }
+}
+
 void System::set_initial_state() {
   for (Instance& e : elems_) {
     if (!e.owner()) continue;
@@ -213,14 +251,14 @@ void System::post_step() {
     const double* in[] = {e.q.data(), e.qd.data(), e.spec.p.data(), &t};
     double* out[] = {e.post_buf.data()};
     e.post->eval(in, out);
-    const Sparsity& sp = e.post->sparsity_out(0);
-    std::fill(e.spec.p.begin(), e.spec.p.end(), 0.0);
+    const Sparsity& sp = e.post->sparsity_out(0);  // the state entries; the rest of p stays
     for (int k = 0; k < sp.nnz(); ++k) e.spec.p[sp.row[k]] = e.post_buf[k];
   }
 }
 
 void System::residual(const HhtCoef& c, double* r, double* f) {
-  update_roads();  // the iteration matrix that follows is evaluated at the same state
+  update_roads();
+  update_splines();  // the iteration matrix that follows is evaluated at the same state
   std::fill(r, r + nx(), 0.0);
   std::fill(f, f + nx(), 0.0);
   const double coef[] = {c.alpha, c.beta, c.gamma, c.h};
@@ -312,6 +350,7 @@ void System::modified_jacobian(Instance& e, const HhtCoef& c) {
 
 const CsrMatrix& System::ic_system(double* b, double* phi, double* phid) {
   update_roads();
+  update_splines();
   ic_asm_.zero();
   double* vec[] = {nullptr, b, phi, phid};
   for (int i = 1; i < 4; ++i) std::fill(vec[i], vec[i] + nx(), 0.0);
@@ -328,6 +367,7 @@ const CsrMatrix& System::ic_system(double* b, double* phi, double* phid) {
 
 void System::outputs(std::vector<double>& y) {
   update_roads();
+  update_splines();
   y.clear();
   for (Instance& e : elems_) {
     gather(e);

@@ -104,6 +104,19 @@ joints:
   the same way: joints and forces without `node` attach to the interface node (an RBE master or
   reference node) at their point, within 1 % of the body size.
 
+- **Stresses for fatigue.** `freedyn2 modal-stress model.yaml arm [result.csv]` writes, for
+  a body with an FE model (`fem` or `material`), `modal_stress/arm_modes.unv` (the solids of the FE
+  model and the stress tensor of each elastic mode at their nodes, Universal file datasets
+  2411, 2412, 2414, in the body frame and the units of the model) and `modal_stress/arm_eta.csv`
+  (the modal coordinates of the run over time). The stress at any time is the superposition
+  sigma(t) = sum_i sigma_i eta_i(t): in a fatigue tool the `.unv` gives one load
+  case per mode and the CSV their load-time histories. Without a result file it simulates the
+  model first. The modal stresses come from the reduction (exact at the nodes for a linear
+  strain field in TET10, HEX8 with its incompatible modes; averaged over the elements at a
+  node) and are kept in the `.fdflex`; MTX modal data have none. Check that your fatigue tool
+  reads Universal files; checked here against a cantilever under a tip load (beam theory
+  within 0.4 %).
+
 - Joints act at a **node** of the modal data (`node` of the joint): its point and axes move and
   turn with the deformation. The flexible body is `body2`, or `body1` of a joint with the
   ground. Without `node` a joint acts on the body frame. `location` defaults to the node.

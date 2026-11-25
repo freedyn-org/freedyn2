@@ -110,6 +110,37 @@ def coefficients(x, y, kind):
     raise ValueError(f"spline type must be one of {TYPES}, not {kind!r}")
 
 
+def segment(knots, xv):
+    """Index of the segment of xv: the largest i with knots[i] <= xv, 0 below the first point."""
+    import bisect
+    return max(bisect.bisect_right(knots, xv) - 1, 0)
+
+
+def table(x, y, kind):
+    """The table of a spline as the runtime uses it: rows x, y, b, c, d (5 x n)."""
+    import numpy as np
+    return np.array([[float(v) for v in x], [float(v) for v in y], *coefficients(x, y, kind)], float)
+
+
+def segment_of(tab, xv):
+    """[x_i, y_i, b_i, c_i, d_i] of the segment of xv in a table (5 x n)."""
+    return [float(v) for v in tab[:, segment(list(tab[0]), float(xv))]]
+
+
+def cubic(seg, xv):
+    """Value of the segment [x0, y0, b, c, d] at xv (numbers or CasADi), in the operation order
+    of the legacy splines (bitwise the same values)."""
+    dx = xv - seg[0]
+    dx2 = dx * dx
+    return seg[1] + seg[2] * dx + seg[3] * dx2 + seg[4] * (dx2 * dx)
+
+
+def linear_table(k):
+    """Table of the line y = k x (an Akima spline through three points is exactly linear
+    everywhere, also beyond the ends): a linear coefficient where a spline is expected."""
+    return table([-1.0, 0.0, 1.0], [-k, 0.0, k], "akima")
+
+
 def evaluate(xv, knots, y, b, c, d):
     """CasADi expression of the spline at xv; knots, y, b, c, d are SX vectors (or numbers)."""
     n = knots.numel() if hasattr(knots, "numel") else len(knots)

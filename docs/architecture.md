@@ -202,7 +202,11 @@ so other parameter values need no recompilation. Measures: displacement, velocit
 rate, angle (continuous: it counts revolutions through element state, `angle = r + 2 pi
 round((ref - r) / 2 pi)` with `r = atan2(...)` and `ref` the last accepted value, updated by
 `post`; or ranges (-pi, pi], [0, 2 pi)), angular rate, angular velocity. Splines (`akima`, `zcc`,
-`fdgen.splines`) are called like functions, with the coefficients of the legacy splines. Spline
+`fdgen.splines`) are called like functions, with the coefficients of the legacy splines; the
+table [x, y, b, c, d] is in p, the generated function `spline` gives the argument of each call,
+the runtime selects its segment by binary search before res / ic / out and writes the segment's
+coefficients to p (`fd::System::update_splines`, nested calls in order), the element evaluates
+one cubic per call. Spline
 data come inline (`x`, `y`) or from a text table (`file`, `header_lines`, `columns`; read as the
 legacy `IO_TableDataReader`: space-separated, columns from 0, relative to the model file). The
 legacy kernel evaluates such expressions with
@@ -341,7 +345,8 @@ a maneuver (straight running, then cornering) differ by about 3 % with N fixed (
 converged), and the whole difference is in the math library (`sin`, `cos`, `atan`: their cost
 depends on the argument); the KLU refactorization and all generated code execute the same
 number of instructions in every step. The generated element functions are straight-line code
-(`if_else`, `step` and spline segments are arithmetic blends of all cases), a time step
+(`if_else` and `step` are arithmetic blends of all cases; the spline segment lookup is a
+binary search in the runtime, its cost grows with the log of the number of points), a time step
 allocates no memory (work buffers are allocated with the system; exceptions only on failure),
 and the scatter assembly visits the same nonzeros every step.
 

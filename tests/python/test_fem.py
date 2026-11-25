@@ -224,3 +224,56 @@ def test_cantilever_from_fem(tmp_path, modal_tool, monkeypatch):
     assert f[0] == pytest.approx(f[1], rel=1e-6)
     assert f[0] == pytest.approx(euler_bernoulli(1.8751), rel=0.02)
     assert (tmp_path / "cms" / "beam.fdflex").is_file()  # kept
+
+
+@pytest.mark.parametrize("tet", [False, True])
+def test_stress_recovery_pure_bending(tmp_path, tet):
+    """Modal stresses (fdgen.fem.stress) of the exact displacement field of pure bending
+    (sigma_xx = E k z, nothing else): exact at the nodes for TET10 and for HEX8 with its
+    incompatible modes."""
+    from fdgen.fem.stress import nodal_stresses
+    a = assemble(read_nastran(beam_bdf(tmp_path / "b.bdf", nx=10, tet=tet)))
+    k = 1e-3
+    x, y, z = a.xyz.T
+    u = np.zeros(a.n)
+    u[a.start], u[a.start + 1], u[a.start + 2] = k * x * z, -NU * k * y * z, -k / 2 * (x ** 2 + NU * (z ** 2 - y ** 2))
+    used, s = nodal_stresses(a, u[:, None])
+    exact = np.zeros((len(used), 6))
+    exact[:, 0] = E * k * a.xyz[used, 2]
+    assert np.abs(s[:, :, 0] - exact).max() < 1e-9 * E * k * H
+
+
+def test_modal_stress_cantilever(tmp_path, modal_tool, monkeypatch):
+    """freedyn2 modal-stress of a cantilever under a tip load F (critically damped modes: static at the
+    end): the superposed modal stresses sigma_xx = M z / I at mid span, the Universal file and
+    the modal coordinates."""
+    try:
+        cli.find_runtime()
+    except FileNotFoundError:
+        pytest.skip("freedyn2_run not built")
+    monkeypatch.setenv("FREEDYN2_HOME", str(tmp_path / "home"))
+    beam_bdf(tmp_path / "beam.bdf", nx=40)
+    F = 100.0
+    m = {"model": "cantilever", "gravity": [0, 0, 0],
+         "bodies": {"beam": {"flex": {"fem": "beam.bdf", "interfaces": [1001, 1002], "modes": 10, "damping": 1.0}}},
+         "joints": {"clamp": {"type": "fixed", "body1": "beam", "node": 1001}},
+         "forces": {"tip": {"type": "force", "body1": "beam", "point": [L, 0, 0], "vector": [0, 0, F],
+                            "frame": "global"}},
+         "solver": {"type": "HHT", "alpha": -0.05, "step": 1e-4, "end_time": 0.06}}
+    path = tmp_path / "cantilever.yaml"
+    path.write_text(yaml.safe_dump(m))
+    assert cli.main(["modal-stress", str(path), "beam", "-o", str(tmp_path / "out")]) == 0
+    from fdgen.flex import load_modal
+    unv = (tmp_path / "out" / "beam_modes.unv").read_text().split("\n")
+    eta = np.loadtxt(tmp_path / "out" / "beam_eta.csv", delimiter=",", skiprows=1)
+    d = load_modal(tmp_path / "cms" / "beam.fdflex")
+    labels, xyz, cells, sig = d.mesh
+    assert unv.count("  2414") == d.nm and unv.count("  2411") == 1 and eta.shape[1] == d.nm + 1
+    s = np.einsum("nsm,m->ns", sig, eta[-1, 1:])  # at the end: static
+    mid = np.flatnonzero(np.isclose(xyz[:, 0], L / 2) & np.isclose(np.abs(xyz[:, 2]), H / 2))
+    assert len(mid) == 6
+    sxx = -F * (L / 2) * xyz[mid, 2] / (H ** 4 / 12)  # bending moment F L / 2, bent upwards: top in compression
+    assert s[mid, 0] == pytest.approx(sxx, rel=0.03)
+    assert np.abs(s[mid, 1:]).max() < 0.05 * np.abs(sxx).max()
+    # the CSV holds the run's modal coordinates
+    assert eta[-1, 0] == pytest.approx(0.06)

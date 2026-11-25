@@ -76,6 +76,11 @@ here: a tire force that cannot pull – and `answer_note`s; you see the answer u
 | `compare` | two runs (before and after a change), the largest differences first |
 | `sweep` | a variant study: one number at several values, in parallel; a key figure of channels per value |
 | `modes`, `locus` | eigenfrequencies and damping about the state of a run; the same for several values of one number |
+| `flex_info` | the flexible bodies: source, elastic modes and frequencies, mass, each interface with its spider (RBE2 / RBE3, bore or patch, size) and what is attached |
+| `flex_convergence` | the frequencies of a flexible body for several mesh sizes or numbers of modes, to choose them |
+| `flex_deformation` | the largest deformation of the flexible bodies in a run, when and where, and the most active modes |
+| `flex_modal_stress` | fatigue output of a flexible body in a run: mode shapes' stresses as a Universal file, modal coordinates as CSV |
+| `flex_export` | the FE model of a body meshed from its STL as Nastran bulk data, to change spiders or mesh by hand |
 | `view` | the viewer in your browser, reloading on every save |
 | `screenshot` | a picture of the viewer, for the assistant itself (needs `pip install playwright` and `playwright install chromium`) |
 | `notes`, `note_image`, `answer_note` | what you wrote in the viewer, with its context and picture; the answer |

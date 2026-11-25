@@ -5,8 +5,49 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Fixed
+
+- Splines are data, not code: the runtime looks up the segment (binary search) and the
+  compiled law evaluates one cubic. A driver on an Akima spline of 1000 points (legacy
+  101_V8Motion) builds in 0.3 s instead of 20 minutes (1.9 MB of C before, 45 kB now), with
+  bitwise the same results; other tables reuse the compiled model (the table is runtime data,
+  not in p). The post function of element state writes only the state entries of p. Model
+  plugins of earlier versions must be built again (registry layout 3).
+- Newton (velocity criterion) at the round-off floor: a correction that stops getting smaller
+  below 1e3 times the tolerance counts as converged. Models with massless bodies in mm units
+  (legacy 106_V8_FlexConRod) broke down with no step size converging.
+- Model plugins with very large generated sources (a driver on a spline of 1000 points) took
+  20 minutes to compile: sources above 256 kB are compiled without optimization.
+- `freedyn2_run --step-log` also writes the log when the run fails.
+- The modal reduction finds its modes by Lanczos (shift-invert, full reorthogonalization)
+  instead of a subspace iteration, and solves the constraint modes in parallel: 70 000 dofs
+  and 20 modes in 26 s instead of 62 s.
+
 ### Added
 
+- Splines as library items: `spring_damper` and `torsion_spring` take a spline name as
+  `stiffness` or `damping` (force over the deflection, over the rate), and drivers along a
+  curve of time (`motion: <spline>(t)`) on angles, distances and displacements are built into
+  the runtime (six types, displacement, distance, angle to the ground or between two bodies;
+  frame, component, points and axes of the measure are parameters): no model plugin, no
+  compiler (legacy 101_V8Motion runs without one).
+- `curve_force` and `curve_torque`: a force or torque that is a spline of a measure,
+  s = a curve(b m + c), library types for any measure between its two bodies (frames,
+  components and directions are parameters: 42 types). The `.fds` importer makes them of a
+  legacy law `a * SPL[MEAVAL[..], ..]`.
+- Fatigue output of flexible bodies (modal superposition):
+  `freedyn2 modal-stress model.yaml body [result.csv]` and the MCP tool `flex_modal_stress` write the
+  FE mesh with the stress tensor of each mode (Universal file) and the modal coordinates of the
+  run (CSV). The reduction computes the modal stresses at the nodes and keeps them in the
+  `.fdflex` (fdgen.fem.stress; HEX8 with its incompatible modes). Checked against a cantilever
+  under a tip load.
+- Viewer: the inspector of a joint or force at a spider of a body meshed from its STL sets the
+  spider's radius and type (RBE2 / RBE3) or makes it automatic again (`flex.interfaces` in the
+  model file, fdgen.flex.edit).
+- MCP tools for flexible bodies: `flex_info` (modes, interfaces, spiders, what is attached),
+  `flex_convergence` (frequencies over mesh sizes or numbers of modes), `flex_deformation`
+  (largest deformation in a run), `flex_export`; `screenshot` with a deformation
+  magnification, `modes` names the elastic mode of flexible bodies; `guide` explains them.
 - Flexible bodies (floating frame of reference, modal coordinates) from Adams MTX files:
   `bodies.<name>.flex: {modal, damping, rotation_coupling, quadratic_inertia}`; joints at a node
   of a flexible body (`node` of a joint, any joint type). The body is split into element types

@@ -56,10 +56,27 @@ set(FD_ELEMENT_TYPES
   torque_global torque_global_euler torque_body torque_body_euler
   torsion_ground torsion_ground_euler torsion_bb torsion_bb_euler
   bushing_ground bushing_ground_euler bushing_bb bushing_bb_euler
+  spline_spring_damper_ground spline_spring_damper_ground_euler spline_spring_damper_bb spline_spring_damper_bb_euler
+  spline_torsion_ground spline_torsion_ground_euler spline_torsion_bb spline_torsion_bb_euler
   tire tire_euler tire_local tire_local_euler
   sensor sensor_euler
   flex_frame flex_coord flex_mode flex_pair
-  transfix_bb_node rotfix_bb_node transfix_ground_node rotfix_ground_node)
+  transfix_bb_node rotfix_bb_node transfix_ground_node rotfix_ground_node
+  # curves of measures: fdgen.curve_forces.KINDS
+  curve_displacement_los_ground curve_displacement_los_bb curve_displacement_dir_ground curve_displacement_dir_bb
+  curve_displacement_torque_ground curve_displacement_torque_bb curve_velocity_los_ground curve_velocity_los_bb
+  curve_velocity_dir_ground curve_velocity_dir_bb curve_velocity_torque_ground curve_velocity_torque_bb
+  curve_distance_los_ground curve_distance_los_bb curve_distance_dir_ground curve_distance_dir_bb
+  curve_distance_torque_ground curve_distance_torque_bb curve_distance_rate_los_ground curve_distance_rate_los_bb
+  curve_distance_rate_dir_ground curve_distance_rate_dir_bb curve_distance_rate_torque_ground curve_distance_rate_torque_bb
+  curve_angle_los_ground curve_angle_los_bb curve_angle_dir_ground curve_angle_dir_bb
+  curve_angle_torque_ground curve_angle_torque_bb curve_angular_rate_los_ground curve_angular_rate_los_bb
+  curve_angular_rate_dir_ground curve_angular_rate_dir_bb curve_angular_rate_torque_ground curve_angular_rate_torque_bb
+  curve_angular_velocity_los_ground curve_angular_velocity_los_bb curve_angular_velocity_dir_ground curve_angular_velocity_dir_bb
+  curve_angular_velocity_torque_ground curve_angular_velocity_torque_bb
+  # drivers along a curve of time: fdgen.drivers.KINDS
+  spline_driver_displacement_ground spline_driver_displacement_bb spline_driver_distance_ground spline_driver_distance_bb
+  spline_driver_angle_ground spline_driver_angle_bb)
 set(FD_ELEMENT_SOURCES)
 foreach(t ${FD_ELEMENT_TYPES})
   list(APPEND FD_ELEMENT_SOURCES ${FD_GEN_DIR}/${t}.c)
@@ -156,8 +173,9 @@ fd_copy_runtime_dlls(freedyn2_road)
 # (parallel builds; file(COPY) of two programs at once fails on Windows)
 add_dependencies(freedyn2_road freedyn2_run)
 # modal reduction of linear FE models (fdgen.fem): Eigen only
+find_package(Threads REQUIRED)
 add_executable(freedyn2_modal runtime/app/modal.cpp)
-target_link_libraries(freedyn2_modal PRIVATE Eigen3::Eigen)
+target_link_libraries(freedyn2_modal PRIVATE Eigen3::Eigen Threads::Threads)
 
 # --- Tests -----------------------------------------------------------------------
 if(FD_TOP_LEVEL)

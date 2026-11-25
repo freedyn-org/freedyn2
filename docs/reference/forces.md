@@ -24,6 +24,20 @@ forces:
 
 Channels: `suspension.length`, `.velocity`, `.force`.
 
+**Characteristic curves.** `stiffness` and `damping` can each be the name of a
+[spline](measures.md#splines): s = k(l − l0) + d(l̇) + f0, k the force over the deflection,
+d the force over the rate. A number stays a straight line. This is a library type like the
+linear spring: no model plugin, no compiler, any number of points.
+
+```yaml
+splines:
+  progressive: {x: [-0.05, 0, 0.03, 0.06], y: [-1500, 0, 900, 3200]}   # [m] -> [N]
+  damper: {x: [-1, -0.1, 0, 0.1, 1], y: [-2500, -400, 0, 900, 4000]}    # [m/s] -> [N]
+forces:
+  suspension: {type: spring_damper, body1: wheel, body2: body, point1: [0, 0, 0.3],
+               point2: [0, 0, 0.65], stiffness: progressive, damping: damper}
+```
+
 ## Torsion spring
 
 About the z axis of a frame (`orientation`) fixed on body2 or the ground:
@@ -40,6 +54,9 @@ About the z axis of a frame (`orientation`) fixed on body2 or the ground:
 ```
 
 Channels: `.angle`, `.rate`, `.torque`.
+
+As for the spring-damper, `stiffness` and `damping` can be splines: τ = −k(φ − φ0) − d(φ̇) + τ0,
+k the torque over the angle, d over the rate (library type, no plugin).
 
 ## Bushing
 
@@ -70,6 +87,41 @@ bushing frame on body2).
 ```
 
 Channels: `.force_x/y/z` or `.torque_x/y/z`, global.
+
+## Curve force and torque
+
+A force or torque that is a curve ([spline](measures.md#splines)) of a
+[measure](measures.md): s = a · curve(b · m + c). `curve_force` acts along a direction like an
+expression force (`direction`, `frame`, `point1`, `point2`; default the line of sight),
+`curve_torque` about an `axis` (`frame` global or body) like an expression torque. Library
+types: no model plugin, no compiler, any number of points.
+
+```yaml
+splines:
+  bump_stop: {x: [-0.05, -0.02, 0, 0.01], y: [-8000, -900, 0, 0]}   # [m] -> [N]
+measures:
+  travel: {type: displacement, body1: wheel, body2: body, component: z, frame: body, offset: initial}
+forces:
+  stop:
+    type: curve_force
+    body1: wheel
+    body2: body
+    measure: travel
+    curve: bump_stop
+    direction: [0, 0, 1]
+    frame: body
+    scale: 1.0             # a; default 1
+    argument_scale: 1.0    # b; default 1
+    argument_offset: 0.0   # c; default 0
+  twist: {type: curve_torque, body1: arm, body2: body, measure: phi, curve: torsion_curve,
+          axis: [0, 1, 0], frame: body}
+```
+
+The measure must act between the force's two bodies (either order; for a force on the ground,
+of body1 against the ground): displacement, velocity, distance, distance rate, angle
+(continuous), angular rate, angular velocity, in any frame of those bodies. Otherwise (a
+measure of other bodies, another angle range) the same law is built as an expression force or
+torque in the model plugin. Channels: `.value` (s), `.force` or `.torque`, `.measure` (m).
 
 ## Expression force and torque
 
