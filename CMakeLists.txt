@@ -172,10 +172,24 @@ fd_copy_runtime_dlls(freedyn2_road)
 # both copy the same DLLs into the same directory: one after the other, not at the same time
 # (parallel builds; file(COPY) of two programs at once fails on Windows)
 add_dependencies(freedyn2_road freedyn2_run)
-# modal reduction of linear FE models (fdgen.fem): Eigen only
+# modal reduction of linear FE models (fdgen.fem): Eigen only. On x86-64 also a variant with AVX2
+# and FMA (Eigen's dense kernels about twice as fast); fdgen.fem.reduce takes it where the CPU
+# has them (freedyn2_modal --cpu).
 find_package(Threads REQUIRED)
+set(FD_MODAL_TARGETS freedyn2_modal)
 add_executable(freedyn2_modal runtime/app/modal.cpp)
-target_link_libraries(freedyn2_modal PRIVATE Eigen3::Eigen Threads::Threads)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64|x64)$")
+  add_executable(freedyn2_modal_avx2 runtime/app/modal.cpp)
+  if(MSVC)
+    target_compile_options(freedyn2_modal_avx2 PRIVATE /arch:AVX2)
+  else()
+    target_compile_options(freedyn2_modal_avx2 PRIVATE -mavx2 -mfma)
+  endif()
+  list(APPEND FD_MODAL_TARGETS freedyn2_modal_avx2)
+endif()
+foreach(t ${FD_MODAL_TARGETS})
+  target_link_libraries(${t} PRIVATE Eigen3::Eigen Threads::Threads)
+endforeach()
 
 # --- Tests -----------------------------------------------------------------------
 if(FD_TOP_LEVEL)
@@ -190,9 +204,9 @@ endif()
 # to fdgen/schema and fdgen/examples (fdgen.resources finds them there).
 if(SKBUILD)
   if(UNIX AND NOT APPLE)
-    set_target_properties(freedyn2_run freedyn2_road freedyn2_modal PROPERTIES INSTALL_RPATH "$ORIGIN")
+    set_target_properties(freedyn2_run freedyn2_road ${FD_MODAL_TARGETS} PROPERTIES INSTALL_RPATH "$ORIGIN")
   endif()
-  install(TARGETS freedyn2_run freedyn2_road freedyn2_modal RUNTIME DESTINATION fdgen/bin)
+  install(TARGETS freedyn2_run freedyn2_road ${FD_MODAL_TARGETS} RUNTIME DESTINATION fdgen/bin)
   set(FD_SHARED_DEPS)
   foreach(t SuiteSparse::KLU SuiteSparse::BTF SuiteSparse::AMD SuiteSparse::COLAMD SuiteSparse::SuiteSparseConfig)
     if(TARGET ${t})

@@ -11,6 +11,7 @@ quadrature points of the elements with the consistent mass (exact for the FE dis
 unlike the lumped node masses of Adams).
 """
 
+import os
 import subprocess
 import tempfile
 import warnings
@@ -23,12 +24,30 @@ from ..flex.modal import ModalData
 from . import stress
 
 
+_VARIANT = {}
+
+
 def find_modal(path=None):
+    """The freedyn2_modal program: path, FREEDYN2_MODAL, or the one found (fdgen.cli.find_tool),
+    then its AVX2 variant beside it (freedyn2_modal_avx2) if this CPU has AVX2 and FMA
+    (freedyn2_modal --cpu): its dense kernels are about twice as fast."""
     from ..cli import find_tool
 
     tool = find_tool("freedyn2_modal", path, "FREEDYN2_MODAL")
     if tool is None:
         raise FileNotFoundError("freedyn2_modal not found: build it (cmake) or set FREEDYN2_MODAL")
+    if path or os.environ.get("FREEDYN2_MODAL"):
+        return tool
+    fast = tool.with_name(tool.name.replace("freedyn2_modal", "freedyn2_modal_avx2"))
+    if fast.is_file():
+        if tool not in _VARIANT:
+            try:
+                r = subprocess.run([str(tool), "--cpu"], capture_output=True, text=True, timeout=30)
+                _VARIANT[tool] = r.stdout.strip() == "avx2"
+            except (OSError, subprocess.SubprocessError):
+                _VARIANT[tool] = False
+        if _VARIANT[tool]:
+            return fast
     return tool
 
 
@@ -143,13 +162,22 @@ def _sk(v):
                      np.stack([-v[..., 1], v[..., 0], z], -1)], -2)
 
 
+_EPS = np.zeros((3, 3, 3))  # Levi-Civita: (v x w)_a = eps_abc v_b w_c
+for _i, _j, _k in ((0, 1, 2), (1, 2, 0), (2, 0, 1)):
+    _EPS[_i, _j, _k], _EPS[_i, _k, _j] = 1.0, -1.0
+
+
 def invariants(a, Phi):
     """Inertia invariants of the mode shapes Phi (n dofs x nm) by quadrature (ModalData without
-    K, frequencies and nodes)."""
+    K, frequencies and nodes). With the skew matrices of x and u (v~ w = v x w) all of them come
+    from the weighted moments of the quadrature points, two matrix products:
+        C[a,j,b,k] = sum w u_j[a] u_k[b],  D[a,j,c] = sum w u_j[a] x[c],  E = sum w x x^T,
+    I4 = sum w x~ u = x x u, I5_j = sum w u_j~ u_k (cross products), I7 = sum w x~^T x~
+    = tr(E) I - E, I8_j = sum w x~ u_j~ = D_j - tr(D_j) I, I9_jk = sum w u_j~ u_k~ =
+    C_kj - (u_j . u_k) I."""
     nm = Phi.shape[1]
-    I1, I2, I3, I4 = 0.0, np.zeros(3), np.zeros((3, nm)), np.zeros((3, nm))
-    I5, I6, I7 = np.zeros((nm, 3, nm)), np.zeros((nm, nm)), np.zeros((3, 3))
-    I8, I9 = np.zeros((nm, 3, 3)), np.zeros((nm, nm, 3, 3))
+    I1, I2, I3 = 0.0, np.zeros(3), np.zeros((3, nm))
+    C, D, E = np.zeros((3 * nm, 3 * nm)), np.zeros((3 * nm, 3)), np.zeros((3, 3))
     for x, w, (kind, op), dofs in a.quad:
         ue = Phi[dofs]  # (ne, nd, nm)
         if kind == "solid":
@@ -157,17 +185,22 @@ def invariants(a, Phi):
             u = np.einsum("qn,enam->eqam", op, ue.reshape(ne, nd // 3, 3, nm), optimize=True)
         else:
             u = np.einsum("eqad,edm->eqam", op, ue, optimize=True)
-        x, w, u = x.reshape(-1, 3), w.ravel(), u.reshape(-1, 3, nm)
-        S, U = _sk(x), _sk(np.moveaxis(u, 2, 1))  # (P, 3, 3), (P, nm, 3, 3)
+        x, w, u = x.reshape(-1, 3), w.ravel(), u.reshape(-1, 3 * nm)  # u: (P, 3 nm), index (a, j)
+        wu = u * w[:, None]
         I1 += w.sum()
         I2 += w @ x
-        I3 += np.einsum("p,pam->am", w, u)
-        I4 += np.einsum("p,pab,pbm->am", w, S, u, optimize=True)
-        I5 += np.einsum("p,pjab,pbk->jak", w, U, u, optimize=True)
-        I6 += np.einsum("p,pam,pak->mk", w, u, u, optimize=True)
-        I7 += np.einsum("p,pba,pbc->ac", w, S, S, optimize=True)
-        I8 += np.einsum("p,pab,pjbc->jac", w, S, U, optimize=True)
-        I9 += np.einsum("p,pjab,pkbc->jkac", w, U, U, optimize=True)
+        I3 += wu.sum(axis=0).reshape(3, nm)
+        C += u.T @ wu
+        D += wu.T @ x
+        E += (x * w[:, None]).T @ x
+    C = C.reshape(3, nm, 3, nm)   # [a, j, b, k]
+    D = D.reshape(3, nm, 3)       # [a, j, c]
+    I6 = np.einsum("ajak->jk", C)
+    I4 = np.einsum("abc,cmb->am", _EPS, D)                      # (x x u_m)_a = eps_abc x_b u_m,c
+    I5 = np.einsum("abc,bjck->jak", _EPS, C)                    # (u_j x u_k)_a
+    I7 = np.trace(E) * np.eye(3) - E
+    I8 = np.moveaxis(D, 1, 0) - np.einsum("bjb->j", D)[:, None, None] * np.eye(3)
+    I9 = np.einsum("akcj->jkac", C) - I6[:, :, None, None] * np.eye(3)
     return ModalData(mass=float(I1), I2=I2, I3=I3, I4=I4, I5=I5, I6=I6, I7=I7, I8=I8, I9=I9,
                      K=np.zeros((nm, nm)), frequencies=np.zeros(nm), node_labels=np.zeros(0, int),
                      node_positions=np.zeros((0, 3)), Phi=np.zeros((0, 3, nm)), Psi=np.zeros((0, 3, nm)),
