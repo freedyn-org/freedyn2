@@ -22,7 +22,7 @@ endif()
 set(FD_GEN_DIR ${PROJECT_BINARY_DIR}/generated)
 set(FD_EXAMPLE_NAMES free_body dzhanibekov pendulum double_pendulum
   oscillator torsion_pendulum spring_pendulum two_bodies constant_loads forced_oscillator input_oscillator
-  bushing_mount winding_spring spline_slider driven_rotor)
+  bushing_mount winding_spring spline_slider driven_rotor parallelogram)
 # Examples with expression forces also produce a model plugin (<name>_plugin.so, .dll on Windows).
 set(FD_PLUGIN_EXAMPLES forced_oscillator winding_spring spline_slider driven_rotor input_oscillator)
 # Included from another project (add_subdirectory, FetchContent): the libraries only, no example

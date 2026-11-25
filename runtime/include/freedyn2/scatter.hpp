@@ -22,11 +22,15 @@ class MatrixAssembler {
   // Register a local block with CCS pattern `sp`; map[i] is the global index of
   // local row/column i (rows and columns share the map). Returns the block id.
   int add_block(const Sparsity& sp, const std::vector<int>& map);
-  // Build the global pattern of size n x n and all scatter maps.
+  // Make the diagonal entry (i, i) part of the pattern (finalize again afterwards).
+  void add_diagonal(int i);
+  // Build the global pattern of size n x n and all scatter maps (again after new blocks).
   void finalize(int n);
 
   void zero();
   void add(int block, const double* local_nz);
+  // Replace row i by the unit row e_i (its diagonal must be in the pattern: add_diagonal).
+  void pin_row(int i);
   const CsrMatrix& matrix() const { return A_; }
 
  private:

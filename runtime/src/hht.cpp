@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <cstdio>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -68,9 +69,8 @@ HhtIntegrator::HhtIntegrator(System& sys, const SolverSettings& s, const std::st
   if (ab_ && sys.modified_newmark())
     throw std::runtime_error("HHT: modified Newmark formulas are a legacy option of the negrut form");
   psi_ = sys.nv() * std::pow(s.eps, 2) / std::pow(beta_ - 1. / (6. * (1. + alpha_)), 2);
-  ls_ = make_linear_solver(linear_solver);
-  ls_->set_fixed_pivots(s.newton == "fixed");  // real-time: the same work in every step
-  ls_ic_ = make_linear_solver(linear_solver);
+  ls_name_ = linear_solver;
+  make_solvers();
   const int nx = sys.nx(), nq = sys.nq(), nv = sys.nv();
   for (auto* v : {&q_n_, &q_pred_}) v->resize(nq);
   for (auto* v : {&qd_n_, &qdd_n_, &a_n_, &qd_pred_, &incr_pred_}) v->resize(nv);
@@ -81,28 +81,215 @@ HhtIntegrator::HhtIntegrator(System& sys, const SolverSettings& s, const std::st
   sys.set_newmark_reference(&q_n_, &qd_n_, &qdd_n_);
 }
 
+void HhtIntegrator::make_solvers() {
+  ls_ = make_linear_solver(ls_name_);
+  ls_->set_fixed_pivots(s_.newton == "fixed");  // real-time: the same work in every step
+  ls_ic_ = make_linear_solver(ls_name_);
+}
+
+namespace {
+// Largest |v| over the constraint rows (x space) of the active constraints; its row in *at.
+double active_inf(const System& sys, const std::vector<double>& v, int* at = nullptr) {
+  double n = 0.0;
+  for (int c = 0; c < sys.nc(); ++c)
+    if (sys.constraint_active(c) && std::abs(v[sys.nv() + c]) > n) {
+      n = std::abs(v[sys.nv() + c]);
+      if (at) *at = c;
+    }
+  return n;
+}
+double active_norm_2(const System& sys, const std::vector<double>& v) {
+  double s = 0.0;
+  for (int c = 0; c < sys.nc(); ++c)
+    if (sys.constraint_active(c)) s += v[sys.nv() + c] * v[sys.nv() + c];
+  return std::sqrt(s);
+}
+// Tolerance of the constraint positions at t = 0 (absolute, as before the assembly existed).
+constexpr double kPositionTol = 1e-10;
+}  // namespace
+
+void HhtIntegrator::assemble_positions() {
+  std::vector<double> moved(sys_.nv(), 0.0);
+  report_.assembly_iterations = project_positions(moved, &report_.violation);
+  for (int i = 0; i < sys_.nv(); ++i)
+    if (std::abs(moved[i]) > report_.largest_move) {
+      report_.largest_move = std::abs(moved[i]);
+      report_.largest_move_dof = i;
+    }
+}
+
+int HhtIntegrator::project_positions(std::vector<double>& moved, double* violation) {
+  const int nx = sys_.nx(), nv = sys_.nv();
+  std::vector<double> b(nx), phi(nx), phid(nx), rhs(nx, 0.0), dx(nx), q_n;
+  const CsrMatrix* A = &sys_.ic_system(b.data(), phi.data(), phid.data());
+  if (violation) *violation = active_inf(sys_, phi);
+  double prev = std::numeric_limits<double>::infinity();
+  int corrections = 0;
+  for (int it = 0;; ++it) {
+    const double err = active_inf(sys_, phi);
+    if (err <= kPositionTol) break;
+    // Newton converges quadratically; no progress, or too many corrections: the constraints
+    // cannot be satisfied (bodies too far apart for the joints, a driver beyond its range).
+    if (it == 25 || (it >= 3 && !(err < prev))) {
+      int c = -1;
+      active_inf(sys_, phi, &c);
+      throw std::runtime_error("HHT: initial positions violate the constraints and cannot be assembled (|Phi| = " +
+                               std::to_string(err) + " at " + sys_.constraint_name(c) + ")");
+    }
+    prev = err;
+    for (int c = 0; c < sys_.nc(); ++c) rhs[nv + c] = sys_.constraint_active(c) ? -phi[nv + c] : 0.0;
+    ls_ic_->factorize(*A);
+    ls_ic_->solve(rhs.data(), dx.data());
+    q_n = sys_.q;
+    std::copy(dx.begin(), dx.begin() + nv, sys_.incr.begin());
+    sys_.update_configuration(q_n);
+    for (int i = 0; i < nv; ++i) moved[i] += dx[i];
+    ++corrections;
+    A = &sys_.ic_system(b.data(), phi.data(), phid.data());
+  }
+  std::fill(sys_.incr.begin(), sys_.incr.end(), 0.0);
+  return corrections;
+}
+
+// Static equilibrium f(q, 0, lam) = h - Q + B^T lam = 0, Phi(q) = 0 at rest, by pseudo-transient
+// continuation with the generated iteration matrix: with the coefficients (alpha, beta, gamma,
+// h) = (0, beta, 0, 1) and vd = 0 its rows are [M + beta K T, B^T; B, 0] for the unknowns
+// (dvd, dlam), the configuration moves by delta = beta dvd, so
+//   (M / beta + K) delta + B^T dlam = -f,  B delta = -Phi:
+// a Newton step in the mass metric regularized by M / beta (beta: a pseudo-time step squared).
+// Pseudo-transient continuation (Kelley and Keyes 1998, SIAM J. Numer. Anal. 35) with the
+// switched evolution relaxation rule beta <- beta |a|_old / |a|_new (at most tenfold per step):
+// small beta at the start makes the steps a gradient flow in the mass metric towards a minimum
+// of the potential (a stable equilibrium from far away, through positions where the loads grow
+// first), large beta near the equilibrium makes them Newton steps. A step whose positions cannot
+// be projected onto the constraints is undone and beta divided by ten.
+// After every step the positions are projected back onto Phi = 0 (project_positions): the
+// constraint error of a large step is second order, and a correction of it inside the step
+// would act through M / beta as a large inertia force at small beta. The multipliers are those
+// at rest, [M B^T; B 0] [a; lam] = [Q - h; 0] (the initial-condition matrix), and the merit is
+// |a|_M = sqrt(a^T M a) = sqrt(-a^T f), the acceleration the system would start with if released
+// there (the M^-1 norm of the force the constraints do not take; massless dofs have none).
+void HhtIntegrator::static_equilibrium() {
+  const int nx = sys_.nx(), nv = sys_.nv();
+  std::fill(sys_.qd.begin(), sys_.qd.end(), 0.0);
+  std::fill(sys_.qdd.begin(), sys_.qdd.end(), 0.0);
+  std::fill(sys_.incr.begin(), sys_.incr.end(), 0.0);
+  std::unique_ptr<LinearSolver> ls = make_linear_solver(ls_name_);  // own pivots: another matrix
+  std::vector<double> r(nx), f(nx), rhs(nx), dx(nx), b(nx), phi(nx), phid(nx), xa(nx), moved(nv, 0.0);
+  std::vector<double> moved_prev, q_prev, q_n;
+  constexpr double kBetaNewton = 1e8, kBetaMax = 1e14, kBetaMin = 1e-14;
+  HhtCoef c{0.0, 1e-2, 0.0, 1.0};
+  auto at_rest = [&] {  // lam at rest, the residual with it (r_dyn = f at vd = 0), the merit
+    const CsrMatrix& A = sys_.ic_system(b.data(), phi.data(), phid.data());
+    for (int i = nv; i < nx; ++i) b[i] = 0.0;  // no constraint accelerations (drivers: at rest)
+    ls_ic_->factorize(A);
+    ls_ic_->solve(b.data(), xa.data());
+    std::copy(xa.begin() + nv, xa.end(), sys_.lam.begin());
+    sys_.residual(c, r.data(), f.data());
+    double m2 = 0.0;
+    for (int i = 0; i < nv; ++i) m2 -= xa[i] * r[i];
+    return std::sqrt(std::max(m2, 0.0));
+  };
+  double merit = at_rest();
+  const double tiny = 1e-12 * (1.0 + merit);  // round-off (relative to the loads at the start)
+  for (int it = 0;; ++it) {
+    if (merit <= tiny) break;
+    if (it == 400 || c.beta < kBetaMin) {
+      char msg[256];
+      std::snprintf(msg, sizeof msg,
+                    "HHT: static equilibrium not found (|a| = %.3g at rest): a body free to fall or to drift, or a "
+                    "mechanism in a singular position (e.g. a parallelogram stretched out)?",
+                    merit);
+      throw std::runtime_error(msg);
+    }
+    try {
+      ls->factorize(sys_.iteration_matrix(c));
+    } catch (const std::exception&) {  // singular in the Newton regime: smaller pseudo-time step
+      c.beta /= 10.0;
+      sys_.residual(c, r.data(), f.data());
+      continue;
+    }
+    for (int i = 0; i < nx; ++i) rhs[i] = -r[i];
+    ls->solve(rhs.data(), dx.data());
+    q_prev = sys_.q, moved_prev = moved, q_n = sys_.q;
+    double step = 0.0;
+    for (int i = 0; i < nv; ++i) {
+      sys_.incr[i] = c.beta * dx[i];
+      moved[i] += sys_.incr[i];
+      step = std::max(step, std::abs(sys_.incr[i]));
+    }
+    sys_.update_configuration(q_n);
+    std::fill(sys_.incr.begin(), sys_.incr.end(), 0.0);
+    double m = std::numeric_limits<double>::infinity();
+    try {
+      project_positions(moved);
+      m = at_rest();
+    } catch (const std::exception&) {
+    }
+    if (!std::isfinite(m)) {  // undo, smaller pseudo-time step
+      sys_.q = q_prev, moved = moved_prev;
+      c.beta /= 10.0;
+      merit = at_rest();
+      continue;
+    }
+    const double ratio = m > 0.0 ? std::min(merit / m, 10.0) : 10.0;
+    merit = m;
+    ++report_.static_iterations;
+    double qmax = 0.0;
+    for (double x : sys_.q) qmax = std::max(qmax, std::abs(x));
+    if (c.beta >= kBetaNewton && step <= 1e-10 * (1.0 + qmax)) break;
+    c.beta = std::min(ratio * c.beta, kBetaMax);
+    sys_.residual(c, r.data(), f.data());  // r_con = Phi / beta with the new beta
+  }
+  for (int i = 0; i < nv; ++i)
+    if (std::abs(moved[i]) > report_.static_move) {
+      report_.static_move = std::abs(moved[i]);
+      report_.static_move_dof = i;
+    }
+}
+
 void HhtIntegrator::initialize() {
   sys_.set_initial_state();
   t_ = 0.0;
   sys_.t = 0.0;
   n_steps_ = 0;
+  report_ = InitialReport();
   const int nx = sys_.nx(), nv = sys_.nv();
   std::fill(sys_.incr.begin(), sys_.incr.end(), 0.0);
+  // Redundant constraints: their equations would make every matrix singular. Deactivated in
+  // the given positions (the rank of an assembled mechanism is the same unless it sits in a
+  // singular position); the new pattern needs new linear solvers.
+  sys_.deactivate_constraints(sys_.find_redundant_constraints());
+  report_.redundant = sys_.inactive_constraints();
+  make_solvers();
+  assemble_positions();
+  if (s_.statics) static_equilibrium();
   std::vector<double> b(nx), phi(nx), phid(nx), rhs(nx, 0.0), dv(nx);
   sys_.ic_system(b.data(), phi.data(), phid.data());
-  if (norm_inf(phi) > 1e-10)
-    throw std::runtime_error("HHT: initial positions violate the constraints");
+  // A redundant constraint that its independent ones do not satisfy: the overconstrained
+  // mechanism does not fit together (e.g. hinge axes of a closed loop not parallel).
+  for (int c : sys_.inactive_constraints())
+    if (std::abs(phi[nv + c]) > kPositionTol)
+      throw std::runtime_error("HHT: the redundant constraint " + sys_.constraint_name(c) +
+                               " is violated in the assembled positions (|Phi| = " + std::to_string(std::abs(phi[nv + c])) +
+                               "): the overconstrained mechanism does not fit together");
   // Project the velocities onto the constraints, [M B^T; B 0] [dv; mu] = [0; -B v], until
   // |B v| <= tol (as SOL_InitialConditionManager::adaptVelocities, at most 10 iterations).
-  for (int it = 0; norm_2(phid.data(), nx) > s_.vproj_tol; ++it) {
+  for (int it = 0; active_norm_2(sys_, phid) > s_.vproj_tol; ++it) {
     if (it == 10) throw std::runtime_error("HHT: velocity projection did not converge");
-    for (int i = nv; i < nx; ++i) rhs[i] = -phid[i];
+    for (int c = 0; c < sys_.nc(); ++c) rhs[nv + c] = sys_.constraint_active(c) ? -phid[nv + c] : 0.0;
     ls_ic_->factorize(sys_.ic_system(b.data(), phi.data(), phid.data()));
     ls_ic_->solve(rhs.data(), dv.data());
     for (int i = 0; i < nv; ++i) sys_.qd[i] += dv[i];
     sys_.ic_system(b.data(), phi.data(), phid.data());
   }
-  if (norm_inf(phid) > 1e-5) throw std::runtime_error("HHT: initial velocities violate the constraints");
+  if (norm_inf(phid) > 1e-5) {
+    int c = -1;
+    for (int k = 0; k < sys_.nc(); ++k)
+      if (c < 0 || std::abs(phid[nv + k]) > std::abs(phid[nv + c])) c = k;
+    throw std::runtime_error("HHT: initial velocities violate the constraints (" + sys_.constraint_name(c) +
+                             (sys_.constraint_active(c) ? "" : ", redundant") + ")");
+  }
   // Consistent accelerations and Lagrange multipliers.
   const CsrMatrix& A = sys_.ic_system(b.data(), phi.data(), phid.data());
   ls_ic_->factorize(A);

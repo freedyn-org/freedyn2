@@ -402,7 +402,8 @@
         "error_norm": {"enum": ["mixed", "legacy"], "default": "mixed", "description": "adaptive: weights of the error norm, mixed (absolute and relative tolerance) or legacy (as legacy FreeDyn)."},
         "exact_output": {"type": "boolean", "default": true, "description": "adaptive: steps end exactly at the output times (isExactOutputTimeEnforced)."},
         "output_begin": {"type": "number", "minimum": 0, "default": 0, "description": "adaptive: the first output after t = 0 is at this time or later (OutputTimeBegin)."},
-        "vproj_tol": {"type": "number", "exclusiveMinimum": 0, "default": 1e-12, "description": "The initial velocities are projected onto the constraints when they violate them by more than this (legacy FreeDyn: 1e-5)."}
+        "vproj_tol": {"type": "number", "exclusiveMinimum": 0, "default": 1e-12, "description": "The initial velocities are projected onto the constraints when they violate them by more than this (legacy FreeDyn: 1e-5)."},
+        "statics": {"type": "boolean", "default": false, "description": "Start from the static equilibrium: the positions are moved until the forces balance (gravity, springs, preloads; the driven measures at their values at t = 0), the bodies at rest (initial velocities are not used), then the motion is simulated from there."}
       }
     }
   }

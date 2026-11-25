@@ -478,7 +478,7 @@ def write_fdm(model, path):
         f"{keys.get(k, k)} {int(s[k]) if isinstance(s[k], bool) else s[k]!r}".replace("'", "")
         for k in ("alpha", "form", "end_time", "step", "output_step", "output_begin", "newton_tol",
                   "max_newton", "newton", "newton_iterations", "adaptive", "h_min", "eps", "exact_output", "vproj_tol",
-                  "error_norm")
+                  "error_norm", "statics")
         if k in s
     )
     lines = [f"freedyn2_model {FDM_VERSION}", f"name {model['model']}", f"solver {solver}"]

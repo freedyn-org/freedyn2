@@ -221,6 +221,21 @@ value at rest, joining `f` C2 at `Ta`) replaces `f` for `t < Ta`. The time deriv
 (`phid = B v + Phi_t`, `gamma = -d/dt(B) v - 2 (B v)_t - Phi_tt`), derived by CasADi for any
 element; the multiplier is the driving force or torque.
 
+**Initial state** (`HhtIntegrator::initialize`). Redundant constraints are found on the
+constraint Jacobian B at the given positions (`System::find_redundant_constraints`: columns
+equilibrated, rows of unit length, modified Gram-Schmidt in model order, a row whose part
+orthogonal to the earlier ones is below 1e-8 is redundant) and deactivated
+(`System::deactivate_constraints`: residual row `lam_c`, unit row in the iteration and the
+initial-condition matrix, so the pattern grows by those diagonal entries and nothing else
+changes). Positions that violate the active constraints are assembled by Newton's method with
+the initial-condition matrix, `[M B^T; B 0] [delta; mu] = [0; -Phi]` (the smallest correction in
+the mass metric), applied as `q o exp(delta)`. With `statics` the static equilibrium follows,
+by pseudo-transient continuation (Kelley and Keyes 1998) with the generated iteration matrix at
+the coefficients `(0, beta, 0, 1)`: its rows are `[M + beta K T, B^T; B, 0]`, i.e. Newton's method
+regularized by `M / beta`; beta follows the switched evolution relaxation rule on the merit
+`|a|_M`, the acceleration at rest from the initial-condition system, and the positions are
+projected onto `Phi = 0` after every step. No generated function is added for any of it.
+
 **HHT**, with `beta = (1-alpha)^2/4` and `gamma = 1/2 - alpha`, in two forms. Default
 `arnold_bruls`: equations of motion at `t_{n+1}`, `alpha` only in the Newmark pseudo-acceleration
 `a_{n+1} = (1+alpha) qdd_{n+1} - alpha qdd_n` (second order). `negrut` (legacy profile):

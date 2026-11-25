@@ -12,6 +12,7 @@ int main(int argc, char** argv) {
   add_rigid_body_tests(tests);
   add_joint_tests(tests);
   add_force_tests(tests);
+  add_initial_tests(tests);
   if (argc != 2 || !tests.count(argv[1])) {
     std::fprintf(stderr, "usage: fd_tests <test>; tests:");
     for (const auto& t : tests) std::fprintf(stderr, " %s", t.first.c_str());
