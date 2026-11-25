@@ -34,7 +34,7 @@ def arm(flex=None, name="arm"):
     body = {"mass": m, "inertia": [m * (B * B + H * H) / 12, m * (L * L + H * H) / 12, m * (L * L + B * B) / 12],
             "position": [L / 2, 0, 0], "shapes": [{"type": "mesh", "file": "arm.stl", "frame": "body"}]}
     if flex:
-        body["flex"] = flex
+        body["flex"] = {"damping": 0.0, **flex}  # undamped: the frequencies are compared
     return {"model": name, "gravity": [0, 0, -9.81], "bodies": {"arm": body},
             "joints": {"pivot": {"type": "revolute", "body1": "arm", "location": [0, 0, 0],
                                  "orientation": [0.70710678, -0.70710678, 0, 0]}},
@@ -322,3 +322,29 @@ def test_viewer_sets_a_spider(env):
     assert n1 > n0
     v.flex_interface({"body": "arm", "point": [0, 0, 0], "remove": True})
     assert "interfaces" not in yaml.safe_load(path.read_text())["bodies"]["arm"]["flex"]
+
+
+def test_spider_weights_and_distance(tmp_path):
+    """RBE3 spiders of a meshed body weight their nodes by surface area (a uniform pressure:
+    the weights add up to the area times the mean weight; fine and coarse regions alike); an
+    interface far from the surface warns (a long rigid lever). Written and read back as
+    Nastran bulk data with the weights."""
+    pytest.importorskip("netgen.stl")
+    from fdgen.fem.nastran import read_nastran, write_nastran
+    from fdgen.fem.stl import fe_model, mesh_stl, node_areas, read_surface
+    tri = read_surface(box_stl(tmp_path / "b.stl"))
+    xyz, tets, surf = mesh_stl(tri, 0.01)
+    area = node_areas(xyz, tets)
+    total = 2 * (L * B + L * H + B * H)
+    assert area.sum() == pytest.approx(total, rel=1e-6)  # the STL is float32 and np.all(area[surf] > 0)
+    inner = np.setdiff1d(np.arange(len(xyz)), surf)
+    assert np.all(area[inner] == 0)
+    fe = fe_model(xyz, tets, surf, (2.1e11, 0.3, 7850.0), [((L / 2, 0, 0), "rbe3", None, None)], 0.01)
+    (_, _, _, groups), = fe.rbe3
+    w = np.array([g[0] for g in groups])
+    nodes = [g[2][0] for g in groups]
+    assert w.mean() == pytest.approx(1.0) and np.allclose(w / area[np.array(nodes) - 1], w[0] / area[nodes[0] - 1])
+    back = read_nastran(write_nastran(fe, tmp_path / "b.bdf"))
+    assert [round(g[0], 3) for g in back.rbe3[0][3]] == [round(x, 3) for x in w]
+    with pytest.warns(UserWarning, match="rigid lever"):
+        fe_model(xyz, tets, surf, (2.1e11, 0.3, 7850.0), [((L, 0, 0.1), "rbe2", None, None)], 0.01)

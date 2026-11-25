@@ -211,7 +211,7 @@ def test_cantilever_from_fem(tmp_path, modal_tool, monkeypatch):
     monkeypatch.setenv("FREEDYN2_HOME", str(tmp_path / "home"))
     beam_bdf(tmp_path / "beam.bdf", nx=40)
     m = {"model": "cantilever", "bodies": {"beam": {"flex": {"fem": "beam.bdf", "interfaces": [1001, 1002],
-                                                             "modes": 10}}},
+                                                             "modes": 10, "damping": 0.0}}},
          "joints": {"clamp": {"type": "fixed", "body1": "beam", "node": 1001}},
          "solver": {"type": "HHT", "alpha": -0.05, "step": 1e-5, "end_time": 2e-5}}
     path = tmp_path / "cantilever.yaml"
