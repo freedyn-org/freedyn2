@@ -7,6 +7,11 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Fixed
 
+- The modal reduction of large FE models is about 6 times faster: an own multifrontal
+  supernodal LDL^T (Eigen's dense kernels, all cores; 12 times faster than Eigen's
+  SimplicialLDLT, no new dependency), an AVX2 variant of freedyn2_modal taken where the CPU has
+  it, Lanczos with one product with M per step, the inertia invariants from two matrix products
+  (64 000 dofs: 79 s to 14 s). freedyn2_modal is signed in the Windows installer.
 - Flexible bodies, from a review:
   - The Nastran reader no longer leaves out cards silently: elements, point masses (CONM2),
     rigid elements and MPC it does not support are an error; INCLUDE files are read (and are

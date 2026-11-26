@@ -137,6 +137,30 @@ factor), constraint modes 0.2 s (in parallel), modes 10 s with 60 solves (before
 solves), the same eigenvalues to 2e-11. The factorization is next: CHOLMOD (supernodal) would
 need BLAS / LAPACK in the Windows build.
 
+**Supernodal factorization** (`runtime/app/supernodal.hpp`, since then): a multifrontal LDL^T
+with Eigen's dense kernels (the columns with the same structure as dense blocks, the update as a
+matrix product; large updates and assemblies on all cores, a small thread pool) instead of
+Eigen's SimplicialLDLT, which works column by column. The same factor (AMD ordering, 37 million
+entries for 64 000 dofs of TET10), the same results to 1e-12, the same inertia. Factorization
+of that matrix on 4 cores:
+
+| | factorize |
+|---|---|
+| Eigen SimplicialLDLT (before) | 18.2 s |
+| Eigen SimplicialLDLT, METIS ordering | 12.2 s |
+| supernodal, generic x86-64 (SSE2) | 3.4 s |
+| supernodal, AVX2 and FMA | 1.5 s |
+| CHOLMOD supernodal with OpenBLAS (reference, not used: its supernodal module is GPL) | 1.1 s |
+
+The wheels are built for any x86-64 CPU: `freedyn2_modal_avx2` is built beside `freedyn2_modal`
+and taken where the CPU has AVX2 and FMA (`freedyn2_modal --cpu`). Lanczos keeps M Q along (one
+product with M per step instead of four). The inertia invariants come from two matrix products
+of the weighted moments of the quadrature points (the identities of the skew matrices) instead
+of einsum over all points and mode pairs: 12.7 s to 0.3 s, the same to 1e-15. The whole
+reduction of the box beam (64 000 dofs, 2 interfaces, 20 modes, Sturm count, invariants and
+stresses): 79 s before, 14 s now (freedyn2_modal 11.6 s: elimination 2.6 s, analysis 1.2 s,
+factorization 1.5 s, Lanczos 4.4 s, Sturm count 1.4 s).
+
 A Sturm count checks the modes since then: the negative pivots of K_ii - sigma M_ii just above
 the highest eigenvalue must be the number of modes (Lanczos with one start vector can miss one
 of a multiple eigenvalue; on the test beams it did not, against SciPy to 1e-10 with the double

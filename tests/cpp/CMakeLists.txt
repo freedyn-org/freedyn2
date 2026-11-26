@@ -20,3 +20,9 @@ add_test(NAME runner.inputs
 # End-to-end: the command line runner on the shipped example.
 add_test(NAME runner.free_body
   COMMAND freedyn2_run ${FD_GEN_DIR}/free_body.fdm -o ${CMAKE_CURRENT_BINARY_DIR}/free_body.csv)
+
+# The supernodal LDL^T of freedyn2_modal against Eigen's SimplicialLDLT.
+add_executable(supernodal_tests supernodal_tests.cpp)
+target_include_directories(supernodal_tests PRIVATE ${PROJECT_SOURCE_DIR}/runtime/app)
+target_link_libraries(supernodal_tests PRIVATE Eigen3::Eigen Threads::Threads)
+add_test(NAME modal.supernodal COMMAND supernodal_tests)
