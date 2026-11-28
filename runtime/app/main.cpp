@@ -253,6 +253,11 @@ int main(int argc, char** argv) {
         std::printf("redundant constraints, deactivated (no constraint force; the others carry it):");
         for (int c : r.redundant) std::printf("\n  %s", sys.constraint_name(c).c_str());
         std::printf("\n");
+        if (!r.positional.empty()) {
+          std::printf("of them redundant in this position only (active again once the mechanism leaves it):");
+          for (int c : r.positional) std::printf(" %s", sys.constraint_name(c).c_str());
+          std::printf("\n");
+        }
       }
       if (r.assembly_iterations > 0)
         std::printf("initial positions assembled: |Phi| %.3g -> consistent in %d Newton corrections, "
@@ -340,6 +345,17 @@ int main(int argc, char** argv) {
                 s.newton.c_str(), linear_solver.c_str(),
                 s.adaptive ? (s.controller == "pi" ? ", PI step size control" : ", legacy step size control") : "");
     std::printf("Newton iterations per step: %.3f\n", double(hht.newton_iterations()) / n_steps);
+    if (!hht.rank_changes().empty()) {
+      std::printf("constraints switched in singular positions: %zu\n", hht.rank_changes().size());
+      size_t shown = 0;
+      for (const fd::RankChange& c : hht.rank_changes()) {
+        if (++shown > 20) { std::printf("  ...\n"); break; }
+        if (c.direction < 0)
+          std::printf("  t = %.6g: %s deactivated (redundant, the step failed)\n", c.t, sys.constraint_name(c.constraint).c_str());
+        else
+          std::printf("  t = %.6g: %s active again (|Phi| = %.2g)\n", c.t, sys.constraint_name(c.constraint).c_str(), c.violation);
+      }
+    }
     if (hht.subdivided_steps())
       std::printf("steps halved (Newton did not converge at the full step): %ld\n", hht.subdivided_steps());
     if (sys.n_events()) {

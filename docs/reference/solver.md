@@ -74,6 +74,13 @@ what that took:
   deactivated: pin_b.ax ...`). If one of them is violated while the others hold, the
   mechanism does not fit together (hinge axes of a loop not parallel) and the run stops with
   that constraint named. Example: [`parallelogram.yaml`](../examples.md).
+- **Singular positions**: a mechanism can have one more redundant constraint in a particular
+  position, e.g. a parallelogram stretched out with all its links on one line. The runtime tells
+  such a constraint from those of the structure (it is independent as soon as the mechanism
+  moves a little) and makes it active again once the mechanism has left the position, so a
+  parallelogram stays a parallelogram. The same check runs after the static equilibrium (a
+  linkage can hang stretched) and after a step that Newton does not converge. The run lists
+  every such change (`constraints switched in singular positions`).
 - **Assembly**: positions that violate the joints or drivers are corrected by Newton's method,
   the smallest change in the mass metric (light bodies move more than heavy ones), and the run
   reports the largest change. Positions that cannot be assembled stop the run.

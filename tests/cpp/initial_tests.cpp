@@ -143,9 +143,90 @@ void test_statics() {
   report(T, "free body under gravity: no error (1)", threw ? 0.0 : 1.0, 0.0);
 }
 
+// The parallelogram of examples/parallelogram.yaml put stretched: all links on the line z = 0
+// (cranks along +x, identity orientations: the joint points and axes of the example still fit), a
+// singular position, released at rest under gravity.
+fd::Model stretched_parallelogram() {
+  fd::Model m = example("parallelogram");
+  const std::pair<const char*, double> x[] = {{"crank_a", 0.5}, {"crank_b", 1.0}, {"coupler", 1.25}};
+  for (auto& e : m.elements)
+    for (const auto& [name, xc] : x)
+      if (e.name == name) e.q = {xc, 0, 0, 1, 0, 0, 0};
+  m.solver.end_time = 1.0;
+  return m;
+}
+
+// 4. Singular positions: in the stretched parallelogram one more constraint is redundant than in
+// the regular one, by the position only (independent nearby); it is told apart from the three of
+// the structure, and active again as soon as the mechanism has left the position, so the motion
+// stays that of a parallelogram (the coupler translates). In the regular position none is
+// positional (no rank checks during the run).
+void test_singular_position() {
+  const char* T = "singular_position";
+  {
+    fd::Model m = example("parallelogram");
+    fd::System sys(m);
+    fd::HhtIntegrator hht(sys, m.solver);
+    hht.initialize();
+    report(T, "regular position: positional redundant constraints", hht.initial_report().positional.size(), 0.0);
+  }
+  fd::Model m = stretched_parallelogram();
+  fd::System sys(m);
+  fd::HhtIntegrator hht(sys, m.solver);
+  hht.initialize();
+  const fd::InitialReport& r = hht.initial_report();
+  report(T, "stretched: redundant - 4", std::abs(double(r.redundant.size()) - 4.0), 0.0);
+  report(T, "stretched: positional - 1", std::abs(double(r.positional.size()) - 1.0), 0.0);
+  for (int c : r.positional) std::printf("INFO %s positional: %s\n", T, sys.constraint_name(c).c_str());
+  Vec y, th0(4);
+  sys.outputs(y);
+  for (int k = 0; k < 4; ++k) th0[k] = y[sys.output_index("coupler.theta") + k];
+  double dth = 0.0;
+  const long n = std::lround(m.solver.end_time / m.solver.step);
+  for (long k = 0; k < n; ++k) {
+    hht.step();
+    sys.outputs(y);
+    for (int j = 0; j < 4; ++j) dth = std::max(dth, std::abs(y[sys.output_index("coupler.theta") + j] - th0[j]));
+  }
+  const auto& changes = hht.rank_changes();
+  report(T, "active again (one change, +1): 1 - ok", changes.size() == 1 && changes[0].direction == 1 ? 0.0 : 1.0, 0.0);
+  if (!changes.empty()) info(T, "active again at t", changes[0].t);
+  if (!changes.empty()) report(T, "|Phi| when active again", changes[0].violation, 1e-8);
+  report(T, "coupler orientation change (a parallelogram)", dth, 1e-8);  // second order, while it was off
+}
+
+// 5. A step that fails in a singular position has the rank checked again: the stretched
+// parallelogram with its position-redundant constraint made active by hand after the start, and
+// Newton limited to one correction so that the step fails (a singular position as such does not
+// make it fail: the linear solver takes the nearly singular, consistent system). The check finds
+// the constraint redundant at the accepted state and deactivates it.
+void test_failed_step_rank() {
+  const char* T = "failed_step_rank";
+  fd::Model m = stretched_parallelogram();
+  m.solver.max_newton = 1;
+  fd::System sys(m);
+  fd::HhtIntegrator hht(sys, m.solver);
+  hht.initialize();
+  const std::vector<int> positional = hht.initial_report().positional;
+  sys.activate_constraints(positional);
+  try {
+    hht.step();
+  } catch (const std::exception& e) {
+    std::printf("INFO %s: %s\n", T, e.what());  // one correction cannot converge a step
+  }
+  const auto& changes = hht.rank_changes();
+  for (const auto& c : changes)
+    std::printf("INFO %s t = %g %s %s\n", T, c.t, sys.constraint_name(c.constraint).c_str(), c.direction < 0 ? "off" : "on");
+  const bool ok = changes.size() == 1 && changes[0].direction < 0 && changes[0].t == 0.0 && positional.size() == 1 &&
+                  changes[0].constraint == positional[0] && !sys.constraint_active(positional[0]);
+  report(T, "the failed step deactivated the position-redundant constraint (1: not)", ok ? 0.0 : 1.0, 0.0);
+}
+
 }  // namespace
 
 void add_initial_tests(Tests& tests) {
+  tests["singular_position"] = test_singular_position;
+  tests["failed_step_rank"] = test_failed_step_rank;
   tests["redundant"] = test_redundant;
   tests["assembly"] = test_assembly;
   tests["statics"] = test_statics;
