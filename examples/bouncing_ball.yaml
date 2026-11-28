@@ -1,0 +1,26 @@
+# A ball dropped from 1 m on the floor, on a sphere-plane contact with damping (it loses a part of
+# its energy at every impact) and friction. It is thrown sideways with a backspin, so it slides,
+# the friction turns its spin, and it bounces back. The runtime locates every impact.
+model: bouncing_ball
+gravity: [0, 0, -9.81]
+bodies:
+  ball:
+    mass: 0.5
+    inertia: [0.0005, 0.0005, 0.0005]  # solid sphere: 2/5 m r^2
+    position: [0, 0, 1.05]
+    velocity: [1.0, 0, 0]
+    angular_velocity: [0, -40.0, 0]  # backspin (rolling forwards would be +20 about y)
+    shapes:
+      - {type: sphere, radius: 0.05, color: "#e15759"}
+ground:
+  shapes:
+    - {type: box, size: [3.0, 1.0, 0.02], position: [0.5, 0, -0.01], color: "#777777"}
+forces:
+  floor:
+    type: contact
+    body1: ball
+    radius: 0.05
+    stiffness: 1.0e+7
+    damping: 1.0e+5
+    friction: 0.4
+solver: {type: HHT, rho_inf: 0.9, end_time: 3.0, step: 1.0e-4, output_step: 1.0e-3}

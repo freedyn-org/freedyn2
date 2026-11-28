@@ -284,23 +284,31 @@
       "properties": {
         "id": {"$ref": "#/$defs/id"},
         "type": {
-          "enum": ["spring_damper", "force", "torque", "torsion_spring", "bushing", "expression_force", "expression_torque", "curve_force", "curve_torque", "tire"],
-          "description": "spring_damper: line of sight between point1 (body1) and point2 (body2 or ground), s = k (l - l0) + d ldot + f0, tension > 0. force / torque: constant vector on body1. torsion_spring: about the z axis of the frame (orientation) fixed on body2 or the ground, tau = -k (phi - phi0) - d phidot + tau0 on body1. expression_force / expression_torque: magnitude from an expression of t, parameters and measures (compiled into the model plugin), along direction / axis on body1 and opposite on body2."
+          "enum": ["spring_damper", "force", "torque", "torsion_spring", "bushing", "expression_force", "expression_torque", "curve_force", "curve_torque", "tire", "contact"],
+          "description": "spring_damper: line of sight between point1 (body1) and point2 (body2 or ground), s = k (l - l0) + d ldot + f0, tension > 0. force / torque: constant vector on body1. torsion_spring: about the z axis of the frame (orientation) fixed on body2 or the ground, tau = -k (phi - phi0) - d phidot + tau0 on body1. expression_force / expression_torque: magnitude from an expression of t, parameters and measures (compiled into the model plugin), along direction / axis on body1 and opposite on body2. contact: a sphere on body1 against a plane or a sphere on body2 or the ground, penalty normal force (Hunt-Crossley) and friction (Coulomb, Stribeck); the runtime locates the onset and the end of each contact in time."
         },
         "body1": {"type": "string", "description": "A body."},
         "body2": {"type": "string", "description": "spring_damper, torsion_spring: a body or 'ground'. Default ground."},
-        "point1": {"$ref": "#/$defs/point", "description": "spring_damper: point on body1, global, at t = 0. Default its center of mass."},
-        "point2": {"$ref": "#/$defs/point", "description": "spring_damper: point on body2 / the ground, global, at t = 0. Default its center of mass (the origin for the ground)."},
+        "point1": {"$ref": "#/$defs/point", "description": "spring_damper: point on body1, global, at t = 0. Default its center of mass. contact: center of the sphere. Default the center of mass."},
+        "point2": {"$ref": "#/$defs/point", "description": "spring_damper: point on body2 / the ground, global, at t = 0. Default its center of mass (the origin for the ground). contact: a point of the plane, or the center of the sphere (sphere_sphere)."},
         "point": {"$ref": "#/$defs/point", "description": "force: point of application, global, at t = 0. Default the center of mass. torque on a flexible body: where it acts (needed)."},
         "vector": {"$ref": "#/$defs/vec3", "description": "force / torque: force [N] or torque [N m]."},
         "frame": {"enum": ["global", "body"], "description": "force / torque: components of vector in the global frame (fixed direction) or in the body1 frame (turns with the body). Default global."},
         "orientation": {"$ref": "#/$defs/orientation", "description": "torsion_spring (axis z) / bushing: frame as Euler parameters, global, at t = 0. Default [1,0,0,0]."},
-        "stiffness": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}, {"type": "string"}], "description": "k [N/m] or [N m/rad]; bushing: translational stiffness along the frame axes (number or 3). spring_damper / torsion_spring: or the name of a spline, the force (torque) over the deflection l - l0 (phi - phi0)."},
-        "damping": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}, {"type": "string"}], "description": "d [N s/m] or [N m s/rad]; bushing: per frame axis. Default 0. spring_damper / torsion_spring: or the name of a spline, the force (torque) over the rate."},
+        "stiffness": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}, {"type": "string"}], "description": "k [N/m] or [N m/rad]; bushing: translational stiffness along the frame axes (number or 3). spring_damper / torsion_spring: or the name of a spline, the force (torque) over the deflection l - l0 (phi - phi0). contact: k [N/m^e]."},
+        "damping": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}, {"type": "string"}], "description": "d [N s/m] or [N m s/rad]; bushing: per frame axis. Default 0. spring_damper / torsion_spring: or the name of a spline, the force (torque) over the rate. contact: d [N s/m^(e+1)], the energy an impact loses."},
         "rot_stiffness": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "bushing: rotational stiffness about the frame axes [N m/rad]."},
         "rot_damping": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "bushing: rotational damping [N m s/rad]. Default 0."},
         "location": {"$ref": "#/$defs/point", "description": "bushing: frame origin, global, at t = 0. Default the center of mass of body1. torsion_spring at a flexible body: where it acts (needed)."},
-        "radius": {"type": "number", "exclusiveMinimum": 0, "description": "tire: unloaded radius r0 [m]. Default 0.3."},
+        "radius": {"type": "number", "exclusiveMinimum": 0, "description": "tire: unloaded radius r0 [m]. Default 0.3. contact: radius of the sphere on body1 [m]."},
+        "geometry": {"enum": ["sphere_plane", "sphere_sphere"], "description": "contact: the sphere on body1 (point1, radius) against a plane (point2, normal) or a sphere (point2, radius2) on body2 / the ground. Default sphere_plane."},
+        "radius2": {"type": "number", "exclusiveMinimum": 0, "description": "contact (sphere_sphere): radius of the sphere on body2 / the ground [m]."},
+        "normal": {"$ref": "#/$defs/vec3", "description": "contact (sphere_plane): normal of the plane, towards body1, global at t = 0 (fixed on body2 / the ground). Default [0, 0, 1]."},
+        "exponent": {"type": "number", "minimum": 1, "description": "contact: e of the normal force k delta^e + d delta^e deltadot (delta: penetration). Default 1.5 (Hertz)."},
+        "friction": {"type": "number", "minimum": 0, "description": "contact: sliding (Coulomb) friction coefficient mu. Default 0."},
+        "static_friction": {"type": "number", "minimum": 0, "description": "contact: friction coefficient at slip velocity 0 (Stribeck peak). Default friction."},
+        "stribeck_velocity": {"type": "number", "exclusiveMinimum": 0, "description": "contact: slip velocity of the decay from static_friction to friction [m/s]. Default 0.1."},
+        "slip_velocity": {"type": "number", "exclusiveMinimum": 0, "description": "contact: below this slip velocity the friction is regularized (smooth through 0, viscous) [m/s]. Default 1e-3."},
         "tire": {"type": "object", "additionalProperties": {"type": "number"}, "description": "tire: parameters overriding the defaults: fdgen.tire.TIRE_KEYS (kz, cz, Magic Formula coefficients, ...)."},
         "length": {"type": "number", "exclusiveMinimum": 0, "description": "spring_damper: free length l0. Default the initial distance."},
         "angle": {"type": "number", "description": "torsion_spring: phi0 [rad]. Default 0 (the initial configuration)."},
@@ -405,6 +413,7 @@
         "exact_output": {"type": "boolean", "default": true, "description": "adaptive: steps end exactly at the output times (isExactOutputTimeEnforced)."},
         "output_begin": {"type": "number", "minimum": 0, "default": 0, "description": "adaptive: the first output after t = 0 is at this time or later (OutputTimeBegin)."},
         "vproj_tol": {"type": "number", "exclusiveMinimum": 0, "default": 1e-12, "description": "The initial velocities are projected onto the constraints when they violate them by more than this (legacy FreeDyn: 1e-5)."},
+        "event_tol": {"type": "number", "exclusiveMinimum": 0, "default": 1e-07, "description": "Events (the onset and the end of each contact): their times are located to this tolerance [s], a step ends there."},
         "statics": {"type": "boolean", "default": false, "description": "Start from the static equilibrium: the positions are moved until the forces balance (gravity, springs, preloads; the driven measures at their values at t = 0), the bodies at rest (initial velocities are not used), then the motion is simulated from there."}
       }
     }

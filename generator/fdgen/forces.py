@@ -34,6 +34,21 @@ coordinates, ground points r global; axes b are body-fixed, ground axes g global
   tire                         tire on the road surface (fdgen.tire: Magic Formula, point contact on
                                an analytic road, friction patch). p = fdgen.tire.parameters(...)
 
+  contact_sphere_plane_ground / _bb    a sphere (center u1, radius r) on body 1 against a plane
+                               (point x2, normal n2 towards body 1) fixed on body 2 or the ground;
+  contact_sphere_sphere_ground / _bb   against a sphere (center x2, radius r2) on body 2 or the
+                               ground. Penetration delta (> 0 in contact), the normal n towards
+                               body 1, the contact point P in the middle of the overlap. Normal
+                               force (Hunt and Crossley 1975) Fn = max(0, k delta+^e + d delta+^e
+                               deltadot), delta+ = max(delta, 0), continuous at the onset; friction against the slip velocity v_t of the material
+                               points at P (body 1 relative to body 2): F_t = -mu(|v_t|) Fn
+                               v_t / sqrt(|v_t|^2 + v_eps^2) (Coulomb, regularized below v_eps),
+                               mu(v) = mu + (mu_s - mu) exp(-(v / v_s)^2) (Stribeck). Force
+                               Fn n + F_t on body 1 at P, the opposite on body 2. Event function
+                               (fdgen.lagrange ROLES: event): delta, so the runtime locates the
+                               onset and the end of every contact in time.
+                               p = [u1 (3), r, x2 (3), n2 (3) | r2, k, e, d, mu, mu_s, v_s, v_eps]
+
   sensor                       no force: the motion of a point u1 of body 1 in a frame K (columns,
                                body coordinates) carried by body 1, for motion cueing and
                                acceleration sensors. p = [u1 (3), K (9, columns), g (3)]
@@ -75,6 +90,11 @@ KINDS = {
     "spline_spring_damper_bb": (2, 18),
     "spline_torsion_ground": (1, 21),
     "spline_torsion_bb": (2, 21),
+    # contacts: geometry, law [k, e, d, mu, mu_s, v_s, v_eps]
+    "contact_sphere_plane_ground": (1, 17),
+    "contact_sphere_plane_bb": (2, 17),
+    "contact_sphere_sphere_ground": (1, 15),
+    "contact_sphere_sphere_bb": (2, 15),
 }
 # Offset of the runtime road (fdgen.tire.LOCAL_KEYS) in the parameters of the *_local tires.
 LOCAL_ROAD_OFFSET = {"tire_local": len(tire_model.TIRE_KEYS)}
@@ -172,6 +192,53 @@ def _bushing(c):
     return ld, {"displacement": d, "rotation": psi, "force": s, "torque": m}
 
 
+def _contact(c, delta, n, P, law):
+    """Loads and outputs of a contact: penetration delta (> 0 in contact), normal n towards body 1,
+    contact point P (global), law [k, e, d, mu, mu_s, v_s, v_eps]."""
+    b1, ground = c.bodies[0], c.n == 1
+    k, e, d, mu, mus, vs, veps = (law[i] for i in range(7))
+    ddot = c.rate(delta)
+    pe = ca.fmax(delta, 0) ** e
+    Fn = ca.fmax(k * pe + d * pe * ddot, 0)  # no adhesion when the damping pulls
+    # the material points at P: velocity Rdot + omega x (P - R), load F at the center of mass with
+    # the moment (P - R) x F (P moves over the surfaces, so it is no fixed body point; written so
+    # for both body representations)
+    vel = lambda b: b.Rdot + ca.cross(b.omega, P - b.R)
+    vr = vel(b1) if ground else vel(b1) - vel(c.bodies[1])
+    vt = vr - ca.dot(vr, n) * n
+    slip2 = ca.dot(vt, vt)
+    mu_v = mu + (mus - mu) * ca.exp(-slip2 / vs**2)
+    Ft = -mu_v * Fn * vt / ca.sqrt(slip2 + veps**2)
+    F = Fn * n + Ft
+    zero = ca.SX(3, 1)
+    ld = [(0, F, zero, ca.cross(P - b1.R, F))]
+    if not ground:
+        b2 = c.bodies[1]
+        ld.append((1, -F, zero, ca.cross(P - b2.R, -F)))
+    c.events = [delta]
+    return ld, {"penetration": delta, "penetration_rate": ddot, "normal_force": Fn, "friction_force": Ft,
+                "slip_velocity": ca.sqrt(slip2), "point": P, "force": F}
+
+
+def _contact_sphere_plane(c):
+    p, b1, b2 = c.p, c.bodies[0], _other(c)
+    u1, r, x2, n2 = p[0:3], p[3], p[4:7], p[7:10]
+    center, n = b1.point(u1), b2.axis(n2)
+    delta = r - ca.dot(n, center - b2.point(x2))
+    return _contact(c, delta, n, center - (r - delta / 2) * n, p[10:17])
+
+
+def _contact_sphere_sphere(c):
+    p, b1, b2 = c.p, c.bodies[0], _other(c)
+    u1, r1, x2, r2 = p[0:3], p[3], p[4:7], p[7]
+    center = b1.point(u1)
+    dc = center - b2.point(x2)
+    dist = ca.norm_2(dc)
+    n = dc / dist
+    delta = r1 + r2 - dist
+    return _contact(c, delta, n, center - (r1 - delta / 2) * n, p[8:15])
+
+
 def _sensor(c):
     p, b = c.p, c.bodies[0]
     u, K, g = p[0:3], ca.reshape(p[3:12], 3, 3), p[12:15]
@@ -194,6 +261,8 @@ _LAWS = {
     "sensor": _sensor,
     "spline_spring_damper_ground": _spline_spring_damper, "spline_spring_damper_bb": _spline_spring_damper,
     "spline_torsion_ground": _spline_torsion, "spline_torsion_bb": _spline_torsion,
+    "contact_sphere_plane_ground": _contact_sphere_plane, "contact_sphere_plane_bb": _contact_sphere_plane,
+    "contact_sphere_sphere_ground": _contact_sphere_sphere, "contact_sphere_sphere_bb": _contact_sphere_sphere,
 }
 
 
@@ -213,6 +282,10 @@ def force_element_type(name, n_bodies, n_p, law, rep="lie") -> ElementFunctions:
     ld, out = law(c)
     funs = c.functions(name, Q=c.generalized_force(ld))
     funs["out"] = c.output_function(name, out)
+    events = getattr(c, "events", None)
+    if events:  # switching functions: the runtime locates their zeros in time
+        funs["event"] = ca.Function(f"fd_{name}_event", [c.q, c.v, c.p, c.t], [ca.vertcat(*[c.expand(x) for x in events])],
+                                    ["q", "qd", "p", "t"], ["g"])
     args = getattr(c, "spline_args", None)
     if args:  # arguments of the characteristic curves: the runtime selects their segments
         funs["spline"] = ca.Function(f"fd_{name}_spline", [c.q, c.v, c.p, c.t], [ca.vertcat(*[c.expand(x) for x in args])],
@@ -327,8 +400,39 @@ def _torsion_element(force, b1, b2, names, tables=None):
     return "torsion_" + end, names, p
 
 
+def _contact_element(force, b1, b2, names):
+    (R1, A1), ground = b1, b2 is None
+    name, geometry = force["name"], force.get("geometry", "sphere_plane")
+    k, e, d = force["stiffness"], force.get("exponent", 1.5), force.get("damping", 0.0)
+    mu = force.get("friction", 0.0)
+    mus, vs, veps = force.get("static_friction", mu), force.get("stribeck_velocity", 0.1), force.get("slip_velocity", 1e-3)
+    for key, v in (("stiffness", k), ("damping", d)):
+        if not isinstance(v, (int, float)):
+            raise ModelError(f"force {name}: contact {key} must be a number, not {v!r} (YAML reads 1.0e7 as text: "
+                             "write 1.0e+7)")
+    if not (k > 0 and e >= 1 and d >= 0 and mu >= 0 and mus >= 0 and vs > 0 and veps > 0):
+        raise ModelError(f"force {name}: contact needs stiffness > 0, exponent >= 1, damping, friction, "
+                         "static_friction >= 0, stribeck_velocity, slip_velocity > 0")
+    u1 = A1.T @ (np.array(force.get("point1", R1), dtype=float) - R1)
+    point2 = np.array(force.get("point2", [0.0, 0.0, 0.0] if ground else b2[0]), dtype=float)
+    x2 = point2 if ground else b2[1].T @ (point2 - b2[0])
+    law = [k, e, d, mu, mus, vs, veps]
+    end = "ground" if ground else "bb"
+    if geometry == "sphere_plane":
+        nrm = np.array(force.get("normal", [0.0, 0.0, 1.0]), dtype=float)
+        if not np.linalg.norm(nrm) > 0:
+            raise ModelError(f"force {name}: normal must not be zero")
+        nrm = nrm / np.linalg.norm(nrm)
+        n2 = nrm if ground else b2[1].T @ nrm
+        return "contact_sphere_plane_" + end, names, [*u1, force["radius"], *x2, *n2, *law]
+    if "radius2" not in force:
+        raise ModelError(f"force {name}: sphere_sphere needs radius2")
+    return "contact_sphere_sphere_" + end, names, [*u1, force["radius"], *x2, force["radius2"], *law]
+
+
 _ELEMENTS = {"tire": _tire, "spring_damper": _spring_damper_element, "force": _force_element,
-             "torque": _torque_element, "bushing": _bushing_element, "torsion_spring": _torsion_element}
+             "torque": _torque_element, "bushing": _bushing_element, "torsion_spring": _torsion_element,
+             "contact": _contact_element}
 
 
 # the segment offsets in p of the two curves of the spline types

@@ -91,6 +91,13 @@ class System {
   void set_input(int index, double value);
   double input(int index) const { return input_values_.at(index); }
 
+  // Event functions of all elements (generated event functions, e.g. the penetration of a
+  // contact): the integrator locates the times where one changes sign.
+  int n_events() const { return n_events_; }
+  void events(std::vector<double>& g);
+  // "<element>" (or "<element>[k]" with several) of event function i.
+  std::string event_name(int i) const;
+
   // Output channels of all elements (generated out functions).
   const std::vector<std::string>& output_names() const { return out_names_; }
   void outputs(std::vector<double>& y);
@@ -108,6 +115,9 @@ class System {
     std::unique_ptr<GenFunction> mn_qd, jac_qd;  // modified Newmark only
     std::unique_ptr<GenFunction> post;           // element state update (e.g. continuous angles)
     std::unique_ptr<GenFunction> spline;         // arguments of the spline calls (spec.splines)
+    std::unique_ptr<GenFunction> event;          // event functions (switching functions)
+    int event_offset = 0;                        // its first index in System::events
+    std::vector<double> event_buf;
     bool owner() const { return static_cast<bool>(init); }
     std::vector<int> coords;  // local stored coordinate -> global q index
     std::vector<int> map;     // local x index -> global x index
@@ -133,6 +143,8 @@ class System {
   // ic / out; the generated code holds one cubic per call, the table is data).
   void update_splines();
   std::vector<int> spline_users_;
+  std::vector<int> event_users_;
+  int n_events_ = 0;
   // Inputs of res / iter in the order fixed by the generator (fdgen.lagrange.STD_INPUTS).
   std::array<const double*, 8> std_inputs(const Instance& e, const double* coef) const {
     return {e.q.data(), e.qd.data(), e.qdd.data(), e.lam.data(), e.spec.p.data(), coef, e.incr.data(), &t};

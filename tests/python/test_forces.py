@@ -21,6 +21,12 @@ def params(kind, rng):
         p[8] = abs(p[8])  # free length
     if kind == "tire":  # a passenger car tire on a rough road with a friction patch
         return np.array(tire.parameters({}, ROAD))
+    if kind.startswith("contact"):  # spheres large against the body distances: in contact, sliding
+        law = [10.0, 1.5, 0.1, 0.5, 0.7, 0.5, 0.1]  # k, e, d, mu, mu_s, v_s, v_eps
+        if "plane" in kind:
+            n2 = rng.normal(size=3)
+            return np.r_[p[0:3], 3.0, p[4:7], n2 / np.linalg.norm(n2), law]
+        return np.r_[p[0:3], 3.0, p[4:7], 2.5, law]
     if kind.startswith("bushing"):  # orthonormal frames, positive stiffness and damping
         p[3:12] = np.linalg.qr(rng.normal(size=(3, 3)))[0].T.ravel()
         p[15:24] = np.linalg.qr(rng.normal(size=(3, 3)))[0].T.ravel()
@@ -164,7 +170,8 @@ def test_euler_and_lie_versions_agree(kind, rng):
         np.testing.assert_allclose(np.array(a), np.array(b), atol=1e-12)
 
 
-@pytest.mark.parametrize("kind", ["spring_damper_bb", "torsion_bb", "bushing_bb"])
+@pytest.mark.parametrize("kind", ["spring_damper_bb", "torsion_bb", "bushing_bb", "contact_sphere_plane_bb",
+                                  "contact_sphere_sphere_bb"])
 def test_body_body_forces_conserve_momentum(kind, rng):
     """Internal forces (stiffness and damping): zero resultant force and moment about the origin."""
     e = forces.build(kind)

@@ -55,6 +55,13 @@ times smaller errors (and about 4 times more steps). The controller is Gustafsso
 controller (`controller: pi`); models converted from FreeDyn keep FreeDyn's own
 (`controller: legacy`). On the command line: `-- --adaptive pi --tolerance 1e-6`.
 
+## Events
+
+Contacts have events: the moment a contact begins or ends. The runtime locates each to
+`event_tol` (default 1e-7 s) and ends a step there, with the fixed step and with the step size
+control (not in the real-time mode `newton: fixed`). `freedyn2_run --event-log FILE` writes
+them (time, element, +1 begins / −1 ends).
+
 ## The initial state
 
 Before the first step the runtime makes the initial state consistent and says on its output

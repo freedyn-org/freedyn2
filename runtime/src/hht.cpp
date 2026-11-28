@@ -37,6 +37,7 @@ const char* to_string(StepStatus s) {
     case StepStatus::residual_increased: return "residual increased";
     case StepStatus::local_error: return "local error too large";
     case StepStatus::linear_solver_failed: return "linear solver failed";
+    case StepStatus::event: return "event within the step";
   }
   return "?";
 }
@@ -289,6 +290,8 @@ void HhtIntegrator::initialize() {
   sys_.t = 0.0;
   n_steps_ = 0;
   report_ = InitialReport();
+  event_log_.clear();
+  event_probes_ = grid_steps_ = subdivided_steps_ = 0;
   const int nx = sys_.nx(), nv = sys_.nv();
   std::fill(sys_.incr.begin(), sys_.incr.end(), 0.0);
   // Redundant constraints: their equations would make every matrix singular. Deactivated in
@@ -339,6 +342,7 @@ void HhtIntegrator::initialize() {
 
 void HhtIntegrator::save_accepted() {
   sys_.post_step();  // element state of the accepted state
+  if (sys_.n_events()) sys_.events(g_n_);
   q_n_ = sys_.q;
   qd_n_ = sys_.qd;
   qdd_n_ = sys_.qdd;
@@ -518,6 +522,16 @@ StepResult HhtIntegrator::try_step(double h, double t_new) {
     res.theta = xn * std::pow(h, 4.0) / psi_;
     if (s_.adaptive && !(res.theta <= 1.0)) res.status = StepStatus::local_error;
   }
+  if (res.status == StepStatus::ok && check_events_) {
+    sys_.events(g_trial_);
+    bool crossed = false;
+    for (size_t i = 0; i < g_trial_.size(); ++i) crossed = crossed || (g_trial_[i] > 0.0) != (g_n_[i] > 0.0);
+    if (crossed && !allow_crossing_) res.status = StepStatus::event;
+    if (probe_ && res.status == StepStatus::ok) {  // a probe of the event location: never accepted
+      restore_accepted();
+      return res;
+    }
+  }
   if (res.status != StepStatus::ok) {
     restore_accepted();
     return res;
@@ -536,11 +550,83 @@ StepResult HhtIntegrator::try_step(double h, double t_new) {
   return res;
 }
 
+StepResult HhtIntegrator::try_step_to_event(double h, double t_new, double snap) {
+  if (sys_.n_events() == 0 || s_.newton == "fixed") return try_step(h, t_new);
+  const double t0 = t_;
+  const std::vector<double> g0 = g_n_;
+  struct Mode {  // the modes of try_step, reset on every way out
+    HhtIntegrator& i;
+    ~Mode() { i.check_events_ = i.probe_ = i.allow_crossing_ = false; }
+  } mode{*this};
+  check_events_ = true;
+  StepResult r = try_step(h, t_new);
+  if (r.status != StepStatus::event) return r;  // accepted without a crossing, or failed
+  // Bracket [lo, hi] of step lengths from t0: no crossing at lo, a crossing at hi. Regula falsi
+  // on the earliest crossing, with the Illinois modification (the value at an end kept twice is
+  // halved), so the bracket shrinks from both sides.
+  double lo = 0.0, hi = h, w_lo = 1.0, w_hi = 1.0;
+  std::vector<double> g_lo = g0, g_hi = g_trial_;
+  enum { NONE, LO, HI } last = NONE;
+  probe_ = true;
+  for (int it = 0; hi - lo > s_.event_tol; ++it) {
+    if (it == 60) throw std::runtime_error("HHT: event location did not converge at t = " + std::to_string(t0));
+    double tau = hi;
+    for (size_t i = 0; i < g0.size(); ++i)
+      if ((g_lo[i] > 0.0) != (g_hi[i] > 0.0)) {
+        const double a = w_lo * g_lo[i], b = w_hi * g_hi[i];
+        tau = std::min(tau, lo + (hi - lo) * a / (a - b));
+      }
+    tau = std::min(std::max(tau, lo + 1e-3 * (hi - lo)), hi - 1e-3 * (hi - lo));
+    ++event_probes_;
+    r = try_step(tau, t0 + tau);
+    if (r.status == StepStatus::event) {
+      hi = tau, g_hi = g_trial_, w_hi = 1.0;
+      if (last == HI) w_lo *= 0.5;
+      last = HI;
+    } else if (r.status == StepStatus::ok) {
+      lo = tau, g_lo = g_trial_, w_lo = 1.0;
+      if (last == LO) w_hi *= 0.5;
+      last = LO;
+    } else {
+      return r;  // a probe failed (restored to t0)
+    }
+  }
+  if (h - hi <= snap) hi = h;
+  probe_ = false;
+  allow_crossing_ = true;
+  r = try_step(hi, hi == h ? t_new : t0 + hi);
+  if (r.status == StepStatus::ok)
+    for (size_t i = 0; i < g0.size(); ++i)
+      if ((g0[i] > 0.0) != (g_n_[i] > 0.0)) event_log_.push_back({t_, static_cast<int>(i), g_n_[i] > 0.0 ? 1 : -1});
+  return r;
+}
+
 StepResult HhtIntegrator::step() {
-  const StepResult r = try_step(s_.step, static_cast<double>(n_steps_ + 1) * s_.step);
-  if (r.status != StepStatus::ok)
-    throw std::runtime_error(std::string("HHT: step failed at t = ") + std::to_string(t_ + s_.step) +
-                             ": " + to_string(r.status));
+  const double t_grid = static_cast<double>(grid_steps_ + 1) * s_.step;
+  StepResult r;
+  int iterations = 0;
+  double h_sub = s_.step;
+  bool subdivided = false;
+  // events end steps early; the rest of the grid step follows (a crossing in its last percent
+  // keeps the full step, so that no step is much shorter than the grid). A step Newton does not
+  // converge is halved (down to step / 1024; not in the real-time mode newton fixed, whose work
+  // per step is fixed): a friction contact that reverses its slip within a step.
+  while (t_ < t_grid - 1e-9 * s_.step) {
+    const bool last = t_ + h_sub >= t_grid - 1e-9 * s_.step;
+    const double h = last ? t_grid - t_ : h_sub;
+    r = try_step_to_event(h, last ? t_grid : t_ + h, 1e-2 * h);
+    if (r.status != StepStatus::ok) {
+      if (s_.newton == "fixed" || h_sub < s_.step / 1024.0)
+        throw std::runtime_error(std::string("HHT: step failed at t = ") + std::to_string(t_ + h) + ": " +
+                                 to_string(r.status));
+      h_sub *= 0.5, subdivided = true;
+      continue;
+    }
+    iterations += r.iterations;
+  }
+  subdivided_steps_ += subdivided;
+  ++grid_steps_;
+  r.iterations = iterations;
   return r;
 }
 
@@ -634,8 +720,8 @@ long PiTimeStepper::run(const std::function<void(double)>& on_output,
       throw std::runtime_error("HHT: step size below the minimum step size at t = " + std::to_string(t));
     const double t_new = lands ? t_out : t + h_try;
     if (before_step) before_step(t_new);
-    const StepResult r = hht_.try_step(h_try, t_new);
-    if (on_attempt) on_attempt(t_new, h_try, r);
+    const StepResult r = hht_.try_step_to_event(h_try, t_new);
+    if (on_attempt) on_attempt(hht_.time(), h_try, r);
     if (r.status != StepStatus::ok) {
       ++rejected_;
       const double err = std::sqrt(r.theta);
@@ -649,9 +735,13 @@ long PiTimeStepper::run(const std::function<void(double)>& on_output,
     factor = std::min(std::max(factor, kMin), rejected_last ? 1.0 : kMax);
     err_prev = err;
     rejected_last = false;
-    // a step shortened to land on an output time does not shorten the next one
-    h = lands ? std::max(h, h_try * factor) : h_try * factor;
-    t = t_new;
+    // a step that ended at an event (try_step_to_event) is shorter than tried, and did not land
+    const double taken = hht_.time() - t;
+    const bool early = taken < h_try - t_tiny;
+    lands = lands && !early;
+    // a step shortened to land on an output time, or ended at an event, does not shorten the next
+    h = lands || early ? std::max(h, taken * factor) : h_try * factor;
+    t = lands ? t_new : hht_.time();
     if (lands) {
       on_output(t);
       if (t >= t_final - t_tiny) return accepted;

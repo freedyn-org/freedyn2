@@ -37,6 +37,7 @@ void usage() {
                "                    [--fixed-step]      (constant step size --step, no step size control)\n"
                "                    [--statics]         (start from the static equilibrium, at rest)\n"
                "                    [--rho-inf R]       (generalized-alpha with spectral radius R at infinity)\n"
+               "                    [--event-log FILE]  (located events: time, element, +1 contact begins / -1 ends)\n"
                "                    [--adaptive pi|legacy] (step size control; --tolerance E, --step the largest)\n"
                "                    [--newton-fixed N]  (exactly N Newton corrections per step, fixed pivots: real-time)\n"
                "                    [--timing]          (fixed step: distribution of the wall-clock time per step)\n"
@@ -181,7 +182,7 @@ int main(int argc, char** argv) {
   try {
     fd::Model model = fd::load_model(argv[1]);
     std::string out_path = model.name + ".csv", linear_solver = fd::default_linear_solver(), step_log_path,
-                timing_log_path;
+                timing_log_path, event_log_path;
     bool timing = false;
     std::vector<std::pair<std::string, double>> constant_inputs;
     std::string inputs_path;
@@ -201,6 +202,7 @@ int main(int argc, char** argv) {
       else if (!std::strcmp(argv[i], "--fixed-step")) model.solver.adaptive = false;
       else if (!std::strcmp(argv[i], "--statics")) model.solver.statics = true;
       else if (!std::strcmp(argv[i], "--rho-inf")) model.solver.rho_inf = std::stod(next());
+      else if (!std::strcmp(argv[i], "--event-log")) event_log_path = next();
       else if (!std::strcmp(argv[i], "--adaptive")) model.solver.adaptive = true, model.solver.controller = next();
       else if (!std::strcmp(argv[i], "--newton-fixed")) {
         model.solver.newton = "fixed";
@@ -338,6 +340,20 @@ int main(int argc, char** argv) {
                 s.newton.c_str(), linear_solver.c_str(),
                 s.adaptive ? (s.controller == "pi" ? ", PI step size control" : ", legacy step size control") : "");
     std::printf("Newton iterations per step: %.3f\n", double(hht.newton_iterations()) / n_steps);
+    if (hht.subdivided_steps())
+      std::printf("steps halved (Newton did not converge at the full step): %ld\n", hht.subdivided_steps());
+    if (sys.n_events()) {
+      std::printf("events: %zu located (%ld probe steps)\n", hht.event_log().size(), hht.event_probes());
+      if (!event_log_path.empty()) {
+        std::ofstream log(event_log_path);
+        char buf[64];
+        log << "t event direction\n";
+        for (const fd::EventRecord& e : hht.event_log()) {
+          std::snprintf(buf, sizeof buf, "%.17g ", e.t);
+          log << buf << sys.event_name(e.index) << ' ' << e.direction << '\n';
+        }
+      }
+    }
     std::printf("time per step: %.3f us (total %.3f s)\n", 1e6 * step_seconds / n_steps, step_seconds);
     std::printf("wrote %s\n", out_path.c_str());
   } catch (const std::exception& e) {
