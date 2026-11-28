@@ -9,16 +9,17 @@ installer that sets up a program, and a Python package for use from Python.
 
 | you want to | take |
 |---|---|
-| use FreeDyn as a program on Windows: the app window, the command line, an assistant; no Python needed | the **Windows installer** |
-| use FreeDyn from your own Python, Jupyter or scripts, or on Linux | **uv** or **pip** |
+| use freedyn2 as a program on Windows: the app window, the command line, an assistant; no Python needed | the **Windows installer** |
+| use freedyn2 from your own Python, Jupyter or scripts, or on Linux | **uv** or **pip** |
 
 Both give the same `freedyn2` command and the same results. They can be installed side by
 side; each has its own Python.
 
-!!! note "Before the first release"
-    The installer comes with the first release; until then there is no download. Until
-    freedyn2 is on PyPI, take the wheel for your platform from the artifacts of the *Wheels*
-    workflow on GitHub and install it with `pip install "freedyn2-0.1.0-py3-none-<platform>.whl[gui,compiler]"`.
+!!! note "Release candidates"
+    So far there are only release candidates (`0.1.0rc…`). The installer's download link below
+    works from the first stable release on; until then take `freedyn2-setup.exe` from the
+    newest pre-release on [GitHub Releases](https://github.com/freedyn-org/freedyn2/releases).
+    pip and uv install the release candidate from PyPI as long as there is no stable version.
 
 === "Windows installer"
 
@@ -48,7 +49,7 @@ side; each has its own Python.
 
 === "uv"
 
-    [uv](https://docs.astral.sh/uv/) installs FreeDyn as a command, with its own Python if
+    [uv](https://docs.astral.sh/uv/) installs freedyn2 as a command, with its own Python if
     needed:
 
     ```sh
@@ -64,12 +65,12 @@ side; each has its own Python.
     ```
 
 The extras are optional: `gui` (pywebview) opens `freedyn2 gui` in a window of its own
-instead of the browser; `compiler` (ziglang) brings a C compiler that FreeDyn finds by itself.
+instead of the browser; `compiler` (ziglang) brings a C compiler that freedyn2 finds by itself.
 `pip install freedyn2` alone is enough for the command line, the viewer in the browser and
 the MCP server.
 
 !!! warning "The installer's Python is private"
-    The Python inside the Windows installation serves FreeDyn only. To use FreeDyn from your
+    The Python inside the Windows installation serves freedyn2 only. To use freedyn2 from your
     own Python or Jupyter (`import freedyn2`, see the [Python API](python-api.md)), install it
     into that environment with `pip install freedyn2`, even if the installer is there too.
 
@@ -78,7 +79,7 @@ the MCP server.
 Models with **expression forces or drivers** are compiled into a small plugin and need a C
 compiler. Everything else (bodies, joints, springs, bushings, tires) needs none.
 
-The installer (component *C compiler*) and the `compiler` extra bring Zig, which FreeDyn
+The installer (component *C compiler*) and the `compiler` extra bring Zig, which freedyn2
 finds by itself. Other options:
 
 - Linux: gcc or clang, as installed by the system.
@@ -95,12 +96,12 @@ freedyn2 --version
 freedyn2 doctor
 ```
 
-`freedyn2 doctor` shows what FreeDyn found on your machine (its Python, the runtime, the C
+`freedyn2 doctor` shows what freedyn2 found on your machine (its Python, the runtime, the C
 compiler and more). Add its output when you ask for help.
 
 ### Updating and uninstalling
 
-FreeDyn does not update itself. The app shows a notice when a newer release is on GitHub (it
+freedyn2 does not update itself. The app shows a notice when a newer release is on GitHub (it
 looks once a day; `freedyn2 config update_check false` or `FREEDYN2_NO_UPDATE_CHECK=1` turns
 that off).
 
@@ -140,7 +141,7 @@ solver: {type: HHT, end_time: 3.0, step: 0.001, output_step: 0.01}
 Three rules cover most of the format:
 
 1. **Everything is given globally at t = 0** – positions of bodies (their centers of mass),
-   joint locations, points of springs. FreeDyn works out where they sit on each body.
+   joint locations, points of springs. freedyn2 works out where they sit on each body.
 2. **Orientations are unit quaternions** `[θ0, θ1, θ2, θ3]` (Euler parameters, θ0 the scalar
    part). The few you need most are in the [model file reference](reference/model-file.md#orientations).
 3. **Units are SI.** The checks warn when gravity, lengths or masses look like mm or g.

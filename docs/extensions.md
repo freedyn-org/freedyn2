@@ -2,14 +2,14 @@
 
 An extension adds to freedyn2 without changing it: **new force types** (with their own
 keys in the model file), or new variants of existing ones (another tire model), and text for
-the assistant. It is a Python package next to FreeDyn; FreeDyn finds it at start and uses it
+the assistant. It is a Python package next to freedyn2; freedyn2 finds it at start and uses it
 for every model: in `freedyn2 run` and `check`, the viewer, the assistant's tools and the
 key tables of the documentation.
 
 This page builds a complete one step by step: **air drag at a point of a body**, a new force
 type `aero_drag`. The finished extension is in the repository under `examples/extension`
 (one Python file, one `pyproject.toml`), and a test (`tests/python/test_extension_example.py`)
-runs it with every change of FreeDyn.
+runs it with every change of freedyn2.
 
 ```yaml
 forces:
@@ -20,13 +20,13 @@ forces:
 
 | step | who | what |
 |---|---|---|
-| reading the model | FreeDyn calls `schema` | the extension's keys are allowed in the file |
+| reading the model | freedyn2 calls `schema` | the extension's keys are allowed in the file |
 | validating | `validate_force` | the extension checks its forces (required keys, data files) |
 | building | `force_element` | for each force it handles: the element type, the bodies, the numbers `p` |
 | generating | `element_types` | the force law as a CasADi expression → C code with exact derivatives, compiled into the model plugin |
 | simulating | the runtime | evaluates the element like any built-in one |
 
-The law is written once, symbolically; FreeDyn derives the Jacobians the solver needs and
+The law is written once, symbolically; freedyn2 derives the Jacobians the solver needs and
 generates C code from them, as it does for its own elements. No C or C++ is written, and the
 runtime is not changed.
 
@@ -76,7 +76,7 @@ symbols.
   `rate` (linear in the velocities) – for springs written in a measure, as the torsion spring
   of the core.
 
-FreeDyn turns them into the generalized forces of the bodies by virtual power.
+freedyn2 turns them into the generalized forces of the bodies by virtual power.
 
 **Outputs** are result channels `<force name>.<key>`: a scalar gives one channel, a vector of
 three `_x`, `_y`, `_z`. An output `force` (global) of a force with a `point` is drawn by the
@@ -98,7 +98,7 @@ element_types = {
 `force_element_type(name, n_bodies, n_p, law, rep)` builds the element: `n_bodies` 1 (the
 element acts between body1 and the ground) or 2 (between body1 and body2, `c.bodies[1]`),
 `n_p` parameters. `rep` is the body type, `"lie"` (freedyn2) or `"euler"` (legacy `.fds`
-models); FreeDyn asks for the one it needs. The element is generated and compiled once per
+models); freedyn2 asks for the one it needs. The element is generated and compiled once per
 process and model plugin, cached on disk (`FREEDYN2_PLUGIN_CACHE`); a C compiler is needed, as
 for expression forces.
 
@@ -170,7 +170,7 @@ dependencies = ["freedyn2"]
 drag = "freedyn2_drag:extension"
 ```
 
-`pip install .` and FreeDyn uses it. While developing, without installing:
+`pip install .` and freedyn2 uses it. While developing, without installing:
 
 ```sh
 FREEDYN2_EXTENSIONS=freedyn2_drag PYTHONPATH=path/to/the/package freedyn2 run model.yaml
@@ -188,7 +188,7 @@ Test an extension the way the example is tested (`tests/python/test_extension_ex
 - **The model builds.** The `.fdm` lists the element and the plugin.
 - **Without the extension** the core rejects the extension's keys.
 
-When FreeDyn and the extension run in the same Python process, the found extensions and the
+When freedyn2 and the extension run in the same Python process, the found extensions and the
 schema are cached: a test that activates an extension clears `fdgen.extensions.extensions`
 and `fdgen.model._validator` (`cache_clear()`) before and after.
 

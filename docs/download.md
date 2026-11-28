@@ -10,8 +10,12 @@ and runs alongside legacy FreeDyn.
 (the latest release; all releases, their notes and SHA256 checksums:
 [GitHub Releases](https://github.com/freedyn-org/freedyn2/releases))
 
-!!! note "Before the first release"
-    The installer is published with the first release. Until then, install with pip or uv.
+!!! note "Release candidates"
+    So far there are only release candidates (pre-releases, `0.1.0rc…`). The link above
+    points to the latest stable release and works from the first one on; until then take
+    `freedyn2-setup.exe` from the newest pre-release on
+    [GitHub Releases](https://github.com/freedyn-org/freedyn2/releases). pip and uv install
+    the release candidate from PyPI as long as there is no stable version.
 
 ## Python (Windows and Linux)
 

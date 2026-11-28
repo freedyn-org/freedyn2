@@ -7,7 +7,7 @@ opens the viewer for you and reads the notes you leave there. You check and deci
 
 ## Connect it
 
-With FreeDyn installed, one command registers it with Claude Desktop and Claude Code:
+With freedyn2 installed, one command registers it with Claude Desktop and Claude Code:
 
 ```sh
 freedyn2 setup-mcp                          # both; --client claude-desktop or claude-code for one
@@ -38,7 +38,7 @@ Windows installer does this for Claude Desktop. By hand:
     Start `freedyn2 mcp` (stdio). Paths in tool calls are absolute or relative to the
     directory the server was started in.
 
-`uvx` runs FreeDyn without installing it first; with an installed FreeDyn use the
+`uvx` runs freedyn2 without installing it first; with an installed freedyn2 use the
 `freedyn2` command instead.
 
 ## How a session goes
@@ -70,6 +70,7 @@ here: a tire force that cannot pull – and `answer_note`s; you see the answer u
 |---|---|
 | `guide`, `schema` | the conventions (global input at t = 0, quaternions, SI units, …), element keys, an example; the JSON Schema |
 | `validate` | validate a model file and check it: degrees of freedom, mass, findings |
+| `rename` | rename an element and every reference to it ([`freedyn2 rename`](cli.md#rename)) |
 | `simulate` | build and run; a run id per run, the solver log, the checks of the results |
 | `check` | plausibility checks of a model and its results, the references of its `checks` section |
 | `channels`, `results` | the channel names of a run; statistics and a thinned table of channels |

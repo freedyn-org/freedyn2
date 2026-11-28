@@ -33,7 +33,7 @@ solver: {type: HHT, end_time: 2.0, step: 0.001, output_step: 0.01}
 - **Units are SI**: m, kg, s, N, rad. The checks warn when gravity, lengths or masses look like
   another unit system.
 - **Everything is given globally at t = 0**: the positions of bodies (their centers of mass),
-  joint locations and frames, the points of springs and forces, the shapes. FreeDyn computes
+  joint locations and frames, the points of springs and forces, the shapes. freedyn2 computes
   where each sits on its body. You never write a point in a body frame. Points used more than
   once get a name: [hardpoints and frames](hardpoints.md).
 - **The ground** is the fixed frame; it is named `ground` where a body is expected (`body2`

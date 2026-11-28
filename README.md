@@ -34,8 +34,9 @@ including on the legacy kernel), [`legacy/README.md`](legacy/README.md) (legacy 
 
 ## Install
 
-Windows: the installer `freedyn2-setup.exe` (coming with the first release, from
-[GitHub Releases](https://github.com/freedyn-org/freedyn2/releases/latest/download/freedyn2-setup.exe)):
+Windows: the installer `freedyn2-setup.exe` from
+[GitHub Releases](https://github.com/freedyn-org/freedyn2/releases) (so far release candidates,
+marked as pre-releases):
 per user, no administrator rights, its own private Python, next to a legacy FreeDyn; the app
 window, the command line on the PATH, a C compiler (Zig).
 
@@ -49,12 +50,12 @@ freedyn2 run model.yaml                    # the command line: run, view, gui, c
 ```
 
 Extras: `gui` (pywebview: `freedyn2 gui` in a window of its own), `compiler` (ziglang: a C
-compiler found automatically). Building the installer: [`docs/releasing.md`](docs/releasing.md). Until the first release,
-the wheels are the artifacts of the `Wheels` workflow (`pip install freedyn2-*.whl`).
+compiler found automatically). Building the installer: [`docs/releasing.md`](docs/releasing.md). The release candidates
+are on PyPI; pip and uv take them as long as there is no stable version.
 
 For assistants, without installing first (the MCP client starts it): `uvx freedyn2 mcp`, e.g.
 `claude mcp add freedyn2 -- uvx freedyn2 mcp`; `freedyn2 setup-mcp` registers an installed
-FreeDyn with Claude Desktop or Claude Code.
+freedyn2 with Claude Desktop or Claude Code.
 
 Models with expression forces or drivers are compiled into a model plugin and need a C
 compiler: Zig from the installer or the `compiler` extra, gcc or clang, or on Windows the
@@ -360,7 +361,7 @@ share one compiled element type.
 ## Extensions
 
 Packages can add element types, model keys, checks and text for the assistant without changing
-FreeDyn (`generator/fdgen/extensions.py`): an `Extension` object registered under the entry
+freedyn2 (`generator/fdgen/extensions.py`): an `Extension` object registered under the entry
 point group `freedyn2.extensions` (or named in `FREEDYN2_EXTENSIONS`). Its element types are
 generated and compiled into the model plugin, like expression forces. A guide with a complete
 example (a new force type, air drag; `examples/extension`): [`docs/extensions.md`](docs/extensions.md).
@@ -387,7 +388,7 @@ so everything the standard defines applies:
 
 The runtime (`fd::Road`) evaluates the road under each wheel center before every evaluation of
 the tire and hands it the local tangent plane and friction. A second CRG file can give the
-friction coefficient. Without a modifiers section in the file, FreeDyn keeps the file's
+friction coefficient. Without a modifiers section in the file, freedyn2 keeps the file's
 coordinates (the library's default would move the road to the origin) and places the road with
 `position` and `heading`.
 
@@ -395,7 +396,7 @@ coordinates (the library's default would move the road to the origin) and places
 friction at points, to check a road and its placement (`--grid cell n`: a grid over the whole
 road, for the viewer). `fdgen.crg.write_crg` writes CRG files.
 
-On all sample roads of the OpenCRG repository, FreeDyn's heights equal the library's.
+On all sample roads of the OpenCRG repository, freedyn2's heights equal the library's.
 `tests/python/test_crg.py` checks:
 - all four formats against the analytic surface;
 - (x, y) against (u, v) evaluation;

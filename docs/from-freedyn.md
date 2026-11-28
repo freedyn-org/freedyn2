@@ -118,9 +118,10 @@ concepts map:
 | `Simulation Dynamic`, `Solver HHT` | [`solver`](reference/solver.md): `end_time`, `output_step`, `alpha`; the step size control as `adaptive`, `eps` (`GlobalErrorTolerance`), `step` (`SolverMaxTimeStep`), `h_min` |
 | `RegardVelocityInertiaForcesInsideJacobian`, `ModifyNewmark` | `jacobian`, `newmark` of the bodies (`--profile legacy`) |
 
-What YAML adds: library forces (spring-damper, torsion spring, bushing) that need no C
-compiler, tires and roads, shapes for the viewer, named points and frames, references in a
-`checks` section, sensors and runtime inputs.
+What YAML adds: library forces (spring-damper, torsion spring, bushing,
+[contact](reference/forces.md#contact)) that need no C compiler, tires and roads, flexible
+bodies from a Nastran FE model or the STL of a part, shapes for the viewer, named points and
+frames, references in a `checks` section, sensors and runtime inputs.
 
 After changing the YAML, run it and the `.fds` and compare the channels of the two CSV files
 (in a script or a spreadsheet), or let an [assistant](assistants.md) compare them. A `checks`

@@ -1,6 +1,6 @@
 # Sensors and accelerations
 
-FreeDyn writes the accelerations it computes. HHT solves for the accelerations of every body
+freedyn2 writes the accelerations it computes. HHT solves for the accelerations of every body
 in every step, so the result channels `Rddot_*` (center of mass) and `omegadot_*` (angular) of
 the bodies are exact values of the solution, not difference quotients of the velocities: they
 do not depend on `output_step` and keep their peaks. (The viewer's `der()` differentiates the

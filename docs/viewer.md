@@ -250,4 +250,4 @@ are files next to the model (`<model>.notes/`); the assistant reads them with th
 **Report** writes one HTML file with the view, the plots, the checks, the tuned values, the
 eigenmodes and the notes – print it to PDF from the browser. `freedyn2 view --export page.html`
 writes the whole viewer with the model and its results into one HTML file that anyone can
-open without FreeDyn (the [examples](examples.md) on this site are such files).
+open without freedyn2 (the [examples](examples.md) on this site are such files).

@@ -2,9 +2,9 @@
 
 **Multibody dynamics for engineers – and for the assistants they work with.**
 
-freedyn2 simulates mechanical systems of rigid bodies, joints and forces: suspensions,
-drivelines, mechanisms, vehicles on roads, motorcycles, parts that hit and rub on each other
-([contact](reference/forces.md#contact)). A model is a short text file; a
+freedyn2 simulates mechanical systems of rigid and [flexible](reference/bodies.md#flexible-bodies)
+bodies, joints and forces: suspensions, drivelines, mechanisms, vehicles on roads, motorcycles,
+parts that hit and rub on each other ([contact](reference/forces.md#contact)). A model is a short text file; a
 viewer in the browser shows it, plays the results and lets you tune, compare and study
 variants; an AI assistant can build and change the model through the same tools you use.
 
@@ -23,9 +23,14 @@ variants; an AI assistant can build and change the model through the same tools 
   with difference plots, a fan of seven variants simulated in parallel with key figures over
   the parameter, live eigenvalues and root loci while you move a slider.
 - **Fast and exact.** The equations and their derivatives are generated symbolically
-  (CasADi) and compiled to plain C; a small C++ runtime integrates them (HHT on a Lie group).
-  A car with tires on an OpenCRG road takes about 0.15 ms per step; a fixed
+  (CasADi) and compiled to plain C; a small C++ runtime integrates them (HHT or
+  generalized-alpha on a Lie group, fixed step or PI step size control, contacts located in
+  time). A car with tires on an OpenCRG road takes about 0.15 ms per step; a fixed
   Newton mode does exactly the same work every step, for real-time use.
+- **Flexible bodies.** From an Adams MTX file, a Nastran FE model (Craig-Bampton reduction
+  built in) or meshed from the STL of a rigid body; modal stresses for fatigue.
+- **Co-simulation.** Any model as an [FMU](fmu.md) (FMI 2.0 or 3.0) for Simulink, Dymola,
+  OpenModelica or FMPy.
 - **Open.** Apache 2.0. The successor of the FreeDyn freeware: its `.fds` models run as
   they are.
 - **Easy to install.** A Windows installer for using it as a program (no Python needed), or
@@ -44,6 +49,7 @@ variants; an AI assistant can build and change the model through the same tools 
 - **[Coming from FreeDyn](from-freedyn.md)** – your `.fds` models in freedyn2, side by
   side with the legacy program.
 - **[Coming from Adams](from-adams.md)** – the concepts side by side.
+- **[Coming from Onshape](from-onshape.md)** – an Onshape assembly as a model file.
 - **[Model reference](reference/model-file.md)** – every element and key.
 - **[Examples](examples.md)** – models to open, with live viewers on the page.
 

@@ -1,7 +1,7 @@
 # Tutorial – tuning a quarter car
 
 A quarter car crosses a bump. We look at the model, tune the damper with a slider, compare
-runs, let FreeDyn simulate seven dampers at once, and read the trade-off between comfort and
+runs, let freedyn2 simulate seven dampers at once, and read the trade-off between comfort and
 road holding off a key figure plot – then check it against the eigenvalues. About 20 minutes.
 
 ```sh
