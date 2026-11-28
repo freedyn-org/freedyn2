@@ -125,7 +125,7 @@ class HhtIntegrator {
   bool gen_alpha_ = false;                   // generalized-alpha (SolverSettings::rho_inf)
   double am_ = 0, af_ = 0;                   // its alpha_m, alpha_f (HHT: 0, -alpha)
   double c1_ = 1, c2_ = 0, c3_ = 0;          // a_n+1 = c1 qdd_n+1 + c2 qdd_n + c3 a_n
-  HhtCoef c_;                               // effective coefficients of the generated functions
+  HhtCoef c_{};                               // effective coefficients of the generated functions
   double psi_ = 0.0;         // error scale nv eps^2 / C^2 of the local error C h^2 (qdd - qdd_n)
   double psi_newton_ = 0.0;  // Negrut's, for the legacy Newton rule (Eq. 40)
   std::unique_ptr<LinearSolver> ls_, ls_ic_;

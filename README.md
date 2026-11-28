@@ -83,6 +83,15 @@ The CMake build runs the generator itself (needs a Python with `casadi`; pass
 `-DPython3_EXECUTABLE=...` if CMake picks another one). `pip wheel .` builds a wheel as the
 release does (scikit-build-core).
 
+The CI also runs both test suites with AddressSanitizer and UndefinedBehaviorSanitizer and the
+runtime through clang-tidy (`.clang-tidy`); locally:
+
+```sh
+cmake -S . -B build-asan -DFD_SANITIZE=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build-asan -j
+ctest --test-dir build-asan && FREEDYN2_RUN=build-asan/freedyn2_run python -m pytest
+cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && run-clang-tidy -p build 'runtime/(src|app)/'
+```
+
 ## Run a model
 
 ```sh

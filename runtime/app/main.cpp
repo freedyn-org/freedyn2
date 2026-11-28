@@ -124,7 +124,7 @@ double thread_cpu_us() {
   auto ticks = [](const FILETIME& f) { return (double(f.dwHighDateTime) * 4294967296.0 + f.dwLowDateTime) * 0.1; };
   return ticks(kernel) + ticks(user);
 #elif defined(FD_THREAD_CPU_TIME)
-  timespec ts;
+  timespec ts{};
   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
   return ts.tv_sec * 1e6 + ts.tv_nsec * 1e-3;
 #else
