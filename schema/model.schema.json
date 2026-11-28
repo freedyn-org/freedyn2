@@ -383,7 +383,8 @@
       "additionalProperties": false,
       "properties": {
         "type": {"const": "HHT"},
-        "alpha": {"type": "number", "minimum": -0.3333333333333333, "maximum": 0, "default": -0.1},
+        "alpha": {"type": "number", "minimum": -0.3333333333333333, "maximum": 0, "default": -0.1, "description": "HHT: numerical damping, -1/3 to 0 (spectral radius at infinity (1 + alpha) / (1 - alpha)). Not with rho_inf."},
+        "rho_inf": {"type": "number", "minimum": 0, "maximum": 1, "description": "Generalized-alpha instead of HHT: the spectral radius at infinity, 0 (the most damping of what the step cannot resolve) to 1 (none). At the same rho_inf it damps the resolved motion less than HHT. 0.8 corresponds to alpha = -0.11. Not with alpha."},
         "end_time": {"type": "number", "exclusiveMinimum": 0},
         "step": {"type": "number", "exclusiveMinimum": 0},
         "output_step": {"type": "number", "exclusiveMinimum": 0, "description": "Must be an integer multiple of step. Default: step."},
@@ -396,7 +397,8 @@
           "default": "arnold_bruls",
           "description": "HHT form: arnold_bruls (equations at t_n+1, second order) or negrut (force-weighted, as legacy FreeDyn)."
         },
-        "adaptive": {"type": "boolean", "default": false, "description": "Step size control of legacy FreeDyn (models converted from .fds): step is then the largest step (SolverMaxTimeStep), eps the error tolerance; output_step need not be a multiple of step."},
+        "adaptive": {"type": "boolean", "default": false, "description": "Step size control for accuracy: step is then the largest step, eps the error tolerance, h_min the smallest step; output_step need not be a multiple of step (steps end at the output times)."},
+        "controller": {"enum": ["pi", "legacy"], "default": "pi", "description": "adaptive: the step size controller, pi (Gustafsson's PI controller: fewer rejected steps) or legacy (that of legacy FreeDyn, the same steps as it; models converted from .fds)."},
         "eps": {"type": "number", "exclusiveMinimum": 0, "default": 1e-6, "description": "adaptive: tolerance of the local error (GlobalErrorTolerance)."},
         "h_min": {"type": "number", "exclusiveMinimum": 0, "default": 1e-14, "description": "adaptive: smallest step; the run stops below it (SolverMinTimeStep)."},
         "error_norm": {"enum": ["mixed", "legacy"], "default": "mixed", "description": "adaptive: weights of the error norm, mixed (absolute and relative tolerance) or legacy (as legacy FreeDyn)."},

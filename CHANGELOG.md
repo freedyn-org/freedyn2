@@ -42,6 +42,16 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- **Generalized-alpha** (`solver: rho_inf`, Chung and Hulbert, in the Lie group form of Arnold
+  and Bruls; `freedyn2_run --rho-inf`): the numerical damping set by the spectral radius at
+  infinity, with less damping of the resolved motion than HHT at the same value (pendulum: a
+  third). HHT stays the default and gives the same results to the last bit. The spectral radius
+  of the runtime is measured in a test against the textbook amplification matrix (to 1e-15).
+- **PI step size control** (`adaptive: true`, `controller: pi`, the default of YAML models;
+  `freedyn2_run --adaptive pi`): Gustafsson's PI controller, steps that end exactly at the
+  output times, 6 to 10 times fewer rejected steps than the legacy controller for the same
+  error. The local error estimate of the Arnold-Bruls and generalized-alpha forms uses their own
+  Newmark constant. `.fds` models keep the legacy controller.
 - The initial state is made consistent before the first step, and the run says what that
   took. **Redundant constraints** (an overconstrained mechanism, such as a planar loop of
   revolute joints) are found in model order and deactivated (multiplier 0, the others carry

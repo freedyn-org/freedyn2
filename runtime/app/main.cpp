@@ -36,6 +36,8 @@ void usage() {
                "                    [--step-log FILE]   (t, h, status, Newton iterations of every step attempt)\n"
                "                    [--fixed-step]      (constant step size --step, no step size control)\n"
                "                    [--statics]         (start from the static equilibrium, at rest)\n"
+               "                    [--rho-inf R]       (generalized-alpha with spectral radius R at infinity)\n"
+               "                    [--adaptive pi|legacy] (step size control; --tolerance E, --step the largest)\n"
                "                    [--newton-fixed N]  (exactly N Newton corrections per step, fixed pivots: real-time)\n"
                "                    [--timing]          (fixed step: distribution of the wall-clock time per step)\n"
                "                    [--timing-log FILE] (fixed step: time, Newton iterations, new pivot orders per step)\n"
@@ -198,6 +200,8 @@ int main(int argc, char** argv) {
       else if (!std::strcmp(argv[i], "--step-log")) step_log_path = next();
       else if (!std::strcmp(argv[i], "--fixed-step")) model.solver.adaptive = false;
       else if (!std::strcmp(argv[i], "--statics")) model.solver.statics = true;
+      else if (!std::strcmp(argv[i], "--rho-inf")) model.solver.rho_inf = std::stod(next());
+      else if (!std::strcmp(argv[i], "--adaptive")) model.solver.adaptive = true, model.solver.controller = next();
       else if (!std::strcmp(argv[i], "--newton-fixed")) {
         model.solver.newton = "fixed";
         model.solver.newton_iterations = std::stoi(next());
@@ -273,17 +277,19 @@ int main(int argc, char** argv) {
     const auto t_start = std::chrono::steady_clock::now();
     std::vector<Attempt> step_log;
     if (s.adaptive) {
-      fd::LegacyTimeStepper stepper(hht, s);
       std::function<void(double, double, const fd::StepResult&)> log_attempt;
       if (!step_log_path.empty())
         log_attempt = [&](double t, double h, const fd::StepResult& r) { step_log.push_back({t, h, r}); };
+      fd::LegacyTimeStepper legacy(hht, s);
+      fd::PiTimeStepper pi(hht, s);
       try {
-        n_steps = stepper.run(write_output, log_attempt, before_step);
+        n_steps = s.controller == "pi" ? pi.run(write_output, log_attempt, before_step)
+                                       : legacy.run(write_output, log_attempt, before_step);
       } catch (...) {  // the attempts up to the failure are what explains it
         if (!step_log_path.empty()) write_step_log(step_log_path, step_log);
         throw;
       }
-      rejected = stepper.rejected_steps();
+      rejected = s.controller == "pi" ? pi.rejected_steps() : legacy.rejected_steps();
     } else {
       n_steps = std::lround(s.end_time / s.step);
       const long out_every = std::max(1L, std::lround(s.output_step / s.step));
@@ -324,9 +330,13 @@ int main(int argc, char** argv) {
     const double step_seconds =
         std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count() - output_seconds;
     if (!step_log_path.empty()) write_step_log(step_log_path, step_log);
-    std::printf("model %s: %ld steps (%ld rejected), h%s = %g, alpha = %g, Newton %s, linear solver %s\n",
-                model.name.c_str(), n_steps, rejected, s.adaptive ? "_max" : "", s.step, s.alpha,
-                s.newton.c_str(), linear_solver.c_str());
+    char method[64];
+    if (s.rho_inf >= 0) std::snprintf(method, sizeof method, "generalized-alpha rho_inf = %g", s.rho_inf);
+    else std::snprintf(method, sizeof method, "alpha = %g", s.alpha);
+    std::printf("model %s: %ld steps (%ld rejected), h%s = %g, %s, Newton %s, linear solver %s%s\n",
+                model.name.c_str(), n_steps, rejected, s.adaptive ? "_max" : "", s.step, method,
+                s.newton.c_str(), linear_solver.c_str(),
+                s.adaptive ? (s.controller == "pi" ? ", PI step size control" : ", legacy step size control") : "");
     std::printf("Newton iterations per step: %.3f\n", double(hht.newton_iterations()) / n_steps);
     std::printf("time per step: %.3f us (total %.3f s)\n", 1e6 * step_seconds / n_steps, step_seconds);
     std::printf("wrote %s\n", out_path.c_str());

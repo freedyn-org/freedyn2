@@ -25,6 +25,36 @@ method and a sparse LU (KLU). The equations and their Jacobians are exact (gener
 Any of them can be overridden on the command line without editing the model:
 `freedyn2 run model.yaml -- --end-time 2 --step 1e-4`.
 
+## Numerical damping: HHT or generalized-alpha
+
+`alpha` (HHT, the default −0.1) and `rho_inf` (generalized-alpha) both set how strongly the
+integrator damps what the step cannot resolve: `rho_inf` is the factor by which such a motion
+shrinks per step (0: at once, 1: not at all; HHT's is (1 + α)/(1 − α), 0.82 at −0.1).
+Generalized-alpha reaches that damping with less damping of the motion the step does resolve
+(on the pendulum a third of HHT's at the same `rho_inf`), so it is the better choice for long
+runs and lightly damped structures:
+
+```yaml
+solver: {type: HHT, rho_inf: 0.8, end_time: 10, step: 0.001}
+```
+
+Give one of the two, not both. With joints keep `rho_inf` below 1, as α below 0.
+On the command line: `-- --rho-inf 0.8`.
+
+## Step size control
+
+```yaml
+solver: {type: HHT, end_time: 10, step: 0.01, adaptive: true, eps: 1.0e-6}
+```
+
+With `adaptive: true` the step follows the accuracy `eps` (absolute and relative to the size of
+each coordinate): small where the motion is fast, up to `step` where it is slow, never below
+`h_min`. Steps end exactly at the output times, so `output_step` need not be a multiple of `step`.
+The error of the results goes with `eps^(2/3)`: a hundred times smaller `eps` gives about 20
+times smaller errors (and about 4 times more steps). The controller is Gustafsson's PI
+controller (`controller: pi`); models converted from FreeDyn keep FreeDyn's own
+(`controller: legacy`). On the command line: `-- --adaptive pi --tolerance 1e-6`.
+
 ## The initial state
 
 Before the first step the runtime makes the initial state consistent and says on its output

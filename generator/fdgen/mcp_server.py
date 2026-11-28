@@ -50,7 +50,9 @@ spring, expressions of t, parameters and measures (expression_force), tire on a 
 Measures (displacement, distance, angle, rates, ...) are scalars used in expressions and
 drivers; drivers prescribe a measure over time (motion).
 Solver: HHT, end_time, step, output_step; alpha -0.1 (default) damps numerical noise; with
-joints alpha must be < 0. solver.newton: fixed for real-time runs.
+joints alpha must be < 0; rho_inf (0 to 1, e.g. 0.8) instead of alpha: generalized-alpha, less
+damping of the resolved motion. adaptive: true with eps: step size control (PI), step the largest
+step. statics: true starts from the static equilibrium. solver.newton: fixed for real-time runs.
 Shared points: `points` (hardpoints: [x, y, z], {mirror: name}, {from: name, offset},
 {in: body or frame, local: [x, y, z]}) and `frames` (in, origin, z: [from, to] or a direction,
 x, or orientation); their names stand for the numbers in point

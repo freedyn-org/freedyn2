@@ -244,23 +244,45 @@ inverse of the position sensitivity in both forms. Both forms use the same gener
 functions, only with other coefficients: `(alpha, beta, gamma, h)` for Negrut,
 `(0, (1+alpha) beta, (1+alpha) gamma, h)` for Arnold–Bruls. Arnold–Bruls runs on the Lie group
 (Bruls, Cardona, Arnold 2012): `q_{n+1} = q_n o exp(incr)` with
-`incr = h (v_n + h (1/2 - beta) a_n + h beta a_{n+1})`, Newmark on the velocities. Newton stops by the legacy rule
+`incr = h (v_n + h (1/2 - beta) a_n + h beta a_{n+1})`, Newmark on the velocities.
+**Generalized-alpha** (`rho_inf`, Chung and Hulbert 1993, in this form Arnold and Bruls 2007) is
+the same scheme with `alpha_m = (2 rho - 1)/(rho + 1)`, `alpha_f = rho/(rho + 1)`,
+`gamma = 1/2 + alpha_f - alpha_m`, `beta = (gamma + 1/2)^2/4` and the pseudo-acceleration
+`(1 - alpha_m) a_{n+1} + alpha_m a_n = (1 - alpha_f) qdd_{n+1} + alpha_f qdd_n`, i.e.
+`a_{n+1} = c1 qdd_{n+1} + c2 qdd_n + c3 a_n`; the generated functions get `(0, c1 beta, c1 gamma, h)`.
+HHT is the case `alpha_m = 0`, `alpha_f = -alpha` (and keeps its own expressions, so its results
+are the same to the last bit). The test `integrator.spectral_radius` measures the spectral radius
+of the runtime on a stiff linear oscillator (a recurrence fitted to the run) against the
+amplification matrix of the textbook method. Newton stops by the legacy rule
 (`newton legacy`, profile `legacy`) or when the last correction changes the velocities by less
 than `newton_tol` (`newton velocity`, YAML and profile `v2`): `gamma h |dx| <= tol (1 + |qd|)`. A
 criterion directly on `x` cannot go below the round-off floor `eps/(beta h^2)` of the scaled
 constraint rows.
 
-**Step size control** (only with `adaptive`, i.e. `.fds` models and YAML files converted from
-them by `freedyn2 convert`; other YAML models and the planned real-time use run with a fixed
-step). The controller is the one of legacy FreeDyn
-(`LegacyTimeStepper`: `SOL_SimTimeManagerHHT`, `SIM_SimulationObject`): step factor
-`0.9 theta^(-1/6)`, halving after a rejected step, output time handling. The local error is
-Negrut et al. (2007) Eq. 37a, the Newmark truncation term `(beta - 1/(6(1+alpha))) h^2 (qdd -
-qdd_n)` per velocity dof, in the RMS norm with weights `eps w_i`; `theta <= 1` accepts. The
-term belongs to the Newmark formulas, which both HHT forms use (Arnold-Bruls with the
-pseudo-acceleration); estimators of this kind for Newmark schemes: Zienkiewicz and Xie (1991),
-Zeng, Wiberg, Li and Xie (1993), Earthquake Eng. Struct. Dyn. 21, 555-571. Only the weights
-differ by profile (`error_norm`):
+**Step size control** (only with `adaptive`; models without it, and real-time use, run with a
+fixed step). Two controllers (`controller`):
+
+- `pi` (YAML default): the PI controller of Gustafsson (1991), as in Hairer and Wanner, Solving
+  ODEs II, IV.8 (`PiTimeStepper`): `h_new = h 0.9 err_n^(-0.7/3) err_{n-1}^(0.4/3)` with
+  `err = sqrt(theta)`, the factor within [0.2, 5] and not above 1 after a rejection, a quarter
+  after a Newton failure. Steps end exactly at the output times (`k output_step`, with a step
+  split in two equal ones rather than a long and a very short one); a step shortened for an
+  output does not shorten the next. On the pendulum it takes about as many steps as the legacy
+  controller for the same error, with 6 to 10 times fewer rejected steps.
+- `legacy` (`.fds` models, both profiles): the controller of legacy FreeDyn
+  (`LegacyTimeStepper`: `SOL_SimTimeManagerHHT`, `SIM_SimulationObject`): step factor
+  `0.9 theta^(-1/6)`, halving after a rejected step, output time handling.
+
+The local error is the Newmark truncation term `C h^2 (qdd - qdd_n)` per velocity dof, in the RMS
+norm with weights `eps w_i`; `theta <= 1` accepts. Negrut et al. (2007) Eq. 37a,
+`C = beta - 1/(6(1+alpha))`, belongs to the force-weighted form and is kept for HHT with the
+legacy controller. For the equations at `t_{n+1}` (Arnold-Bruls HHT with `pi`, generalized-alpha)
+the position increment with `a_n = qdd(t_n + (alpha_m - alpha_f) h)` for accelerations linear in
+time leaves `C = beta + (alpha_m - alpha_f)/2 - 1/6` (Newmark: `beta - 1/6`). Estimators of this
+kind for Newmark schemes: Zienkiewicz and Xie (1991), Zeng, Wiberg, Li and Xie (1993), Earthquake
+Eng. Struct. Dyn. 21, 555-571. The global error follows `eps` as `eps^(2/3)` (local `O(h^3)`,
+global `O(h^2)`; test `integrator.pi_controller`). Only the weights differ by profile
+(`error_norm`):
 
 - `legacy` (profile `legacy`): `w_i = max(1, largest |s_i| so far)` (Negrut Eq. 35b, as
   legacy FreeDyn): once a coordinate has been large, its tolerance stays loose for the rest
