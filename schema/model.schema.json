@@ -197,7 +197,7 @@
     },
     "body": {
       "type": "object",
-      "required": ["mass", "inertia"],
+      "anyOf": [{"required": ["mass", "inertia"]}, {"required": ["flex"]}],
       "additionalProperties": false,
       "properties": {
         "id": {"$ref": "#/$defs/id"},
@@ -209,14 +209,48 @@
           "minItems": 3,
           "maxItems": 3
         },
-        "position": {"$ref": "#/$defs/point", "description": "Global position of the center of mass. Default [0,0,0]."},
-        "orientation": {"$ref": "#/$defs/orientation", "description": "Principal axes as Euler parameters [theta0, theta1, theta2, theta3], theta0 scalar part. Normalized by the generator. Default [1,0,0,0]."},
-        "velocity": {"$ref": "#/$defs/vec3", "description": "Global velocity of the center of mass. Default [0,0,0]."},
+        "position": {"$ref": "#/$defs/point", "description": "Global position of the center of mass (flexible bodies: of the origin of the body frame). Default [0,0,0]."},
+        "orientation": {"$ref": "#/$defs/orientation", "description": "Principal axes (flexible bodies: the body frame) as Euler parameters [theta0, theta1, theta2, theta3], theta0 scalar part. Normalized by the generator. Default [1,0,0,0]."},
+        "velocity": {"$ref": "#/$defs/vec3", "description": "Global velocity of the center of mass (flexible bodies: of the origin of the body frame). Default [0,0,0]."},
         "angular_velocity": {"$ref": "#/$defs/vec3", "description": "Angular velocity in GLOBAL components. Default [0,0,0]."},
         "shapes": {"$ref": "#/$defs/shapes"},
         "element": {"enum": ["rigid_body", "rigid_body_euler"], "default": "rigid_body", "description": "Body formulation: rigid_body (Lie group) or rigid_body_euler (Euler parameters with a normalization constraint, as legacy FreeDyn; models converted with freedyn2 convert --profile legacy). All bodies of a model use the same one."},
         "jacobian": {"enum": ["full", "no_qvv"], "default": "full", "description": "Iteration matrix: full, or without the velocity derivatives of the inertia forces (legacy RegardVelocityInertiaForcesInsideJacobian = no; rigid_body_euler)."},
-        "newmark": {"enum": ["standard", "modified"], "default": "standard", "description": "rigid_body_euler: the legacy ModifyNewmark option (modified)."}
+        "newmark": {"enum": ["standard", "modified"], "default": "standard", "description": "rigid_body_euler: the legacy ModifyNewmark option (modified)."},
+        "flex": {
+          "type": "object",
+          "additionalProperties": false,
+          "oneOf": [{"required": ["modal"]}, {"required": ["fem"]}, {"required": ["material", "mesh_size"]}],
+          "description": "Flexible body (floating frame of reference, modal coordinates). Mass and inertia come from the modal data (mass and inertia given as well are ignored); position, orientation and velocity are those of the body frame of the modal data.",
+          "properties": {
+            "modal": {"type": "string", "description": "Modal data file, relative to the model file: a .fdflex file of freedyn2 (the cms file of another model, a reduction kept), or an Adams MTX file (inertia invariants, generalized stiffness, mode shapes at the nodes; its values are used in the units of the model)."},
+            "fem": {"type": "string", "description": "Nastran bulk data file (GRID, CTETRA, CHEXA, CBAR with PBARL ROD, PSOLID, MAT1, RBE2, RBE3) of the part, relative to the model file, in the units of the model: the modal data are made from it (Craig-Bampton, cached)."},
+            "interfaces": {"type": "array", "minItems": 1, "description": "fem: interface nodes (RBE2 master or RBE3 reference nodes): the boundary of the reduction, joints attach to them; default all of them. material: interfaces in addition to those made for every joint and force at the body.",
+                           "items": {"oneOf": [{"type": "integer"},
+                                               {"type": "object", "additionalProperties": false, "required": ["point"],
+                                                "properties": {"point": {"$ref": "#/$defs/vec3", "description": "Global, at t = 0."},
+                                                               "type": {"enum": ["rbe2", "rbe3"], "default": "rbe2"},
+                                                               "radius": {"type": "number", "exclusiveMinimum": 0, "description": "Surface nodes within this distance are connected. Default: the bore around axis if there is one, else the distance to the nearest surface node plus mesh_size, at least 6 nodes."},
+                                                               "axis": {"$ref": "#/$defs/vec3", "description": "Global, at t = 0: the spider takes the bore around this axis through point (as for a revolute or cylindrical joint, whose z axis it is by default)."}}}]}},
+            "material": {"description": "Mesh the part from its surface (its one STL mesh shape, or stl): E, nu, rho in the units of the model, or steel, aluminium, titanium (SI units: m, kg, s).",
+                         "oneOf": [{"enum": ["steel", "aluminium", "titanium"]},
+                                   {"type": "object", "additionalProperties": false, "required": ["E", "nu", "rho"],
+                                    "properties": {"E": {"type": "number", "exclusiveMinimum": 0}, "nu": {"type": "number", "minimum": 0, "exclusiveMaximum": 0.5},
+                                                   "rho": {"type": "number", "exclusiveMinimum": 0}}}]},
+            "mesh_size": {"type": "number", "exclusiveMinimum": 0, "description": "material: largest element size of the volume mesh (Netgen, quadratic tetrahedra)."},
+            "stl": {"description": "material: the surface to mesh, an STL file placed as a mesh shape (a file name: global coordinates at t = 0, like a shape; or a shape with type mesh). Default: the body's one STL shape.",
+                    "oneOf": [{"type": "string"}, {"$ref": "#/$defs/shape"}]},
+            "cms": {"type": "string", "description": "fem, material: where the result of the reduction is kept, a .fdflex file relative to the model (modal data, mode shapes on the surface for the viewer, what it was made from). Default cms/<body>.fdflex. Reused while the inputs are the same; other models use it with modal."},
+            "interface_type": {"enum": ["rbe2", "rbe3"], "default": "rbe2", "description": "material: type of the interfaces made for joints and forces: rbe2 rigid, rbe3 interpolating (adds no stiffness)."},
+            "modes": {"type": "integer", "minimum": 0, "default": 20, "description": "fem, material: fixed-interface normal modes (without interfaces: free-free modes) in addition to the 6 per interface node; the 6 rigid body modes are removed."},
+            "max_frequency": {"type": "number", "exclusiveMinimum": 0, "description": "Keep only the elastic modes up to this frequency [Hz] (after the reduction; the modes are numbered from 1 again)."},
+            "exclude_modes": {"type": "array", "items": {"type": "integer", "minimum": 1}, "description": "Leave out these elastic modes (numbers from 1, in the order of the modal data)."},
+            "damping": {"description": "Modal damping ratio of the (free-free) modes: one value for all modes or one per mode (the last for the rest). Default as Adams/Flex: 0.01 below 100 Hz, 0.1 from 100 to 1000 Hz, 1.0 from 1000 Hz; 0 for none.",
+                        "oneOf": [{"type": "number", "minimum": 0}, {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1}]},
+            "rotation_coupling": {"type": "boolean", "default": true, "description": "Coupling of rotation and deformation (invariants 4 and 5; legacy Is_Itf_active)."},
+            "quadratic_inertia": {"type": "boolean", "default": true, "description": "Inertia tensor quadratic in the modal coordinates (invariant 9; legacy Is_QuadraticTermOF_Itt_active)."}
+          }
+        }
       }
     },
     "shapes": {
@@ -250,34 +284,39 @@
       "properties": {
         "id": {"$ref": "#/$defs/id"},
         "type": {
-          "enum": ["spring_damper", "force", "torque", "torsion_spring", "bushing", "expression_force", "expression_torque", "tire"],
+          "enum": ["spring_damper", "force", "torque", "torsion_spring", "bushing", "expression_force", "expression_torque", "curve_force", "curve_torque", "tire"],
           "description": "spring_damper: line of sight between point1 (body1) and point2 (body2 or ground), s = k (l - l0) + d ldot + f0, tension > 0. force / torque: constant vector on body1. torsion_spring: about the z axis of the frame (orientation) fixed on body2 or the ground, tau = -k (phi - phi0) - d phidot + tau0 on body1. expression_force / expression_torque: magnitude from an expression of t, parameters and measures (compiled into the model plugin), along direction / axis on body1 and opposite on body2."
         },
         "body1": {"type": "string", "description": "A body."},
         "body2": {"type": "string", "description": "spring_damper, torsion_spring: a body or 'ground'. Default ground."},
         "point1": {"$ref": "#/$defs/point", "description": "spring_damper: point on body1, global, at t = 0. Default its center of mass."},
         "point2": {"$ref": "#/$defs/point", "description": "spring_damper: point on body2 / the ground, global, at t = 0. Default its center of mass (the origin for the ground)."},
-        "point": {"$ref": "#/$defs/point", "description": "force: point of application, global, at t = 0. Default the center of mass."},
+        "point": {"$ref": "#/$defs/point", "description": "force: point of application, global, at t = 0. Default the center of mass. torque on a flexible body: where it acts (needed)."},
         "vector": {"$ref": "#/$defs/vec3", "description": "force / torque: force [N] or torque [N m]."},
         "frame": {"enum": ["global", "body"], "description": "force / torque: components of vector in the global frame (fixed direction) or in the body1 frame (turns with the body). Default global."},
         "orientation": {"$ref": "#/$defs/orientation", "description": "torsion_spring (axis z) / bushing: frame as Euler parameters, global, at t = 0. Default [1,0,0,0]."},
-        "stiffness": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "k [N/m] or [N m/rad]; bushing: translational stiffness along the frame axes (number or 3)."},
-        "damping": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "d [N s/m] or [N m s/rad]; bushing: per frame axis. Default 0."},
+        "stiffness": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}, {"type": "string"}], "description": "k [N/m] or [N m/rad]; bushing: translational stiffness along the frame axes (number or 3). spring_damper / torsion_spring: or the name of a spline, the force (torque) over the deflection l - l0 (phi - phi0)."},
+        "damping": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}, {"type": "string"}], "description": "d [N s/m] or [N m s/rad]; bushing: per frame axis. Default 0. spring_damper / torsion_spring: or the name of a spline, the force (torque) over the rate."},
         "rot_stiffness": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "bushing: rotational stiffness about the frame axes [N m/rad]."},
         "rot_damping": {"oneOf": [{"type": "number"}, {"$ref": "#/$defs/vec3"}], "description": "bushing: rotational damping [N m s/rad]. Default 0."},
-        "location": {"$ref": "#/$defs/point", "description": "bushing: frame origin, global, at t = 0. Default the center of mass of body1."},
+        "location": {"$ref": "#/$defs/point", "description": "bushing: frame origin, global, at t = 0. Default the center of mass of body1. torsion_spring at a flexible body: where it acts (needed)."},
         "radius": {"type": "number", "exclusiveMinimum": 0, "description": "tire: unloaded radius r0 [m]. Default 0.3."},
         "tire": {"type": "object", "additionalProperties": {"type": "number"}, "description": "tire: parameters overriding the defaults: fdgen.tire.TIRE_KEYS (kz, cz, Magic Formula coefficients, ...)."},
         "length": {"type": "number", "exclusiveMinimum": 0, "description": "spring_damper: free length l0. Default the initial distance."},
         "angle": {"type": "number", "description": "torsion_spring: phi0 [rad]. Default 0 (the initial configuration)."},
         "preload": {"type": "number", "description": "f0 [N] or tau0 [N m]. Default 0."},
+        "measure": {"type": "string", "description": "curve_force / curve_torque: the measure m (a name of measures); s = scale * curve(argument_scale * m + argument_offset)."},
+        "curve": {"type": "string", "description": "curve_force / curve_torque: the spline of the law (a name of splines)."},
+        "scale": {"type": "number", "description": "curve_force / curve_torque: factor a of the curve. Default 1."},
+        "argument_scale": {"type": "number", "description": "curve_force / curve_torque: factor b of the measure in the argument. Default 1."},
+        "argument_offset": {"type": "number", "description": "curve_force / curve_torque: offset c of the argument. Default 0."},
         "force": {"type": "string", "description": "expression_force: force law, e.g. '-c * y - d * vy + 10 * sin(t)'."},
         "torque": {"type": "string", "description": "expression_torque: torque law."},
         "direction": {
           "description": "expression_force: 'line_of_sight' (default, from point1 to point2) or a vector (global at t = 0; fixed in space or, with frame body, in body1).",
           "oneOf": [{"const": "line_of_sight"}, {"$ref": "#/$defs/vec3"}]
         },
-        "axis": {"$ref": "#/$defs/vec3", "description": "expression_torque: axis, global at t = 0 (fixed in space or, with frame body, in body1)."}
+        "axis": {"$ref": "#/$defs/vec3", "description": "expression_torque / curve_torque: axis, global at t = 0 (fixed in space or, with frame body, in body1)."}
       }
     },
     "sensor": {
@@ -334,7 +373,8 @@
           "items": {"enum": ["dx", "dy", "dz", "ax", "ay", "az"]},
           "uniqueItems": true,
           "description": "generic only: fixed translations (d) and rotations (a) along/about the joint axes."
-        }
+        },
+        "node": {"type": "integer", "description": "Flexible body: the joint acts at this node of its modal data (moves and turns with the deformation). The flexible body is body2, or body1 of a joint with the ground. Without a node a joint acts on the body frame. location defaults to the node."}
       }
     },
     "solver": {
@@ -362,7 +402,8 @@
         "error_norm": {"enum": ["mixed", "legacy"], "default": "mixed", "description": "adaptive: weights of the error norm, mixed (absolute and relative tolerance) or legacy (as legacy FreeDyn)."},
         "exact_output": {"type": "boolean", "default": true, "description": "adaptive: steps end exactly at the output times (isExactOutputTimeEnforced)."},
         "output_begin": {"type": "number", "minimum": 0, "default": 0, "description": "adaptive: the first output after t = 0 is at this time or later (OutputTimeBegin)."},
-        "vproj_tol": {"type": "number", "exclusiveMinimum": 0, "default": 1e-12, "description": "The initial velocities are projected onto the constraints when they violate them by more than this (legacy FreeDyn: 1e-5)."}
+        "vproj_tol": {"type": "number", "exclusiveMinimum": 0, "default": 1e-12, "description": "The initial velocities are projected onto the constraints when they violate them by more than this (legacy FreeDyn: 1e-5)."},
+        "statics": {"type": "boolean", "default": false, "description": "Start from the static equilibrium: the positions are moved until the forces balance (gravity, springs, preloads; the driven measures at their values at t = 0), the bodies at rest (initial velocities are not used), then the motion is simulated from there."}
       }
     }
   }

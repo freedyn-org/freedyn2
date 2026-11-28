@@ -1,0 +1,948 @@
+% freedyn2 test model: legacy check-in test 106_V8_FlexConRod (me_testing), 0.05 s: 8 flexible connecting rods on massless bodies
+Header freeDynHeader
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+%FREEDYN                                                                +
+%                 ______             _____                              +
+%                |  ____|           |  __ \                             +
+%                | |__ _ __ ___  ___| |  | |_   _ _ __                  +
+%                |  __| '__/ _ \/ _ \ |  | | | | | '_ \                 +
+%                | |  | | |  __/  __/ |__| | |_| | | | |                +
+%                |_|  |_|  \___|\___|_____/ \__, |_| |_|                +
+%                                               __/ |                   +
+%                                              |___/                    +
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+
+% by mbs research group (WS, WW, KS, KN, FP, TL, SO)                    +
+% @FH OOE F&E GmbH, Stelzhamerstr. 23, 4600 Wels                        +
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+
+% version = 01|20                                                       +
+%                                                                       +
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+EndHeader
+%
+%---------------- Rigid Bodies ------------------------
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = V8_crank
+	BodyID = 1
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.009503
+	LocationCenterMass = 145.000000,0.000000,0.000000
+	Inertia = 15.293774,128.134235,138.292816
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = piston.1
+	BodyID = 2
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.000709
+	LocationCenterMass = -17.000000,140.004227,140.004227
+	Inertia = 0.661944,0.680416,0.681590
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,0.70710678,-0.70710678,-0.00000000,0.70710678,0.70710678
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = piston.2
+	BodyID = 3
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.000709
+	LocationCenterMass = 17.000000,-102.504227,102.504227
+	Inertia = 0.661944,0.680416,0.681590
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,-0.70710678,-0.70710678,0.00000000,0.70710678,-0.70710678
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = piston.3
+	BodyID = 4
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.000709
+	LocationCenterMass = 273.000000,140.004227,140.004227
+	Inertia = 0.661944,0.680416,0.681590
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,0.70710678,-0.70710678,-0.00000000,0.70710678,0.70710678
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = piston.4
+	BodyID = 5
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.000709
+	LocationCenterMass = 307.000000,-102.504227,102.504227
+	Inertia = 0.661944,0.680416,0.681590
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,-0.70710678,-0.70710678,0.00000000,0.70710678,-0.70710678
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = piston.5
+	BodyID = 6
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.000709
+	LocationCenterMass = 73.000000,102.504227,102.504227
+	Inertia = 0.661944,0.680416,0.681590
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,0.70710678,-0.70710678,-0.00000000,0.70710678,0.70710678
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = piston.6
+	BodyID = 7
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.000709
+	LocationCenterMass = 107.000000,-140.004227,140.004227
+	Inertia = 0.661944,0.680416,0.681590
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,-0.70710678,-0.70710678,0.00000000,0.70710678,-0.70710678
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = piston.7
+	BodyID = 8
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.000709
+	LocationCenterMass = 183.000000,102.504227,102.504227
+	Inertia = 0.661944,0.680416,0.681590
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,0.70710678,-0.70710678,-0.00000000,0.70710678,0.70710678
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = piston.8
+	BodyID = 9
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = yes
+	Mass = 0.000709
+	LocationCenterMass = 217.000000,-140.004227,140.004227
+	Inertia = 0.661944,0.680416,0.681590
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,-0.70710678,-0.70710678,0.00000000,0.70710678,-0.70710678
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_piston.1
+	BodyID = 10
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = -17.000000,123.146000,123.146000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_crank.1
+	BodyID = 11
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = -17.000000,37.500000,0.000000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_piston.2
+	BodyID = 12
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 17.000000,-85.646000,85.646000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_crank.2
+	BodyID = 13
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 17.000000,37.500000,0.000000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_piston.3
+	BodyID = 14
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 273.000000,123.146000,123.146000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_crank.3
+	BodyID = 15
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 273.000000,37.500000,0.000000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_piston.4
+	BodyID = 16
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 307.000000,-85.646000,85.646000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_crank.4
+	BodyID = 17
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 307.000000,37.500000,0.000000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_piston.5
+	BodyID = 18
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 73.000000,85.646000,85.646000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_crank.5
+	BodyID = 19
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 73.000000,-37.500000,0.000000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_piston.6
+	BodyID = 20
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 107.000000,-123.146000,123.146000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_crank.6
+	BodyID = 21
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 107.000000,-37.500000,0.000000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_piston.7
+	BodyID = 22
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 183.000000,85.646000,85.646000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_crank.7
+	BodyID = 23
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 183.000000,-37.500000,0.000000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_piston.8
+	BodyID = 24
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 217.000000,-123.146000,123.146000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+Body Rigid_EulerParameter_PAI
+	BodyName = Dummy_crank.8
+	BodyID = 25
+	InitialVelocityVector = 0.000000,0.000000,0.000000
+	InitialOmegaVector = 0.000000,0.000000,0.000000
+	RegardVelocityInertiaForcesInsideJacobian = no
+	Mass = 0.000000
+	LocationCenterMass = 217.000000,-37.500000,0.000000
+	Inertia = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndBody
+%
+%
+%---------------- Flexible Bodies ------------------------
+%
+Body MBS_FlexBody_Full
+	BodyID = 26
+	BodyName = con_rod.1
+	Path2MtxFile = conrod_small.mtx
+	Is_Itf_active = no
+	Is_QuadraticTermOF_Itt_active = no
+	LocationCenterMass = -17.000000,68.433167,44.477283
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,0.57097055,0.82097054,0.00000000,-0.82097054,0.57097055
+	InitialVelocityVector = 0,0,0
+	InitialOmegaVector = 0., 0., 0.
+	GlobalDampingFactor = 0.05000000
+EndBody
+%
+Body MBS_FlexBody_Full
+	BodyID = 27
+	BodyName = con_rod.2
+	Path2MtxFile = conrod_small.mtx
+	Is_Itf_active = no
+	Is_QuadraticTermOF_Itt_active = no
+	LocationCenterMass = 17.000000,-6.977283,30.933167
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,-0.82097054,0.57097055,0.00000000,-0.57097055,-0.82097054
+	InitialVelocityVector = 0,0,0
+	InitialOmegaVector = 0., 0., 0.
+	GlobalDampingFactor = 0.05000000
+EndBody
+%
+Body MBS_FlexBody_Full
+	BodyID = 28
+	BodyName = con_rod.3
+	Path2MtxFile = conrod_small.mtx
+	Is_Itf_active = no
+	Is_QuadraticTermOF_Itt_active = no
+	LocationCenterMass = 273.000000,68.433167,44.477283
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,0.57097055,0.82097054,0.00000000,-0.82097054,0.57097055
+	InitialVelocityVector = 0,0,0
+	InitialOmegaVector = 0., 0., 0.
+	GlobalDampingFactor = 0.05000000
+EndBody
+%
+Body MBS_FlexBody_Full
+	BodyID = 29
+	BodyName = con_rod.4
+	Path2MtxFile = conrod_small.mtx
+	Is_Itf_active = no
+	Is_QuadraticTermOF_Itt_active = no
+	LocationCenterMass = 307.000000,-6.977283,30.933167
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,-0.82097054,0.57097055,0.00000000,-0.57097055,-0.82097054
+	InitialVelocityVector = 0,0,0
+	InitialOmegaVector = 0., 0., 0.
+	GlobalDampingFactor = 0.05000000
+EndBody
+%
+Body MBS_FlexBody_Full
+	BodyID = 30
+	BodyName = con_rod.5
+	Path2MtxFile = conrod_small.mtx
+	Is_Itf_active = no
+	Is_QuadraticTermOF_Itt_active = no
+	LocationCenterMass = 73.000000,6.977283,30.933167
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,0.82097054,0.57097055,0.00000000,-0.57097055,0.82097054
+	InitialVelocityVector = 0,0,0
+	InitialOmegaVector = 0., 0., 0.
+	GlobalDampingFactor = 0.05000000
+EndBody
+%
+Body MBS_FlexBody_Full
+	BodyID = 31
+	BodyName = con_rod.6
+	Path2MtxFile = conrod_small.mtx
+	Is_Itf_active = no
+	Is_QuadraticTermOF_Itt_active = no
+	LocationCenterMass = 107.000000,-68.433167,44.477283
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,-0.57097055,0.82097054,0.00000000,-0.82097054,-0.57097055
+	InitialVelocityVector = 0,0,0
+	InitialOmegaVector = 0., 0., 0.
+	GlobalDampingFactor = 0.05000000
+EndBody
+%
+Body MBS_FlexBody_Full
+	BodyID = 32
+	BodyName = con_rod.7
+	Path2MtxFile = conrod_small.mtx
+	Is_Itf_active = no
+	Is_QuadraticTermOF_Itt_active = no
+	LocationCenterMass = 183.000000,6.977283,30.933167
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,0.82097054,0.57097055,0.00000000,-0.57097055,0.82097054
+	InitialVelocityVector = 0,0,0
+	InitialOmegaVector = 0., 0., 0.
+	GlobalDampingFactor = 0.05000000
+EndBody
+%
+Body MBS_FlexBody_Full
+	BodyID = 33
+	BodyName = con_rod.8
+	Path2MtxFile = conrod_small.mtx
+	Is_Itf_active = no
+	Is_QuadraticTermOF_Itt_active = no
+	LocationCenterMass = 217.000000,-68.433167,44.477283
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,0.00000000,-0.57097055,0.82097054,0.00000000,-0.82097054,-0.57097055
+	InitialVelocityVector = 0,0,0
+	InitialOmegaVector = 0., 0., 0.
+	GlobalDampingFactor = 0.05000000
+EndBody
+%
+%
+%---------------- Generic Constraints ------------------------
+%
+Constraint Generic
+	 ConstraintID = 1
+	 BodyIDs = 10, 2
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = -17.000000, 123.146000, 123.146000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 2
+	 BodyIDs = 12, 3
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 17.000000, -85.646000, 85.646000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 3
+	 BodyIDs = 14, 4
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 273.000000, 123.146000, 123.146000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 4
+	 BodyIDs = 16, 5
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 307.000000, -85.646000, 85.646000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 5
+	 BodyIDs = 18, 6
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 73.000000, 85.646000, 85.646000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 6
+	 BodyIDs = 20, 7
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 107.000000, -123.146000, 123.146000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 7
+	 BodyIDs = 22, 8
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 183.000000, 85.646000, 85.646000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 8
+	 BodyIDs = 24, 9
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 217.000000, -123.146000, 123.146000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 9
+	 BodyIDs = 2, 0
+	 dxFixed = no
+	 dyFixed = no
+	 dzFixed = yes
+	 axFixed = yes
+	 ayFixed = no
+	 azFixed = no
+	 Location = -17.000000, 140.004227, 140.004227
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,0.70710678,0.70710678,0.00000000,-0.70710678,0.70710678
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 10
+	 BodyIDs = 3, 0
+	 dxFixed = no
+	 dyFixed = no
+	 dzFixed = yes
+	 axFixed = yes
+	 ayFixed = no
+	 azFixed = no
+	 Location = 17.000000, -102.504227, 102.504227
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,-0.70710678,0.70710678,0.00000000,-0.70710678,-0.70710678
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 11
+	 BodyIDs = 4, 0
+	 dxFixed = no
+	 dyFixed = no
+	 dzFixed = yes
+	 axFixed = yes
+	 ayFixed = no
+	 azFixed = no
+	 Location = 273.000000, 140.004227, 140.004227
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,0.70710678,0.70710678,0.00000000,-0.70710678,0.70710678
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 12
+	 BodyIDs = 5, 0
+	 dxFixed = no
+	 dyFixed = no
+	 dzFixed = yes
+	 axFixed = yes
+	 ayFixed = no
+	 azFixed = no
+	 Location = 307.000000, -102.504227, 102.504227
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,-0.70710678,0.70710678,0.00000000,-0.70710678,-0.70710678
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 13
+	 BodyIDs = 6, 0
+	 dxFixed = no
+	 dyFixed = no
+	 dzFixed = yes
+	 axFixed = yes
+	 ayFixed = no
+	 azFixed = no
+	 Location = 73.000000, 102.504227, 102.504227
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,0.70710678,0.70710678,0.00000000,-0.70710678,0.70710678
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 14
+	 BodyIDs = 7, 0
+	 dxFixed = no
+	 dyFixed = no
+	 dzFixed = yes
+	 axFixed = yes
+	 ayFixed = no
+	 azFixed = no
+	 Location = 107.000000, -140.004227, 140.004227
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,-0.70710678,0.70710678,0.00000000,-0.70710678,-0.70710678
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 15
+	 BodyIDs = 8, 0
+	 dxFixed = no
+	 dyFixed = no
+	 dzFixed = yes
+	 axFixed = yes
+	 ayFixed = no
+	 azFixed = no
+	 Location = 183.000000, 102.504227, 102.504227
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,0.70710678,0.70710678,0.00000000,-0.70710678,0.70710678
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 16
+	 BodyIDs = 9, 0
+	 dxFixed = no
+	 dyFixed = no
+	 dzFixed = yes
+	 axFixed = yes
+	 ayFixed = no
+	 azFixed = no
+	 Location = 217.000000, -140.004227, 140.004227
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,-0.70710678,0.70710678,0.00000000,-0.70710678,-0.70710678
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 17
+	Location = -17.000000, 37.499982, -0.000026
+	BodyIDs = 11, 26
+	InterfaceNode = 100000
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 18
+	Location = 17.000000, 37.500000, 0.000000
+	BodyIDs = 13, 27
+	InterfaceNode = 100000
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 19
+	Location = 273.000000, 37.499982, -0.000026
+	BodyIDs = 15, 28
+	InterfaceNode = 100000
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 20
+	Location = 307.000000, 37.500000, 0.000000
+	BodyIDs = 17, 29
+	InterfaceNode = 100000
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 21
+	Location = 73.000000, -37.500000, 0.000000
+	BodyIDs = 19, 30
+	InterfaceNode = 100000
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 22
+	Location = 107.000000, -37.500000, 0.000000
+	BodyIDs = 21, 31
+	InterfaceNode = 100000
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 23
+	Location = 183.000000, -37.500000, 0.000000
+	BodyIDs = 23, 32
+	InterfaceNode = 100000
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 24
+	Location = 217.000000, -37.500000, 0.000000
+	BodyIDs = 25, 33
+	InterfaceNode = 100000
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 25
+	Location = -17.000000, 123.145564, 123.145555
+	BodyIDs = 10, 26
+	InterfaceNode = 100001
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 26
+	Location = 17.000000, -85.646000, 85.646000
+	BodyIDs = 12, 27
+	InterfaceNode = 100001
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 27
+	Location = 273.000000, 123.146000, 123.146000
+	BodyIDs = 14, 28
+	InterfaceNode = 100001
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 28
+	Location = 307.000000, -85.646000, 85.646000
+	BodyIDs = 16, 29
+	InterfaceNode = 100001
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 29
+	Location = 73.000000, 85.646000, 85.646000
+	BodyIDs = 18, 30
+	InterfaceNode = 100001
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 30
+	Location = 107.000000, -123.146000, 123.146000
+	BodyIDs = 20, 31
+	InterfaceNode = 100001
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 31
+	Location = 183.000000, 85.646000, 85.646000
+	BodyIDs = 22, 32
+	InterfaceNode = 100001
+EndConstraint
+%
+Constraint FixRiBoFleBo
+	ConstraintID = 32
+	Location = 217.000000, -123.146000, 123.146000
+	BodyIDs = 24, 33
+	InterfaceNode = 100001
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 33
+	 BodyIDs = 1, 11
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = -17.000000, 37.499982, -0.000026
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 34
+	 BodyIDs = 1, 13
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 17.000000, 37.500000, 0.000000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 35
+	 BodyIDs = 1, 15
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 273.000000, 37.500000, 0.000000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 36
+	 BodyIDs = 1, 17
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 307.000000, 37.500000, 0.000000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 37
+	 BodyIDs = 1, 19
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 73.000000, -37.500000, 0.000000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 38
+	 BodyIDs = 1, 21
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 107.000000, -37.500000, 0.000000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 39
+	 BodyIDs = 1, 23
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 183.000000, -37.500000, 0.000000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 40
+	 BodyIDs = 1, 25
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 217.000000, -37.500000, 0.000000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+Constraint Generic
+	 ConstraintID = 41
+	 BodyIDs = 1, 0
+	 dxFixed = yes
+	 dyFixed = yes
+	 dzFixed = yes
+	 axFixed = no
+	 ayFixed = yes
+	 azFixed = yes
+	 Location = 145.000000, 0.000000, 0.000000
+	 ConstraintOrientation = 1.00000000,0.00000000,0.00000000,0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+EndConstraint
+%
+%
+%---------------- Gear Constraint ------------------------
+%
+%
+%---------------- Motion Constraint ------------------------
+%
+%
+%---------------- Forces ------------------------
+%
+Force GenericTorque
+	 ForceID = 1
+	 BodyIDs = 1,0
+	 AxisType = SpaceFixed
+	 Axis = 1.000000,0.000000,0.000000
+	 TorqueExpression = -PARVAL[damp]*MEAVAL[omega_KW]
+EndForce
+%
+Force GenericTorque
+	 ForceID = 2
+	 BodyIDs = 1,0
+	 AxisType = SpaceFixed
+	 Axis = 1.000000,0.000000,0.000000
+	 TorqueExpression = STEP[SIMTIME[],1.5,0.0,2.5,2.0e5,cosine]-STEP[SIMTIME[],3.0,0.0,4.0,2.0e5,cosine]+STEP[SIMTIME[],0.0,0.0,0.1,2.0e4,cosine]
+EndForce
+%
+%
+%---------------- Data Object ------------------------
+%
+DataObject Parameter
+	 Label  = damp
+	 VisualizationID = 1
+	 InitialValue = 500.000000
+EndDataObject
+%
+%
+%---------------- Measures ------------------------
+%
+Measure Rotational
+	 MeasureName = omega_KW
+	 MeasureID = 1
+	 BodyIDs = 1,0
+	 MeasureCoordinate = AngleVel
+	 MeasureVec = 0.000000,1.000000,0.000000
+	 MeasurePlaneVec1 = 0.000000,1.000000,0.000000
+	 MeasurePlaneVec2 = 0.000000,0.000000,1.000000
+	 UseInitialValueAsOffset = yes
+EndMeasure
+%
+%---------------- Solver ------------------------
+%
+Simulation Dynamic
+	 SimulationTimeEnd = 0.05
+	 OutputTimeBegin = 0.000000
+	 OutputTimeStepSize = 1.000000e-03
+	 isExactOutputTimeEnforced = yes
+	 WriteConstraintForceResultFile = no
+	 WriteForceResultFile = no
+	 WriteVelocityResultFile = no
+	 WriteStateResultFile = yes
+	 WriteAccelerationResultFile = no
+	 WriteExtConstraintLagrangeResultFile = no
+	 WriteMeasureResultFile = yes
+EndSimulation
+%
+Solver HHT
+	 Alpha = -0.300000
+	 MaxNumberOfInnerIterations = 10, 10
+	 GlobalErrorTolerance = 1.000000e-05
+	 SolverMinTimeStep = 1.000000e-14
+	 SolverMaxTimeStep = 5.000000e-04
+	 ModifyNewmark = no
+	 MaxNumOfTimeStepsUsingSameFactorizedJacobian = 0
+	 UsePardisoScalingAndMatching = no
+	 DebugLevel = 0
+	 DebugTimeBegin = 0.000000
+	 DebugTimeEnd = 1.000000
+EndSolver
+%

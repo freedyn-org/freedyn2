@@ -52,10 +52,58 @@ def _bodies(model):
     out = []
     for k, (name, b) in enumerate(model["bodies"].items()):
         color = PALETTE[k % len(PALETTE)]
-        shapes = [dict(s, color=s.get("color", color)) for s in (b.get("shapes") or defaults[name])]
-        out.append({"name": name, "mass": b["mass"], "shapes": shapes, "default_shapes": not b.get("shapes"),
-                    "position": list(b["position"]), "orientation": list(b["orientation"])})
+        own = list(b.get("shapes") or [])
+        entry = {"name": name, "mass": b["mass"], "default_shapes": not own,
+                 "position": list(b["position"]), "orientation": list(b["orientation"])}
+        if "flex" in b:
+            entry["flex"], extra = _flex(name, b, own, model)
+            if extra:
+                own, entry["default_shapes"] = own + extra, False
+        entry["shapes"] = [_extent(dict(s, color=s.get("color", color))) for s in (own or defaults.get(name, []))]
+        out.append(entry)
     return out
+
+
+def _extent(shape):
+    """A mesh shape with its extent: the largest distance of a vertex from the body frame origin
+    (the viewer sizes the scene and the view with it)."""
+    if shape["type"] == "mesh":
+        try:
+            from ..fem.stl import read_surface
+            v = read_surface(shape["file"]).reshape(-1, 3) * np.asarray(shape.get("scale", [1, 1, 1]), float)
+            pb = v @ rotation_matrix(np.array(shape["orientation"], float)).T + np.asarray(shape["position"], float)
+            shape["extent"] = float(np.sqrt((pb ** 2).sum(axis=1).max())) if len(pb) else 0.0
+        except (OSError, ValueError, IndexError):
+            pass
+    return shape
+
+
+def _flex(name, b, shapes, model):
+    """A flexible body in the viewer: its modal coordinate channels, the mode shapes on the
+    vertices of its STL shapes (fdgen.flex.viz), base64 float32 (nm, nv, 3), and the spiders of
+    its interfaces (node, type, centre in the body frame, the nodes they connect, base64 float32
+    (n, 3), the joints and forces at them)."""
+    from ..flex import load_modal
+    from ..flex.viz import shape_modes
+    d = load_modal(b["flex"]["modal"])
+    try:
+        modes, extra = shape_modes(b, shapes)
+    except (OSError, ValueError):
+        modes, extra = {}, []
+    from ..flex.report import elements_at
+    from ..geometry import body_frame
+    R, A = body_frame(b)
+    given = {i["node"]: i for i in (getattr(d, "meta", None) or {}).get("interfaces", [])}
+    editable = "material" in b["flex"]
+    spiders = []
+    for node, kind, pts in getattr(d, "spiders", None) or []:
+        at = elements_at(model, name, node)
+        centre = d.node_positions[d.node_index(node)] if node in set(d.node_labels.tolist()) else pts.mean(axis=0)
+        spiders.append({"node": node, "type": kind, "center": [float(x) for x in centre], "n": len(pts),
+                        "points": _float32(pts), "elements": at, "point": [float(x) for x in R + A @ centre],
+                        "radius": given.get(node, {}).get("radius"), "editable": editable})
+    return {"eta": [f"{name}.eta{i + 1}.eta" for i in range(d.nm)],
+            "modes": {str(k): _float32(v) for k, v in modes.items()}, "spiders": spiders}, extra
 
 
 def _joints(model):
@@ -85,7 +133,7 @@ def _forces(model):
             o = np.asarray(f.get("orientation", [1.0, 0.0, 0.0, 0.0]), dtype=float)
             entry["point1"] = local_point(model, b1, loc).tolist()
             entry["point2"], entry["orientation2"] = _frame_on(model, b2, loc, rotation_matrix(o / np.linalg.norm(o)))
-        elif kind in ("force", "torque", "expression_force", "expression_torque") or "point" in f:
+        elif kind in ("force", "torque", "expression_force", "expression_torque", "curve_force", "curve_torque") or "point" in f:
             entry["point1"] = local_point(model, b1, f.get("point")).tolist()  # also types of extensions
         elif kind != "tire":
             entry["point1"] = [0.0, 0.0, 0.0]

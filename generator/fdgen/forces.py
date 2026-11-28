@@ -51,6 +51,8 @@ from .errors import ModelError
 from .geometry import body_frame, rotation_matrix
 from .kinematics import Connector, Ground
 from .lagrange import ElementFunctions
+from .splines import cubic, linear_table, segment_of
+from .splines import table as spline_table
 from . import tire as tire_model
 
 # kind: (number of bodies, number of parameters)
@@ -68,6 +70,11 @@ KINDS = {
     "tire": (1, tire_model.N_P),
     "tire_local": (1, tire_model.N_P_LOCAL),
     "sensor": (1, 15),
+    # characteristic curves (splines, the runtime selects the segment): [.., segment k, segment d]
+    "spline_spring_damper_ground": (1, 18),
+    "spline_spring_damper_bb": (2, 18),
+    "spline_torsion_ground": (1, 21),
+    "spline_torsion_bb": (2, 21),
 }
 # Offset of the runtime road (fdgen.tire.LOCAL_KEYS) in the parameters of the *_local tires.
 LOCAL_ROAD_OFFSET = {"tire_local": len(tire_model.TIRE_KEYS)}
@@ -90,6 +97,38 @@ def _spring_damper(c):
     if c.n == 2:
         ld.append((1, -s * e, x2, None))
     return ld, {"length": l, "velocity": ldot, "force": s}
+
+
+def _spline_spring_damper(c):
+    """s = k(l - l0) + d(ldot) + f0 with k, d curves (splines): the force over the deflection and
+    over the rate; the arguments of both for the runtime's segment lookup (c.spline_args)."""
+    p, b1, b2 = c.p, c.bodies[0], _other(c)
+    u1, x2, l0, f0 = p[0:3], p[3:6], p[6], p[7]
+    dr = b2.point(x2) - b1.point(u1)
+    l = ca.norm_2(dr)
+    e = dr / l
+    ldot = ca.dot(e, b2.point_velocity(x2) - b1.point_velocity(u1))
+    c.spline_args = [l - l0, ldot]
+    s = cubic(p[8:13], l - l0) + cubic(p[13:18], ldot) + f0
+    ld = [(0, s * e, u1, None)]
+    if c.n == 2:
+        ld.append((1, -s * e, x2, None))
+    return ld, {"length": l, "velocity": ldot, "force": s}
+
+
+def _spline_torsion(c):
+    """tau = -k(phi - phi0) - d(phidot) + tau0 with k, d curves (splines)."""
+    p, b1, b2 = c.p, c.bodies[0], _other(c)
+    x1, x2, y2 = b1.axis(p[0:3]), b2.axis(p[3:6]), b2.axis(p[6:9])
+    phi0, tau0 = p[9], p[10]
+    a, b = ca.dot(x1, y2), ca.dot(x1, x2)
+    x1d, x2d, y2d = (ca.cross(w, x) for w, x in ((b1.omega, x1), (b2.omega, x2), (b2.omega, y2)))
+    ad, bd = ca.dot(x1d, y2) + ca.dot(x1, y2d), ca.dot(x1d, x2) + ca.dot(x1, x2d)
+    phi = ca.atan2(a, b)
+    phidot = (b * ad - a * bd) / (a * a + b * b)
+    c.spline_args = [phi - phi0, phidot]
+    tau = -cubic(p[11:16], phi - phi0) - cubic(p[16:21], phidot) + tau0
+    return [(None, tau, phidot)], {"angle": phi, "rate": phidot, "torque": tau}
 
 
 def _force(c, frame):
@@ -153,6 +192,8 @@ _LAWS = {
     "tire": tire_model.loads,
     "tire_local": lambda c: tire_model.loads(c, tire_model.LocalRoad),
     "sensor": _sensor,
+    "spline_spring_damper_ground": _spline_spring_damper, "spline_spring_damper_bb": _spline_spring_damper,
+    "spline_torsion_ground": _spline_torsion, "spline_torsion_bb": _spline_torsion,
 }
 
 
@@ -172,6 +213,10 @@ def force_element_type(name, n_bodies, n_p, law, rep="lie") -> ElementFunctions:
     ld, out = law(c)
     funs = c.functions(name, Q=c.generalized_force(ld))
     funs["out"] = c.output_function(name, out)
+    args = getattr(c, "spline_args", None)
+    if args:  # arguments of the characteristic curves: the runtime selects their segments
+        funs["spline"] = ca.Function(f"fd_{name}_spline", [c.q, c.v, c.p, c.t], [ca.vertcat(*[c.expand(x) for x in args])],
+                                     ["q", "qd", "p", "t"], ["x"])
     return ElementFunctions(name, **funs)
 
 
@@ -202,7 +247,24 @@ def _tire(force, b1, b2, names):
         raise ModelError(f"force {force['name']}: {e}") from None
 
 
-def _spring_damper_element(force, b1, b2, names):
+def curves(force, splines):
+    """Tables of the stiffness and damping of a spring_damper / torsion_spring with a curve (the
+    name of a spline) for either; a number k becomes the line k x. None: both are numbers."""
+    k, d = force["stiffness"], force.get("damping", 0.0)
+    if not (isinstance(k, str) or isinstance(d, str)):
+        return None
+
+    def tab(v, key):
+        if not isinstance(v, str):
+            return linear_table(float(v))
+        if v not in (splines or {}):
+            raise ModelError(f"force {force['name']}: {key} {v!r} is not a spline of the model")
+        sp = splines[v]
+        return spline_table(sp["x"], sp["y"], sp.get("type", "akima"))
+    return tab(k, "stiffness"), tab(d, "damping")
+
+
+def _spring_damper_element(force, b1, b2, names, tables=None):
     (R1, A1), ground = b1, b2 is None
     r1 = np.array(force.get("point1", R1), dtype=float)
     r2 = np.array(force.get("point2", [0.0, 0.0, 0.0] if ground else b2[0]), dtype=float)
@@ -210,8 +272,14 @@ def _spring_damper_element(force, b1, b2, names):
     if l0 <= 0:
         raise ModelError(f"force {force['name']}: points coincide, give length > 0")
     x2 = r2 if ground else b2[1].T @ (r2 - b2[0])
+    end = "ground" if ground else "bb"
+    if tables:  # initial segments: deflection l - l0 at t = 0 and rate 0 (the runtime selects them)
+        l = float(np.linalg.norm(r2 - r1))
+        p = [*(A1.T @ (r1 - R1)), *x2, l0, force.get("preload", 0.0), *segment_of(tables[0], l - l0),
+             *segment_of(tables[1], 0.0)]
+        return "spline_spring_damper_" + end, names, p
     p = [*(A1.T @ (r1 - R1)), *x2, force["stiffness"], force.get("damping", 0.0), l0, force.get("preload", 0.0)]
-    return "spring_damper_" + ("ground" if ground else "bb"), names, p
+    return "spring_damper_" + end, names, p
 
 
 def _force_element(force, b1, b2, names):
@@ -244,26 +312,51 @@ def _bushing_element(force, b1, b2, names):
     return "bushing_" + ("ground" if ground else "bb"), names, p
 
 
-def _torsion_element(force, b1, b2, names):
+def _torsion_element(force, b1, b2, names, tables=None):
     A1, ground = b1[1], b2 is None
     K = _joint_frame(force)
     x2, y2 = (K[:, 0], K[:, 1]) if ground else (b2[1].T @ K[:, 0], b2[1].T @ K[:, 1])
+    end = "ground" if ground else "bb"
+    if tables:  # the angle is 0 at t = 0 (the frame of the spring), rate 0
+        phi0 = force.get("angle", 0.0)
+        p = [*(A1.T @ K[:, 0]), *x2, *y2, phi0, force.get("preload", 0.0), *segment_of(tables[0], -phi0),
+             *segment_of(tables[1], 0.0)]
+        return "spline_torsion_" + end, names, p
     p = [*(A1.T @ K[:, 0]), *x2, *y2, force["stiffness"], force.get("damping", 0.0), force.get("angle", 0.0),
          force.get("preload", 0.0)]
-    return "torsion_" + ("ground" if ground else "bb"), names, p
+    return "torsion_" + end, names, p
 
 
 _ELEMENTS = {"tire": _tire, "spring_damper": _spring_damper_element, "force": _force_element,
              "torque": _torque_element, "bushing": _bushing_element, "torsion_spring": _torsion_element}
 
 
-def element(force, bodies):
-    """Library element of a validated YAML force: (kind, [bodies], p) from the geometry at t = 0."""
+# the segment offsets in p of the two curves of the spline types
+SPLINE_SEGMENTS = {"spline_spring_damper": (8, 13), "spline_torsion": (11, 16)}
+
+
+def element(force, bodies, splines=None):
+    """Library element of a validated YAML force: (kind, [bodies], p) from the geometry at t = 0;
+    with .splines [(segment offset, table)] for the types with curves (fdm: spline)."""
     ground = force["body2"] == "ground"
     names = [force["body1"]] + ([] if ground else [force["body2"]])
     b1 = body_frame(bodies[force["body1"]])
     b2 = None if ground else body_frame(bodies[force["body2"]])
+    if force["type"] in ("spring_damper", "torsion_spring"):
+        tables = curves(force, splines)
+        kind, names, p = _ELEMENTS[force["type"]](force, b1, b2, names, tables)
+        segs = SPLINE_SEGMENTS.get(kind.rsplit("_", 1)[0])
+        return LibraryElement(kind, names, p, list(zip(segs, tables)) if tables else [])
     return _ELEMENTS[force["type"]](force, b1, b2, names)
+
+
+class LibraryElement(tuple):
+    """(kind, [bodies], p) with .splines: [(segment offset in p, table 5 x n)]."""
+
+    def __new__(cls, kind, names, p, splines=()):
+        self = super().__new__(cls, (kind, names, p))
+        self.splines = list(splines)
+        return self
 
 
 def sensor_element(sensor, bodies, gravity):

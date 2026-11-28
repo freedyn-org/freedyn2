@@ -220,7 +220,8 @@ def test_continuous_angle_counts_revolutions():
     for a in angles:  # rotate about global z in small steps, accepting each
         q = np.r_[R, np.cos(a / 2), 0, 0, np.sin(a / 2)]
         values.append(float(e.out(q, np.zeros(6), np.zeros(6), p, 0.0)[0]))
-        p = np.array(e.post(q, np.zeros(6), p, 0.0)).ravel()
+        state = e.post(q, np.zeros(6), p, 0.0)  # sparse: the state entries of p
+        p[e.post.sparsity_out(0).row()] = np.array(state.nonzeros())
     np.testing.assert_allclose(values, angles, atol=1e-12)
 
 
@@ -411,3 +412,102 @@ def test_outputs_are_channels_without_loads():
         plugin_elements(validate(_input_model(outputs={"const": "k * 2"})))
     with pytest.raises(ModelError, match="already used"):
         validate(_input_model(outputs={"f": "z"}))
+
+
+def test_spline_of_1000_points_is_data(tmp_path):
+    """A spline is evaluated by the runtime's segment lookup: the generated code holds one cubic
+    per call (small, whatever the number of points), the table is data in p. A driver on a
+    spline of 1000 points of t, a spring law of a measure and a nested call agree with the
+    numeric spline at every output."""
+    import time
+
+    import yaml
+
+    from fdgen import cli, splines
+    from fdgen.view.scene import read_results
+    try:
+        runtime = cli.find_runtime()
+    except FileNotFoundError:
+        pytest.skip("freedyn2_run not built")
+    x = np.linspace(0.0, 2.0, 1000)
+    y = 0.1 * np.sin(3 * x) + 0.02 * x * x
+    (tmp_path / "lift.txt").write_text("\n".join(f"{a:.17g} {b:.17g}" for a, b in zip(x, y)))
+    m = {"model": "spline_table", "gravity": [0, 0, 0],
+         "splines": {"lift": {"file": "lift.txt", "type": "akima"}},
+         "bodies": {"cart": {"mass": 1.0, "inertia": [1, 1, 1]}, "mass": {"mass": 2.0, "inertia": [1, 1, 1]}},
+         "joints": {"rail": {"type": "prismatic", "body1": "cart"},
+                    "slider": {"type": "prismatic", "body1": "mass", "location": [1, 0, 0]}},
+         "measures": {"zc": {"type": "displacement", "body1": "cart", "component": "z"},
+                      "z": {"type": "displacement", "body1": "mass", "component": "z"}},
+         "drivers": {"lift": {"measure": "zc", "motion": "lift(t)"}},
+         "forces": {"law": {"type": "expression_force", "body1": "mass", "direction": [0, 0, 1],
+                            "force": "-100 * lift(z + 1) + 100 * lift(1.0)"}},
+         "outputs": {"nested": "lift(lift(zc + 1) + 1)"},
+         "solver": {"type": "HHT", "alpha": -0.1, "end_time": 1.5, "step": 1e-3, "output_step": 1e-2}}
+    path = tmp_path / "m.yaml"
+    path.write_text(yaml.safe_dump(m))
+    t0 = time.perf_counter()
+    fdm, model, _ = cli.build(path, tmp_path)
+    assert time.perf_counter() - t0 < 60
+    sources = sum(p.stat().st_size for p in tmp_path.rglob("*.c"))
+    assert 0 < sources < 400_000  # an if_else chain over 1000 points was megabytes
+    cli.simulate(runtime, fdm, tmp_path / "r.csv")
+    r = read_results(tmp_path / "r.csv")
+    f = splines.numeric(x, y, "akima")
+    assert r["cart.R_z"] == pytest.approx([f(t) for t in r["t"]], abs=1e-9)
+    assert r["nested.value"] == pytest.approx([f(f(f(t) + 1) + 1) for t in r["t"]], abs=1e-9)
+    text = fdm.read_text()
+    assert "\nspline " in text
+    # the driver along a curve of time is a library type (no plugin code), the others are not
+    assert "element spline_driver_displacement_ground lift" in text
+    assert not (tmp_path / "spline_table_plugin_src" / "d_spline_table_lift.c").exists()
+
+
+@pytest.mark.parametrize("measure", [
+    {"type": "angle", "body1": "a", "body2": "b", "vector": [1, 0, 0], "plane": [[1, 0, 0], [0, 1, 0]],
+     "offset": "initial"},
+    {"type": "angle", "body1": "a", "orientation": [1, 0, 0, 0]},
+    {"type": "displacement", "body1": "a", "body2": "b", "component": "y", "frame": "b", "offset": "initial"},
+    {"type": "displacement", "body1": "b", "body2": "a", "component": "x", "frame": "a", "offset": "initial"},
+    {"type": "displacement", "body1": "a", "component": "x", "frame": "a", "offset": 0.5},  # starts at 0
+    {"type": "distance", "body1": "a", "point1": [0.6, 0, 0], "offset": "initial"},
+    {"type": "distance", "body1": "a", "body2": "b", "offset": "initial"}])
+def test_library_drivers_equal_the_plugin(tmp_path, measure):
+    """A driver along a curve of time is one of the six library types (spline_driver_<measure>_
+    <end>, no plugin) and moves the bodies as the same driver built in the model plugin."""
+    import yaml
+
+    from fdgen import cli, drivers
+    from fdgen.view.scene import read_results
+    try:
+        runtime = cli.find_runtime()
+    except FileNotFoundError:
+        pytest.skip("freedyn2_run not built")
+    m = {"model": "m", "gravity": [0, 0, -9.81],
+         "bodies": {"a": {"mass": 1, "inertia": [0.1, 0.2, 0.3], "position": [0.5, 0, 0],
+                          "angular_velocity": [0.3, -0.2, 0.5]},
+                    "b": {"mass": 2, "inertia": [0.2, 0.1, 0.3], "position": [0, 0.2, 0]}},
+         "joints": {"hold": {"type": "spherical", "body1": "b", "location": [0, 0.2, 0]}},
+         "splines": {"c": {"x": [0, 0.1, 0.2, 0.3, 0.5], "y": [0, 0.01, 0.03, 0.02, 0.05]}},
+         "measures": {"m": measure}, "drivers": {"d": {"measure": "m", "motion": "c(t)"}},
+         "solver": {"type": "HHT", "alpha": -0.05, "end_time": 0.4, "step": 1e-3, "output_step": 1e-2}}
+    model = validate(m)
+    el = drivers.library_driver(model, "d", model["drivers"]["d"])
+    end = "ground" if measure.get("body2", "ground") == "ground" else "bb"
+    assert el is not None and el[0] == f"spline_driver_{measure['type']}_{end}"
+    assert drivers.driver_elements(model) == []
+    out = {}
+    for name, motion in (("library", "c(t)"), ("plugin", "c(t) + 0")):
+        d = tmp_path / name
+        d.mkdir()
+        m["drivers"]["d"]["motion"] = motion
+        (d / "m.yaml").write_text(yaml.safe_dump(m))
+        fdm, _, _ = cli.build(d / "m.yaml", d)
+        assert ("plugin" in fdm.read_text()) == (name == "plugin")
+        cli.simulate(runtime, fdm, d / "r.csv")
+        out[name] = read_results(d / "r.csv")
+    for ch in ("a.R_x", "a.R_y", "a.R_z", "a.theta1", "b.theta3"):
+        assert out["library"][ch] == pytest.approx(out["plugin"][ch], abs=1e-9), ch
+    # not covered: a ramp, another motion, an angle range, a frame of a third body
+    for d in ({"measure": "m", "motion": "c(t)", "ramp": 0.5}, {"measure": "m", "motion": "2 * c(t)"}):
+        assert drivers.library_driver(model, "d", d) is None

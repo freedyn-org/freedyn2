@@ -75,6 +75,9 @@ Read in this order; each stop builds on the previous one.
 |---|---|
 | `fdgen/lagrange.py` | element function set; Lagrange elements (vector space) and Lie group elements |
 | `fdgen/rigid_body.py` | rigid body: Lie group R³×SO(3) (default), Euler parameters (legacy profile), Shabana Eq. 2.13 |
+| `fdgen/flex_body.py` | flexible body (floating frame, modal coordinates), split into element types of fixed size (frame, mode, pair); joint primitives at a node; parameters from the modal data |
+| `fdgen/flex/` | modal data (`modal.py`: inertia invariants), Adams MTX reader and writer (`mtx.py`) |
+| `fdgen/fem/` | linear FEM of a part: Nastran bulk data (`nastran.py`), elements (`elements.py`), assembly with RBE2 / RBE3 (`assemble.py`), Craig-Bampton and invariants (`reduce.py`) with `freedyn2_modal` (`runtime/app/modal.cpp`) |
 | `fdgen/kinematics.py` | `Body`, `Ground`, `Connector`: kinematics of connected bodies, virtual power, exact rates |
 | `fdgen/joints.py` | translational / rotational constraint primitives; presets fixed, spherical, revolute, cylindrical, prismatic |
 | `fdgen/forces.py` | library forces: spring-damper, force, torque, torsion spring, bushing, tires (one function per law) |
@@ -199,7 +202,11 @@ so other parameter values need no recompilation. Measures: displacement, velocit
 rate, angle (continuous: it counts revolutions through element state, `angle = r + 2 pi
 round((ref - r) / 2 pi)` with `r = atan2(...)` and `ref` the last accepted value, updated by
 `post`; or ranges (-pi, pi], [0, 2 pi)), angular rate, angular velocity. Splines (`akima`, `zcc`,
-`fdgen.splines`) are called like functions, with the coefficients of the legacy splines. Spline
+`fdgen.splines`) are called like functions, with the coefficients of the legacy splines; the
+table [x, y, b, c, d] is in p, the generated function `spline` gives the argument of each call,
+the runtime selects its segment by binary search before res / ic / out and writes the segment's
+coefficients to p (`fd::System::update_splines`, nested calls in order), the element evaluates
+one cubic per call. Spline
 data come inline (`x`, `y`) or from a text table (`file`, `header_lines`, `columns`; read as the
 legacy `IO_TableDataReader`: space-separated, columns from 0, relative to the model file). The
 legacy kernel evaluates such expressions with
@@ -213,6 +220,21 @@ value at rest, joining `f` C2 at `Ta`) replaces `f` for `t < Ta`. The time deriv
 `Phi_t`, `Phi_tt` enter the consistent initial conditions and the velocity projection
 (`phid = B v + Phi_t`, `gamma = -d/dt(B) v - 2 (B v)_t - Phi_tt`), derived by CasADi for any
 element; the multiplier is the driving force or torque.
+
+**Initial state** (`HhtIntegrator::initialize`). Redundant constraints are found on the
+constraint Jacobian B at the given positions (`System::find_redundant_constraints`: columns
+equilibrated, rows of unit length, modified Gram-Schmidt in model order, a row whose part
+orthogonal to the earlier ones is below 1e-8 is redundant) and deactivated
+(`System::deactivate_constraints`: residual row `lam_c`, unit row in the iteration and the
+initial-condition matrix, so the pattern grows by those diagonal entries and nothing else
+changes). Positions that violate the active constraints are assembled by Newton's method with
+the initial-condition matrix, `[M B^T; B 0] [delta; mu] = [0; -Phi]` (the smallest correction in
+the mass metric), applied as `q o exp(delta)`. With `statics` the static equilibrium follows,
+by pseudo-transient continuation (Kelley and Keyes 1998) with the generated iteration matrix at
+the coefficients `(0, beta, 0, 1)`: its rows are `[M + beta K T, B^T; B, 0]`, i.e. Newton's method
+regularized by `M / beta`; beta follows the switched evolution relaxation rule on the merit
+`|a|_M`, the acceleration at rest from the initial-condition system, and the positions are
+projected onto `Phi = 0` after every step. No generated function is added for any of it.
 
 **HHT**, with `beta = (1-alpha)^2/4` and `gamma = 1/2 - alpha`, in two forms. Default
 `arnold_bruls`: equations of motion at `t_{n+1}`, `alpha` only in the Newmark pseudo-acceleration
@@ -338,7 +360,8 @@ a maneuver (straight running, then cornering) differ by about 3 % with N fixed (
 converged), and the whole difference is in the math library (`sin`, `cos`, `atan`: their cost
 depends on the argument); the KLU refactorization and all generated code execute the same
 number of instructions in every step. The generated element functions are straight-line code
-(`if_else`, `step` and spline segments are arithmetic blends of all cases), a time step
+(`if_else` and `step` are arithmetic blends of all cases; the spline segment lookup is a
+binary search in the runtime, its cost grows with the log of the number of points), a time step
 allocates no memory (work buffers are allocated with the system; exceptions only on failure),
 and the scatter assembly visits the same nonzeros every step.
 

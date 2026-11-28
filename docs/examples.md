@@ -73,6 +73,15 @@ torsion spring: the flywheel oscillates about the rotor's motion.
 
 `freedyn2 examples driven_rotor`
 
+## Parallelogram linkage
+
+Four revolute joints in a planar loop, released with the cranks at 45 degrees. In space such a
+loop is overconstrained: three of its constraints repeat the others. The run finds and names
+them at the start and moves on with the rest ([the initial state](reference/solver.md#the-initial-state));
+with `statics: true` it starts hanging still in its equilibrium instead.
+
+`freedyn2 examples parallelogram`
+
 ## More
 
 `freedyn2 examples` lists the others: oscillators, a torsion pendulum, a bushing mount, a

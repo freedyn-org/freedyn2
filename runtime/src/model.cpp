@@ -114,6 +114,7 @@ Model load_model(const std::string& path) {
         else if (k == "exact_output") ss >> s.exact_output;
         else if (k == "output_begin") ss >> s.output_begin;
         else if (k == "vproj_tol") ss >> s.vproj_tol;
+        else if (k == "statics") ss >> s.statics;
         else fail("unknown solver key '" + k + "'");
       }
     } else if (key == "element") {
@@ -151,6 +152,15 @@ Model load_model(const std::string& path) {
         if (index < 0) fail("element " + cur->name + ": input '" + name + "' not declared");
         cur->inputs.emplace_back(index, std::stoi(slot.substr(colon + 1)));
       }
+    } else if (cur && key == "spline") {  // segment offset, points n, table (5 n numbers)
+      ElementSpec::SplineCall c;
+      if (!(ss >> c.segment >> c.n) || c.n < 1) fail("spline: expected segment offset and number of points");
+      c.table = read_all<double>(ss);
+      if (static_cast<int>(c.table.size()) != 5 * c.n)
+        fail("spline: expected " + std::to_string(5 * c.n) + " table values, got " + std::to_string(c.table.size()));
+      for (int i = 1; i < c.n; ++i)
+        if (!(c.table[i] > c.table[i - 1])) fail("spline: x values must be increasing");
+      cur->splines.push_back(std::move(c));
     } else if (cur && key == "jacobian") {
       ss >> cur->jacobian;
       if (cur->jacobian != "full" && cur->jacobian != "no_qvv") fail("jacobian must be full or no_qvv");

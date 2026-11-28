@@ -1,0 +1,75 @@
+%% freedyn2 test model: legacy check-in test 03_FlyingFleBo (me_testing), MTX path relative
+Header freeDynHeader
+	FileVersion = 04|19
+	%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	%                 ______             _____                              +
+	%                |  ____|           |  __ \                             +
+	%                | |__ _ __ ___  ___| |  | |_   _ _ __                  +
+	%                |  __| '__/ _ \/ _ \ |  | | | | | '_ \                 +
+	%                | |  | | |  __/  __/ |__| | |_| | | | |                +
+	%                |_|  |_|  \___|\___|_____/ \__, |_| |_|                +
+	%                                            __/ |                      +
+	%                                           |___/                       +
+	%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+
+	% by mbs research group (WS, WW, KS, KN, FP, TL, SO)                 	+
+	% @FH OOE F&E GmbH, Stelzhamerstr. 23, 4600 Wels                        +
+	%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+
+	% version = 04|19                                                       +
+	% comments: first version of updated input-file 			            +
+	%                                                                       +
+	%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+EndHeader
+%
+Body MBS_FlexBody_Full
+	BodyID = 1
+	BodyName = flex_beam
+	Path2MtxFile = ../../../examples/data/flex_beam.mtx
+	Is_Itf_active = yes
+	Is_QuadraticTermOF_Itt_active = yes
+	LocationCenterMass = 0.000000,0.000000,0.000000
+	OrientationPAI = 1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000,0.00000000,0.00000000,-0.00000000,1.00000000
+	InitialVelocityVector = 0,100,0
+    InitialOmegaVector = 0., 1000., 5000.
+	GlobalDampingFactor = 0.00000000
+EndBody
+%
+%---------------- Forces ------------------------
+%
+Force Gravity
+	ForceID = 1		
+	GravityAccVector = -981000, 0, 0 
+EndForce
+%
+%------------------ Solver -------------------------------------------------------
+%
+Simulation Dynamic
+    SimulationTimeEnd = 0.0001
+	%
+    OutputTimeBegin = 0.0
+    OutputTimeStepSize = 1e-6
+    isExactOutputTimeEnforced = yes
+	%
+	WriteStateResultFile = yes
+    WriteConstraintForceResultFile = no
+    WriteForceResultFile = no
+    WriteVelocityResultFile = yes
+    WriteAccelerationResultFile = no
+    WriteExtConstraintLagrangeResultFile = no
+    WriteMeasureResultFile = no
+EndSimulation
+%
+Solver HHT
+	Alpha = -0.050000
+	MaxNumberOfInnerIterations = 10, 10
+	GlobalErrorTolerance = 1.000000e-06
+    SolverMinTimeStep = 1.e-14      
+    SolverMaxTimeStep = 1e-6
+	ModifyNewmark = yes
+	MaxNumOfTimeStepsUsingSameFactorizedJacobian  = 0
+	UsePardisoScalingAndMatching = no
+	%
+    DebugLevel = 0
+    DebugTimeBegin = 0.
+    DebugTimeEnd = 0.0001
+EndSolver
+%

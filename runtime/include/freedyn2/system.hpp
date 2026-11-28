@@ -63,6 +63,24 @@ class System {
   // Overwrite qd of those elements by the modified formulas at the current q, qdd.
   void apply_modified_newmark(const HhtCoef& c);
 
+  // Redundant constraints (an overconstrained mechanism): rows of the constraint Jacobian B at
+  // the current state that depend linearly on earlier rows, in model order, so that the later
+  // element is the one reported. Tested on B with equilibrated columns and unit rows: a row
+  // whose part orthogonal to the earlier ones is below tol is redundant. Inactive rows are
+  // skipped.
+  std::vector<int> find_redundant_constraints(double tol = 1e-8);
+  // Replace the equations of these constraints by lam_c = 0 (residual row lam_c, unit row in
+  // the iteration matrix and the initial-condition matrix, b_c = 0; phi and phid stay the
+  // constraint values, for checks). The other constraints carry their forces. Changes the
+  // matrix pattern: call it before a linear solver has analyzed one.
+  void deactivate_constraints(const std::vector<int>& cons);
+  const std::vector<int>& inactive_constraints() const { return inactive_; }
+  bool constraint_active(int c) const { return !inactive_mask_[c]; }
+  // "<element> (constraint k of n)" of the global constraint c ("<element>" if it has one).
+  std::string constraint_name(int c) const;
+  // "<element> (velocity dof k of n)" of the global velocity dof i.
+  std::string dof_name(int i) const;
+
   // Runtime inputs (Model::inputs): parameters of the elements that use them, changed between
   // two steps (constant inside a step, also inside its Newton iterations). An input no element
   // uses can be set but has no effect.
@@ -89,6 +107,7 @@ class System {
     std::unique_ptr<GenFunction> init, out, update, scale;
     std::unique_ptr<GenFunction> mn_qd, jac_qd;  // modified Newmark only
     std::unique_ptr<GenFunction> post;           // element state update (e.g. continuous angles)
+    std::unique_ptr<GenFunction> spline;         // arguments of the spline calls (spec.splines)
     bool owner() const { return static_cast<bool>(init); }
     std::vector<int> coords;  // local stored coordinate -> global q index
     std::vector<int> map;     // local x index -> global x index
@@ -98,14 +117,22 @@ class System {
     std::vector<int> res_rows[2], ic_rows[4];  // scatter maps of vector outputs
     // Work buffers, allocated once: a time step allocates no memory (except the legacy
     // modified Newmark option).
-    std::vector<double> iter_buf, mn_qd_buf, mn_d_buf, jac_qd_buf, post_buf, scale_buf;
+    std::vector<double> iter_buf, mn_qd_buf, mn_d_buf, jac_qd_buf, post_buf, scale_buf, spline_buf;
     std::vector<double*> out_ptr;
     int iter_block = -1, ic_block = -1;
   };
 
   void gather(Instance& e);
+  // lam_c = 0 for the inactive constraints: their rows of the assembled matrix.
+  void pin_inactive(MatrixAssembler& a);
+  std::vector<int> inactive_;
+  std::vector<char> inactive_mask_;
   // Road plane of the *_local tires at their current wheel position (before res / ic / out).
   void update_roads();
+  // Segments of the spline calls at the current state: their coefficients into p (before res /
+  // ic / out; the generated code holds one cubic per call, the table is data).
+  void update_splines();
+  std::vector<int> spline_users_;
   // Inputs of res / iter in the order fixed by the generator (fdgen.lagrange.STD_INPUTS).
   std::array<const double*, 8> std_inputs(const Instance& e, const double* coef) const {
     return {e.q.data(), e.qd.data(), e.qdd.data(), e.lam.data(), e.spec.p.data(), coef, e.incr.data(), &t};

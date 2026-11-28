@@ -15,7 +15,8 @@ import yaml
 from . import forces
 from . import joints as joint_types
 from .geometry import rotation_matrix
-from . import extensions, formulas, hardpoints, plugin, resources, rigid_body, shapes, splines
+from . import curve_forces, drivers, extensions, flex_body, formulas, hardpoints, plugin, resources, rigid_body, shapes, splines
+from .flex import default_damping, load_modal, select_modes
 from .measures import POSITION_MEASURES
 from .errors import ModelError  # noqa: F401  (re-exported: fdgen.model.ModelError)
 
@@ -88,9 +89,71 @@ def _body(name, b, base_dir):
     if abs(n - 1) > 1e-9:
         warnings.warn(f"body {name}: orientation |theta| = {n}, normalized")
     b["orientation"] = [t / n for t in b["orientation"]]
+    if "flex" in b and "material" not in b["flex"]:  # surface bodies: after the joints (fem.surface)
+        _flex(name, b, base_dir)
     if "shapes" in b:
         b["shapes"] = shapes.validate_shapes(f"body {name}", b["shapes"], b, base_dir)
     return b
+
+
+def _flex(name, b, base_dir):
+    """Flexible body: the modal data file (absolute path), mass and principal moments from it
+    (for checks, shapes and the viewer; the element uses the invariants)."""
+    flex = b["flex"] = dict(b["flex"])
+    if "fem" in flex:  # own FE reduction: the modal data file is made (and cached) from the mesh
+        from .fem import modal_file
+        fem = _data_path(flex["fem"], base_dir)
+        if not fem.is_file():
+            raise ModelError(f"body {name}: FE model {fem} not found")
+        flex["fem"] = str(fem.resolve())
+        try:
+            flex["modal"] = str(modal_file(fem, flex.get("interfaces"), flex.get("modes", 20), base_dir=base_dir,
+                                         name=name, flex=flex))
+        except (ModelError, FileNotFoundError, ValueError) as e:
+            raise ModelError(f"body {name}: {e}") from None
+    path = _data_path(flex["modal"], base_dir)
+    if not path.is_file():
+        raise ModelError(f"body {name}: modal data file {path} not found")
+    flex["modal"] = str(path.resolve())
+    try:
+        if "max_frequency" in flex or flex.get("exclude_modes"):  # the selected modes, as a file of their own
+            flex.setdefault("modal_all", flex["modal"])
+            flex["modal"] = str(select_modes(flex["modal_all"], flex.get("max_frequency"),
+                                             [int(m) for m in flex.get("exclude_modes") or []]))
+        data = load_modal(flex["modal"])
+    except ModelError as e:
+        raise ModelError(f"body {name}: {e}") from None
+    if "mass" in b and abs(data.mass / b["mass"] - 1) > 0.05:
+        warnings.warn(f"body {name}: flexible, its mass {data.mass:g} from the modal data differs from mass "
+                      f"{b['mass']:g} (density, units?)")
+    c = data.center_of_mass()
+    Jc = data.I7 - data.mass * (np.dot(c, c) * np.eye(3) - np.outer(c, c))
+    b["mass"] = float(data.mass)
+    b["inertia"] = [float(max(x, 1e-12 * np.trace(Jc))) for x in np.linalg.eigvalsh(Jc)]
+    if "damping" not in flex:  # as Adams: 1 % / 10 % / 100 % below 100 Hz / below 1000 Hz / above
+        flex["damping"] = default_damping(data.frequencies)
+        flex["damping_default"] = True
+    flex.setdefault("rotation_coupling", True)
+    flex.setdefault("quadratic_inertia", True)
+    if data.nm == 0:
+        raise ModelError(f"body {name}: the modal data has no elastic modes")
+
+
+def _warn_body_frame(bodies, measures, sensors):
+    """Measures and sensors use the body frame of a flexible body (its floating reference
+    frame, not a material point): the deformation is not in them."""
+    flex = {b for b, body in bodies.items() if "flex" in body}
+    if not flex:
+        return
+    for name, m in measures.items():
+        used = sorted(flex & {m.get("body1"), m.get("body2"), m.get("frame")})
+        if used:
+            warnings.warn(f"measure {name}: on the body frame of the flexible body {', '.join(used)} (its floating "
+                          "frame): the deformation is not in it")
+    for sn in sensors:
+        if sn["body1"] in flex:
+            warnings.warn(f"sensor {sn['name']}: on the body frame of the flexible body {sn['body1']}: the "
+                          "deformation is not in it")
 
 
 def _joint(name, j, bodies):
@@ -101,15 +164,45 @@ def _joint(name, j, bodies):
     if j["body1"] == "ground":
         raise ModelError(f"joint {name}: body1 must be a body (body2 may be ground)")
     t = np.array(j.get("orientation", [1.0, 0.0, 0.0, 0.0]), dtype=float)
-    return {
+    out = {
         "name": name, "type": j["type"], "body1": j["body1"], "body2": j.get("body2", "ground"),
         "location": list(j.get("location", [0.0, 0.0, 0.0])),
         "frame": rotation_matrix(t / np.linalg.norm(t)).tolist(), "fix": list(fix),
     }
+    _joint_node(out, j, bodies)
+    return out
+
+
+def _joint_node(out, j, bodies):
+    """A joint at a node of a flexible body: the node label (checked), location defaults to the
+    node position at t = 0. Flexible bodies without a node: the joint acts on the body frame."""
+    flex = out["body2"] if out["body2"] != "ground" else out["body1"]
+    if any("flex" in bodies[b] and "modal" not in bodies[b]["flex"] for b in (out["body1"], out["body2"])
+           if b != "ground"):
+        return  # a body meshed from its surface: nodes are set by fem.surface.prepare
+    if "node" not in j:  # fem.surface.prepare attaches it to the interface node at its location
+        return
+    if "flex" not in bodies[flex]:
+        raise ModelError(f"joint {out['name']}: node needs a flexible body as body2 (or body1 of a joint with the "
+                         f"ground), {flex} is rigid")
+    if out["body2"] != "ground" and "flex" in bodies[out["body1"]]:
+        raise ModelError(f"joint {out['name']}: two flexible bodies, the node is on body2 ({flex}); body1 "
+                         "would act on its body frame")
+    data = load_modal(bodies[flex]["flex"]["modal"])
+    try:
+        k = data.node_index(j["node"])
+    except KeyError as e:
+        raise ModelError(f"joint {out['name']}: {e.args[0]} of body {flex}") from None
+    out["node"] = int(j["node"])
+    if "location" not in j:
+        b = bodies[flex]
+        out["location"] = (np.array(b["position"]) + rotation_matrix(np.array(b["orientation"]))
+                           @ data.node_positions[k]).tolist()
 
 
 _FORCE_KEYS = {"spring_damper": ["stiffness"], "torsion_spring": ["stiffness"], "force": ["vector"],
                "torque": ["vector"], "bushing": ["stiffness", "rot_stiffness"], "expression_force": ["force"],
+               "curve_force": ["measure", "curve"], "curve_torque": ["measure", "curve", "axis"],
                "expression_torque": ["torque", "axis"], "tire": []}
 
 
@@ -283,9 +376,11 @@ def _strip_ids(model):
         s.pop("id", None)
 
 
-def validate(model, base_dir=None):
+def validate(model, base_dir=None, prepare_flex=True):
     """Validate against the JSON schema and the model rules; fill defaults. base_dir: directory
-    relative data files (spline tables, .tir files) are read from (default: the current one)."""
+    relative data files (spline tables, .tir files) are read from (default: the current one).
+    prepare_flex: mesh and reduce the flexible bodies and attach joints and forces to their
+    interface nodes (fdgen.fem.surface); False for tools that need the model before that."""
     ids = {i: list(where) for i, where in element_ids(model).items()} if isinstance(model, dict) else {}
     if isinstance(model, dict):
         model = _short_forms(model)  # {value: 5000, id: ...} -> 5000
@@ -305,12 +400,34 @@ def validate(model, base_dir=None):
     joints = [_joint(name, j, bodies) for name, j in section("joints")]
     road = _road(model.get("road"), base_dir)
     forces = [_force(name, f, bodies, road, base_dir) for name, f in section("forces")]
+    if prepare_flex and any("flex" in b for b in bodies.values()):
+        from .fem.surface import prepare  # rigid to flex, joints and forces at interface nodes
+        prepare(bodies, joints, forces, base_dir)
     measures = {name: _measure(name, m, bodies) for name, m in section("measures")}
     sensors = [_sensor(name, sn, bodies) for name, sn in section("sensors")]
+    _warn_body_frame(bodies, measures, sensors)
     parameters = dict(model.get("parameters") or {})
     inputs = {name: float(v) for name, v in (model.get("inputs") or {}).items()}
     model_splines = {name: _spline(name, sp, base_dir) for name, sp in section("splines")}
     drivers = {name: _driver(name, d, measures) for name, d in section("drivers")}
+    for f in forces:  # curve forces: a measure and a spline of the model
+        if f["type"] in curve_forces.CURVE_TYPES:
+            if f["type"] == "curve_force" and "axis" in f:
+                raise ModelError(f"force {f['name']}: a curve_force has a direction, no axis (a torque: curve_torque)")
+            if f["type"] == "curve_torque" and ({"direction", "point1", "point2"} & set(f)):
+                raise ModelError(f"force {f['name']}: a curve_torque has an axis, no direction or points")
+            if f["measure"] not in measures:
+                raise ModelError(f"force {f['name']}: measure {f['measure']!r} unknown (measures: {sorted(measures)})")
+            if f["curve"] not in model_splines:
+                raise ModelError(f"force {f['name']}: curve {f['curve']!r} is not a spline (splines: {sorted(model_splines)})")
+    for f in forces:  # characteristic curves of springs: splines of the model
+        if f["type"] in ("spring_damper", "torsion_spring"):
+            for key in ("stiffness", "damping"):
+                v = f.get(key)
+                if isinstance(v, str) and v not in model_splines:
+                    raise ModelError(f"force {f['name']}: {key} {v!r} is not a spline (splines: {sorted(model_splines)})")
+                if isinstance(v, list):
+                    raise ModelError(f"force {f['name']}: {key} is a number or the name of a spline")
     outputs = {name: str(e) for name, e in section("outputs")}
     taken = (set(bodies) | {j["name"] for j in joints} | {f["name"] for f in forces} | {sn["name"] for sn in sensors}
              | set(drivers))
@@ -361,7 +478,7 @@ def write_fdm(model, path):
         f"{keys.get(k, k)} {int(s[k]) if isinstance(s[k], bool) else s[k]!r}".replace("'", "")
         for k in ("alpha", "form", "end_time", "step", "output_step", "output_begin", "newton_tol",
                   "max_newton", "newton", "newton_iterations", "adaptive", "h_min", "eps", "exact_output", "vproj_tol",
-                  "error_norm")
+                  "error_norm", "statics")
         if k in s
     )
     lines = [f"freedyn2_model {FDM_VERSION}", f"name {model['model']}", f"solver {solver}"]
@@ -378,7 +495,15 @@ def write_fdm(model, path):
     gravity = model.get("gravity", [0.0, 0.0, 0.0])
     nq = nv = nc = 0  # stored coordinates, velocity dofs, constraints
     layout = {}  # body -> (element type, coords, dofs)
+    flex_layout = {}  # flexible body -> (coords, dofs of the modal coordinates)
     for name, b in model["bodies"].items():
+        if "flex" in b:  # frame (connectors see it as a Lie group rigid body), modal coordinates, terms
+            flex_lines, coords, dofs, nq1, nv1 = flex_body.fdm_elements(name, b, gravity, nq, nv)
+            layout[name] = ("rigid_body", coords, dofs)
+            flex_layout[name] = (list(range(nq + 7, nq1)), list(range(nv + 6, nv1)))
+            nq, nv = nq1, nv1
+            lines += flex_lines
+            continue
         element = b.get("element", "rigid_body")
         if element == "rigid_body":  # Lie group: 7 stored coordinates, 6 velocity dofs
             n_coords, n_dofs, n_cons = rigid_body.NQ, rigid_body.NV, 0
@@ -414,8 +539,18 @@ def write_fdm(model, path):
     euler = lambda names: "_euler" if {layout[b][0] for b in names} == {"rigid_body_euler"} else ""
     for joint in model.get("joints", []):
         for kind, suffix, names, p in joint_types.primitives(joint, model["bodies"]):
+            con = nc
             lines += connector(kind + euler(names), f"{joint['name']}.{suffix}", names, p, True,
                                f"joint {joint['name']}")
+            if "node" in joint:  # mode terms of the primitive at the node, same constraint row
+                flex = names[-1]
+                data = load_modal(model["bodies"][flex]["flex"]["modal"])
+                k = data.node_index(joint["node"])
+                ec, ed = flex_layout[flex]
+                _, idx = _connected(names, layout)
+                for i, (nkind, np_) in enumerate(flex_body.node_terms(kind, p, data.Phi[k], data.Psi[k])):
+                    lines += [f"element {nkind} {joint['name']}.{suffix}.mode{i + 1}", f"{idx[0]} {ec[i]}",
+                              f"{idx[1]} {ed[i]}", f"cons {con}", "p " + _fmt(np_), "end"]
     # model plugin: expression forces, drivers and the element types of extensions, shared types
     custom = plugin.plugin_elements(model)
     if custom:
@@ -423,32 +558,48 @@ def write_fdm(model, path):
         lines.insert(3, f"plugin {lib.name}")
     in_plugin = {pe[0]: (pe[1], pe[2], pe[3]) for pe in custom}
     input_slots = {pe[0]: getattr(pe, "inputs", {}) for pe in custom}
+    spline_slots = {pe[0]: getattr(pe, "splines", ()) for pe in custom}
 
     def input_lines(name):
         slots = input_slots.get(name)
-        return ["inputs " + " ".join(f"{k}:{o}" for k, o in slots.items())] if slots else []
+        lines = ["inputs " + " ".join(f"{k}:{o}" for k, o in slots.items())] if slots else []
+        return lines + spline_lines(spline_slots.get(name))
 
     for force in model.get("forces", []):
         if force["name"] in in_plugin:
             kind, names, p = in_plugin[force["name"]]
         else:
-            kind, names, p = forces.element(force, model["bodies"])
+            el = (curve_forces.element(force, model) if force["type"] in curve_forces.CURVE_TYPES
+                  else forces.element(force, model["bodies"], model.get("splines")))
+            kind, names, p = el
             kind += euler(names)
         # tires on the OpenCRG road: the runtime sets their road plane at this offset of p
         offset = forces.LOCAL_ROAD_OFFSET.get(kind.removesuffix("_euler"), extensions.road_offset(kind))
         extra = [f"road {offset}"] if offset is not None else []
         extra += input_lines(force["name"])
+        if force["name"] not in in_plugin:
+            extra += spline_lines(getattr(el, "splines", ()))
         lines += connector(kind, force["name"], names, p, False, f"force {force['name']}", extra)
     for sensor in model.get("sensors", []):
         kind, names, p = forces.sensor_element(sensor, model["bodies"], gravity)
         lines += connector(kind + euler(names), sensor["name"], names, p, False, f"sensor {sensor['name']}")
-    for name in model.get("drivers") or {}:  # prescribed motion: one constraint each
-        tname, names, p = in_plugin[name]
-        lines += connector(tname, name, names, p, True, f"driver {name}", input_lines(name))
+    for name, d in (model.get("drivers") or {}).items():  # prescribed motion: one constraint each
+        if name in in_plugin:
+            tname, names, p = in_plugin[name]
+            lines += connector(tname, name, names, p, True, f"driver {name}", input_lines(name))
+        else:  # along a curve of time: a library type
+            el = drivers.library_driver(model, name, d)
+            lines += connector(el[0], name, el[1], el[2], True, f"driver {name}", spline_lines(el.splines))
     for name in model.get("outputs") or {}:  # output channels: no loads, no constraints
         tname, names, p = in_plugin[name]
         lines += connector(tname, name, names, p, False, f"output {name}", input_lines(name))
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def spline_lines(calls):
+    """fdm lines of the spline calls of an element, in call order: the segment offset in p, the
+    number of points and the table x, y, b, c, d (the runtime selects the segment)."""
+    return [f"spline {seg} {tab.shape[1]} " + _fmt(tab.ravel()) for seg, tab in calls or ()]
 
 
 def data_files(model_path):

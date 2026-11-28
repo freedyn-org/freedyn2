@@ -32,6 +32,7 @@ struct SolverSettings {
   std::string error_norm = "mixed";
   bool exact_output = true;    // isExactOutputTimeEnforced
   double vproj_tol = 1e-12;    // initial velocity projection when |Phi_q qd| > tol (legacy: 1e-5)
+  bool statics = false;        // start from the static equilibrium, at rest (HhtIntegrator::initialize)
 };
 
 struct ElementSpec {
@@ -49,6 +50,13 @@ struct ElementSpec {
   int road = -1;
   // Runtime inputs this element uses: (index into Model::inputs, offset in p).
   std::vector<std::pair<int, int>> inputs;
+  // Spline calls (generated spline function), in call order: offset of the segment slots
+  // [x0, y0, b, c, d] in p the runtime sets, the table x, y, b, c, d (5 rows of n points).
+  struct SplineCall {
+    int segment = 0, n = 0;
+    std::vector<double> table;
+  };
+  std::vector<SplineCall> splines;
 };
 
 // Runtime input of the model (fd::System::set_input): a parameter of the elements that use it

@@ -5,8 +5,113 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ## [Unreleased]
 
+### Fixed
+
+- The modal reduction of large FE models is about 6 times faster: an own multifrontal
+  supernodal LDL^T (Eigen's dense kernels, all cores; 12 times faster than Eigen's
+  SimplicialLDLT, no new dependency), an AVX2 variant of freedyn2_modal taken where the CPU has
+  it, Lanczos with one product with M per step, the inertia invariants from two matrix products
+  (64 000 dofs: 79 s to 14 s). freedyn2_modal is signed in the Windows installer.
+- Flexible bodies, from a review:
+  - The Nastran reader no longer leaves out cards silently: elements, point masses (CONM2),
+    rigid elements and MPC it does not support are an error; INCLUDE files are read (and are
+    in the cache key of the reduction); the case control before BEGIN BULK is skipped.
+  - The modal reduction checks the modes by a Sturm count (no eigenvalue below the highest
+    missing; kept modes that end inside a multiple eigenvalue warn); modes that did not
+    converge are an error, a residual above the tolerance a warning (it was only printed).
+  - Forces, measures and sensors on the body frame of a flexible body (not at an interface
+    node) warn: they do not see the deformation.
+  - `freedyn2 check` warns when a flexible body spins faster than 10 % of its first elastic
+    frequency (`spin_stiffening`: no geometric stiffening). The limits of the model are
+    documented (docs/reference/bodies.md).
+- Splines are data, not code: the runtime looks up the segment (binary search) and the
+  compiled law evaluates one cubic. A driver on an Akima spline of 1000 points (legacy
+  101_V8Motion) builds in 0.3 s instead of 20 minutes (1.9 MB of C before, 45 kB now), with
+  bitwise the same results; other tables reuse the compiled model (the table is runtime data,
+  not in p). The post function of element state writes only the state entries of p. Model
+  plugins of earlier versions must be built again (registry layout 3).
+- Newton (velocity criterion) at the round-off floor: a correction that stops getting smaller
+  below 1e3 times the tolerance counts as converged. Models with massless bodies in mm units
+  (legacy 106_V8_FlexConRod) broke down with no step size converging.
+- Model plugins with very large generated sources (a driver on a spline of 1000 points) took
+  20 minutes to compile: sources above 256 kB are compiled without optimization.
+- `freedyn2_run --step-log` also writes the log when the run fails.
+- The modal reduction finds its modes by Lanczos (shift-invert, full reorthogonalization)
+  instead of a subspace iteration, and solves the constraint modes in parallel: 70 000 dofs
+  and 20 modes in 26 s instead of 62 s.
+
 ### Added
 
+- The initial state is made consistent before the first step, and the run says what that
+  took. **Redundant constraints** (an overconstrained mechanism, such as a planar loop of
+  revolute joints) are found in model order and deactivated (multiplier 0, the others carry
+  the load) instead of a singular matrix; a redundant constraint that is violated while the
+  others hold stops the run with its name. **Positions that violate the constraints** are
+  assembled by Newton's method (the smallest correction in the mass metric) instead of
+  stopping the run. **`solver: statics: true`** (`freedyn2_run --statics`) starts from the
+  static equilibrium at rest, by pseudo-transient continuation with the generated iteration
+  matrix. Example `parallelogram.yaml`. Models that were consistent and not overconstrained
+  run as before.
+- Flexible bodies: `max_frequency` and `exclude_modes` select modes (the selection is a
+  `.fdflex` of its own in the user cache); without `damping` the modes are damped as in
+  Adams/Flex (1 % below 100 Hz, 10 % to 1000 Hz, 100 % above; `damping: 0` for none, the
+  `.fds` import keeps the legacy value); RBE3 spiders of meshed bodies weight their nodes by
+  surface area; an interface far from the surface warns.
+- Splines as library items: `spring_damper` and `torsion_spring` take a spline name as
+  `stiffness` or `damping` (force over the deflection, over the rate), and drivers along a
+  curve of time (`motion: <spline>(t)`) on angles, distances and displacements are built into
+  the runtime (six types, displacement, distance, angle to the ground or between two bodies;
+  frame, component, points and axes of the measure are parameters): no model plugin, no
+  compiler (legacy 101_V8Motion runs without one).
+- `curve_force` and `curve_torque`: a force or torque that is a spline of a measure,
+  s = a curve(b m + c), library types for any measure between its two bodies (frames,
+  components and directions are parameters: 42 types). The `.fds` importer makes them of a
+  legacy law `a * SPL[MEAVAL[..], ..]`.
+- Fatigue output of flexible bodies (modal superposition):
+  `freedyn2 modal-stress model.yaml body [result.csv]` and the MCP tool `flex_modal_stress` write the
+  FE mesh with the stress tensor of each mode (Universal file) and the modal coordinates of the
+  run (CSV). The reduction computes the modal stresses at the nodes and keeps them in the
+  `.fdflex` (fdgen.fem.stress; HEX8 with its incompatible modes). Checked against a cantilever
+  under a tip load.
+- Viewer: the inspector of a joint or force at a spider of a body meshed from its STL sets the
+  spider's radius and type (RBE2 / RBE3) or makes it automatic again (`flex.interfaces` in the
+  model file, fdgen.flex.edit).
+- MCP tools for flexible bodies: `flex_info` (modes, interfaces, spiders, what is attached),
+  `flex_convergence` (frequencies over mesh sizes or numbers of modes), `flex_deformation`
+  (largest deformation in a run), `flex_export`; `screenshot` with a deformation
+  magnification, `modes` names the elastic mode of flexible bodies; `guide` explains them.
+- Flexible bodies (floating frame of reference, modal coordinates) from Adams MTX files:
+  `bodies.<name>.flex: {modal, damping, rotation_coupling, quadratic_inertia}`; joints at a node
+  of a flexible body (`node` of a joint, any joint type). The body is split into element types
+  of fixed size (rigid part, one mode, one pair of modes) that the runtime adds up: no model
+  plugin, no compiler, any number of modes. The `.fds` importer reads `Body MBS_FlexBody_Full`
+  and `Constraint FixRiBoFleBo` (default profile). Checked against the legacy check-in tests
+  03_FlyingFleBo and 04_FlexRotUHackerl, free and clamped beam frequencies, energy and momentum
+  conservation (docs/theory.md, 3.4).
+- Flexible bodies from a Nastran FE model of the part (`flex.fem`, `interfaces`, `modes`): own
+  linear FEM (TET4, TET10, HEX8 with incompatible modes, Timoshenko beams; RBE2, RBE3),
+  Craig-Bampton reduction orthonormalized as Adams/Flex, inertia invariants with the consistent
+  mass; the new program `freedyn2_modal` (Eigen only) does the sparse part. Checked against the
+  MSC Nastran / Adams MTX files of the legacy check-in tests (docs/findings.md).
+- Rigid to flex: `flex: {material, mesh_size}` on a body with an STL shape meshes it (Netgen,
+  quadratic tetrahedra; extra `fem`: `pip install "freedyn2[fem]"`), makes an interface node
+  with an RBE2 spider at every joint and force point, reduces and simulates it as a flexible
+  body; joints act at the nodes, forces on massless bodies fixed to them.
+- `freedyn2 flex-export model.yaml body`: the meshed body as Nastran bulk data, to change its
+  spiders or mesh and use it with `flex.fem`. Joints and forces without `node` attach to the
+  interface node at their point for every flexible body (also `fem` and `modal`); a torque and a
+  torsion spring at a flexible body need their point.
+- The CMS result of a reduction is kept next to the model in freedyn2's own modal data file
+  (`cms/<body>.fdflex`: a ZIP archive of NumPy arrays with the modal data, the mode shapes on
+  the surface and what it was made from), reused while its inputs are the same and usable by
+  other models with `flex.modal`; `flex.cms` gives another place. `freedyn2 flex-info` shows a
+  modal data file and converts between .fdflex and Adams MTX.
+- Spiders in bores: a revolute or cylindrical joint at a body meshed from its STL connects
+  to the bore around its axis (`interfaces[].axis` for others); the viewer shows the spiders
+  of flexible bodies, a click on one inspects its joint or force with the spider's size.
+- Viewer: flexible bodies deform (their STL, or the surface of the FE mesh), magnified with
+  *deformation* about their best-fitting rigid motion; eigenmodes with the deformation. Mesh
+  shapes count for the size of the scene and *fit view*.
 - Viewer: plots in pages (**+ page**, tabs above the plots: rename, move, drop a channel on a
   tab). The plots of a page share its height, so many plots no longer get smaller and smaller.
 - Viewer: the run table (**≡ all runs** in the run strip): every run with its tuned values as

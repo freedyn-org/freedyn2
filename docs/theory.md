@@ -162,6 +162,118 @@ multiplier of \(\Phi_\text{norm}\)), but not off that manifold, where an index-3
 numerically. Initial velocities \(\dot\theta = \tfrac12 G^T \omega_0\) with the global
 \(G\) (\(\omega = 2 G \dot\theta\)).
 
+### 3.4 Flexible body (floating frame of reference)
+
+`fdgen/flex_body.py`, modal data `fdgen/flex` (Adams MTX files). Configuration
+\(q = [R; \theta; \eta]\) on \(\mathbb{R}^3 \times SO(3) \times \mathbb{R}^{n_m}\): the origin \(R\)
+and orientation \(A(\theta)\) of the body frame of the modal data, and \(n_m\) modal coordinates
+\(\eta\); velocities \(v = [\dot R; \bar\omega; \dot\eta]\). A point with the undeformed position
+\(s\) (body frame) moves to \(R + A(s + \Phi \eta)\). With the inertia invariants of Adams
+(\(I_1 = m\), \(I_2 \dots I_9\), section `fdgen/flex/modal.py`) the kinetic energy is
+
+$$
+T = \tfrac12 m \dot R \cdot \dot R + \dot R \cdot A\big(-\tilde S \bar\omega + I_3 \dot\eta\big)
+  + \tfrac12 \bar\omega^T J \bar\omega + \bar\omega^T \Big(I_4 + \sum_j \eta_j I_{5,j}\Big)\dot\eta
+  + \tfrac12 \dot\eta^T I_6 \dot\eta,
+$$
+
+$$
+S = I_2 + I_3 \eta, \qquad
+J = I_7 - \sum_j \eta_j \big(I_{8,j} + I_{8,j}^T\big) - \sum_{j,k} \eta_j \eta_k I_{9,jk},
+$$
+
+with the elastic energy \(\tfrac12 \eta^T K \eta\), the potential of gravity
+\(-g \cdot (m R + A S)\) and modal damping \(-D \dot\eta\), \(D_{ii} = 2 \zeta_i \omega_i\)
+(mass-normalized modes). Options as the legacy kernel: without the rotation-deformation
+coupling \(I_4\), \(I_5\) (`rotation_coupling: false`, legacy `Is_Itf_active = no`), without the
+quadratic inertia term \(I_9\) (`quadratic_inertia: false`).
+
+Equations of motion of the left-trivialized velocities (Hamel, Euler-Poincaré):
+
+$$
+p = \frac{\partial T}{\partial v}, \qquad M = \frac{\partial p}{\partial v}, \qquad
+h = \frac{\partial p}{\partial \delta} v + \begin{bmatrix} 0 \\ \bar\omega \times p_{\bar\omega} \\ 0 \end{bmatrix}
+  - \Big(\frac{\partial T}{\partial \delta}\Big)^T + \Big(\frac{\partial V}{\partial \delta}\Big)^T,
+$$
+
+with \(\partial/\partial\delta\) along \(q \circ \exp(\delta)\) at fixed \(v\) (4.2). For a rigid body
+this is Newton-Euler (3.2).
+
+**Decomposition into element types of fixed size.** \(T\), \(V\) and the damping force are
+polynomials of degree two at most in \(\eta\) and \(\dot\eta\), and the equations of motion are
+linear in them. So \(T\) splits into a term of the rigid part (invariants 1, 2, 7), one term per
+mode \(i\) (\(\eta_i\), \(\dot\eta_i\) only, with the diagonal pair \(i, i\)) and one term per pair
+\(i < j\). Each becomes an element type (`flex_frame`, `flex_mode`, `flex_pair`; the modal
+coordinates are owned by `flex_coord`), and the runtime adds their contributions in the scatter
+assembly, which gives exactly the equations of the whole body. Nothing depends on \(n_m\): a model
+with flexible bodies is solved with the library element types, without a model plugin or a
+compiler. Pairs whose invariants are zero are left out (modes with a diagonal \(I_6\), \(K\),
+\(D\) and partial coupling need none). The code per type is small (about 120 kB of C for
+`flex_mode`); the cost per body grows with \(n_m^2\) through the pairs.
+
+**Joints at a node.** A joint primitive (5.1) at a node \(k\) of a flexible body uses the node
+point \(s_k + \Phi_k \eta\) and the node axes \((I + \widetilde{\Psi_k \eta})\, b\) in the body frame,
+linear in \(\eta\) as in the legacy `MBS_RiBo_FleBo_FixJoint` (small nodal rotations). The
+constraint is its rigid form at the node (the library primitive with the body frame of the
+flexible body) plus one term per mode, linear in \(\eta_i\) (`transfix_bb_node`,
+`rotfix_bb_node`, `transfix_ground_node`, `rotfix_ground_node`), all in the same constraint row.
+The flexible body is body 2 (or the body of a joint with the ground): with the node on body 1
+the translational primitive would be quadratic in \(\eta\).
+
+### 3.5 Modal data from a linear FE model
+
+`fdgen/fem` and the program `freedyn2_modal` (`runtime/app/modal.cpp`, Eigen only). Input: a
+Nastran bulk data file of the part (`fdgen/fem/nastran.py`).
+
+**Elements** (`fdgen/fem/elements.py`, small strains, isotropic material, consistent mass):
+TET4 and TET10 (a collapsed 4 x 4 x 4 Gauss rule, exact for the mass of TET10 on straight
+tetrahedra), HEX8 with the incompatible modes of Wilson and Taylor (the Jacobian at the centre,
+condensed; passes the patch test and does not lock in bending, close to Nastran's CHEXA), and
+a 3D beam (CBAR with a ROD section) with shear deformation (Timoshenko, shear factor
+\(6(1+\nu)/(7+6\nu)\)).
+
+**Rigid elements as dependencies** \(u_d = G\, u_i\) (`assemble.py`): RBE2 makes the slave dofs
+follow the master node rigidly, \(u_s = u_m + \theta_m \times (x_s - x_m)\). RBE3 sets the
+reference node to the weighted least-squares rigid motion of its nodes,
+\([u_r; \theta_r] = (\sum w_k B_k^T B_k)^{-1} \sum w_k B_k^T u_k\), \(B_k = [I, -\tilde r_k]\); the
+reference node stays independent (it is a boundary node), and 6 of the slave dofs, chosen by
+pivoted Gram-Schmidt on the columns, become dependent. Then \(K \to T^T K T\), \(M \to T^T M T\).
+
+**Craig-Bampton** with the interface nodes (6 dofs each) as boundary \(b\), the rest interior
+\(i\): constraint modes \(\Psi = [-K_{ii}^{-1} K_{ib}; I]\) and \(n\) fixed-interface normal modes
+\(K_{ii} \phi = \lambda M_{ii} \phi\) (subspace iteration with the sparse \(LDL^T\) of \(K_{ii}\);
+for a free body without interfaces, of \(K - \sigma M\), \(\sigma < 0\)), convergence by the
+residual \(|K x - \lambda M x|\). The basis \(V = [\Psi, \Phi]\) is orthonormalized like Adams/Flex:
+the reduced eigenproblem \(V^T K V\, y = \lambda V^T M V\, y\) gives mass-normalized modes with a
+diagonal stiffness, of which the first 6 are the rigid body motions (contained exactly in the
+constraint modes) and are removed. These modes are Ritz approximations of the free modes from
+above; with the interface nodes in the basis, the body attached at an interface (a clamp, a
+joint) is represented exactly in the static limit.
+
+**Inertia invariants** (3.4) by quadrature over the elements with the consistent mass: at each
+quadrature point the mass \(\rho\, \det J\, w\), the position \(s\) and the interpolated mode
+shapes \(\phi\); \(I_1 = \sum m\), \(I_7 = \sum m\, \tilde s^T \tilde s\), \(I_9 = \sum m\, \tilde\phi_j \tilde\phi_k\)
+and so on. For the solids this is exact for the FE discretization (Adams uses lumped node
+masses). The result is written next to the model as freedyn2's modal data file
+(`cms/<body>.fdflex`, `fdgen/flex/fdflex.py`: a ZIP archive of NumPy arrays with the mode
+shapes on the surface and a record of its inputs), reused while the mesh, interfaces and
+number of modes stay the same.
+
+### 3.6 Flexible bodies from a surface (rigid to flex)
+
+`fdgen/fem/stl.py`, `fdgen/fem/surface.py`. The STL of the part, placed in the body frame, is
+checked for a closed surface and meshed by Netgen (quadratic tetrahedra, the midside nodes
+assigned to the edges by geometry). Each joint and force point of the body, in the body frame,
+becomes an interface node with an RBE2 (or RBE3) to the surface nodes around it: for a joint
+with an axis (revolute, cylindrical) the bore around it, the nodes at the smallest distance
+\(r_0\) from the axis near the point (within \(0.03\, r_0 + h/20\): midside nodes of a faceted
+bore lie inside it), along the axis while the gaps stay below \(2h\), and at least 270 degrees
+around; else within a radius (default: the distance to the nearest surface node plus the mesh
+size \(h\), widened to at least 6 nodes not on a line). Coinciding points share one node. The reduction is that of 3.5. Joints act at the node
+(3.4); forces at a massless rigid body fixed to the node by a joint at the node (its 6 dofs are
+determined by the 6 constraints, so the singular mass of that body does not make the iteration
+matrix singular).
+
 ## 4. Kinematics of connected bodies and derivatives
 
 ### 4.1 Body kinematics
@@ -671,6 +783,10 @@ that states each.
 8. The Newton criteria (7.5), the local error estimate, its weights and the step size
    controller (8).
 9. The linearization from the iteration matrices and the elimination of the constraints (12).
+10. The flexible body: kinetic energy from the invariants, the Hamel form, the decomposition
+    into terms of one mode and of a pair of modes, and the joint primitives at a node (3.4).
+11. The FE reduction: elements, RBE2 / RBE3 as dependencies, Craig-Bampton and its
+    orthonormalization, the invariants by quadrature (3.5).
 
 ## References
 

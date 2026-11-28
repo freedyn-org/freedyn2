@@ -103,6 +103,23 @@ def test_plugin_cache(tmp_path, monkeypatch):
         plugin.compile_library([src], tmp_path / "c.so")
 
 
+def test_large_sources_compiled_without_optimization(tmp_path, monkeypatch):
+    """A generated source above plugin.LARGE_SOURCE is compiled with -O0 (/Od): the optimizers
+    take super-linear time on huge functions (a driver on a long spline: 20 min at -O2)."""
+    small, large = tmp_path / "s.c", tmp_path / "l.c"
+    small.write_text("double f(double x) { return 2 * x; }\n")
+    large.write_text("double g(double x) { return 3 * x; }\n" + "/*" + "x" * plugin.LARGE_SOURCE + "*/\n")
+    commands = []
+    monkeypatch.setattr(plugin, "_run", lambda cmd, env=None: commands.append(cmd))
+    try:
+        plugin.compile_library([small, large], tmp_path / "a.so", cache=False)
+    except FileNotFoundError:
+        pytest.skip("no C compiler")
+    compile_of = {Path(c[-1]).name: c for c in commands if "-c" in c or "/c" in c}
+    last_opt = lambda cmd: [a for a in cmd if a.startswith(("-O", "/O"))][-1]
+    assert last_opt(compile_of["s.c"]) in ("-O2", "/O2") and last_opt(compile_of["l.c"]) in ("-O0", "/Od")
+
+
 def _result(t, phase):
     c, s = np.cos(phase), np.sin(phase)
     A = np.zeros((len(t), 3, 3))

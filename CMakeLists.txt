@@ -22,7 +22,7 @@ endif()
 set(FD_GEN_DIR ${PROJECT_BINARY_DIR}/generated)
 set(FD_EXAMPLE_NAMES free_body dzhanibekov pendulum double_pendulum
   oscillator torsion_pendulum spring_pendulum two_bodies constant_loads forced_oscillator input_oscillator
-  bushing_mount winding_spring spline_slider driven_rotor)
+  bushing_mount winding_spring spline_slider driven_rotor parallelogram)
 # Examples with expression forces also produce a model plugin (<name>_plugin.so, .dll on Windows).
 set(FD_PLUGIN_EXAMPLES forced_oscillator winding_spring spline_slider driven_rotor input_oscillator)
 # Included from another project (add_subdirectory, FetchContent): the libraries only, no example
@@ -56,8 +56,27 @@ set(FD_ELEMENT_TYPES
   torque_global torque_global_euler torque_body torque_body_euler
   torsion_ground torsion_ground_euler torsion_bb torsion_bb_euler
   bushing_ground bushing_ground_euler bushing_bb bushing_bb_euler
+  spline_spring_damper_ground spline_spring_damper_ground_euler spline_spring_damper_bb spline_spring_damper_bb_euler
+  spline_torsion_ground spline_torsion_ground_euler spline_torsion_bb spline_torsion_bb_euler
   tire tire_euler tire_local tire_local_euler
-  sensor sensor_euler)
+  sensor sensor_euler
+  flex_frame flex_coord flex_mode flex_pair
+  transfix_bb_node rotfix_bb_node transfix_ground_node rotfix_ground_node
+  # curves of measures: fdgen.curve_forces.KINDS
+  curve_displacement_los_ground curve_displacement_los_bb curve_displacement_dir_ground curve_displacement_dir_bb
+  curve_displacement_torque_ground curve_displacement_torque_bb curve_velocity_los_ground curve_velocity_los_bb
+  curve_velocity_dir_ground curve_velocity_dir_bb curve_velocity_torque_ground curve_velocity_torque_bb
+  curve_distance_los_ground curve_distance_los_bb curve_distance_dir_ground curve_distance_dir_bb
+  curve_distance_torque_ground curve_distance_torque_bb curve_distance_rate_los_ground curve_distance_rate_los_bb
+  curve_distance_rate_dir_ground curve_distance_rate_dir_bb curve_distance_rate_torque_ground curve_distance_rate_torque_bb
+  curve_angle_los_ground curve_angle_los_bb curve_angle_dir_ground curve_angle_dir_bb
+  curve_angle_torque_ground curve_angle_torque_bb curve_angular_rate_los_ground curve_angular_rate_los_bb
+  curve_angular_rate_dir_ground curve_angular_rate_dir_bb curve_angular_rate_torque_ground curve_angular_rate_torque_bb
+  curve_angular_velocity_los_ground curve_angular_velocity_los_bb curve_angular_velocity_dir_ground curve_angular_velocity_dir_bb
+  curve_angular_velocity_torque_ground curve_angular_velocity_torque_bb
+  # drivers along a curve of time: fdgen.drivers.KINDS
+  spline_driver_displacement_ground spline_driver_displacement_bb spline_driver_distance_ground spline_driver_distance_bb
+  spline_driver_angle_ground spline_driver_angle_bb)
 set(FD_ELEMENT_SOURCES)
 foreach(t ${FD_ELEMENT_TYPES})
   list(APPEND FD_ELEMENT_SOURCES ${FD_GEN_DIR}/${t}.c)
@@ -153,6 +172,24 @@ fd_copy_runtime_dlls(freedyn2_road)
 # both copy the same DLLs into the same directory: one after the other, not at the same time
 # (parallel builds; file(COPY) of two programs at once fails on Windows)
 add_dependencies(freedyn2_road freedyn2_run)
+# modal reduction of linear FE models (fdgen.fem): Eigen only. On x86-64 also a variant with AVX2
+# and FMA (Eigen's dense kernels about twice as fast); fdgen.fem.reduce takes it where the CPU
+# has them (freedyn2_modal --cpu).
+find_package(Threads REQUIRED)
+set(FD_MODAL_TARGETS freedyn2_modal)
+add_executable(freedyn2_modal runtime/app/modal.cpp)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64|x64)$")
+  add_executable(freedyn2_modal_avx2 runtime/app/modal.cpp)
+  if(MSVC)
+    target_compile_options(freedyn2_modal_avx2 PRIVATE /arch:AVX2)
+  else()
+    target_compile_options(freedyn2_modal_avx2 PRIVATE -mavx2 -mfma)
+  endif()
+  list(APPEND FD_MODAL_TARGETS freedyn2_modal_avx2)
+endif()
+foreach(t ${FD_MODAL_TARGETS})
+  target_link_libraries(${t} PRIVATE Eigen3::Eigen Threads::Threads)
+endforeach()
 
 # --- Tests -----------------------------------------------------------------------
 if(FD_TOP_LEVEL)
@@ -167,9 +204,9 @@ endif()
 # to fdgen/schema and fdgen/examples (fdgen.resources finds them there).
 if(SKBUILD)
   if(UNIX AND NOT APPLE)
-    set_target_properties(freedyn2_run freedyn2_road PROPERTIES INSTALL_RPATH "$ORIGIN")
+    set_target_properties(freedyn2_run freedyn2_road ${FD_MODAL_TARGETS} PROPERTIES INSTALL_RPATH "$ORIGIN")
   endif()
-  install(TARGETS freedyn2_run freedyn2_road RUNTIME DESTINATION fdgen/bin)
+  install(TARGETS freedyn2_run freedyn2_road ${FD_MODAL_TARGETS} RUNTIME DESTINATION fdgen/bin)
   set(FD_SHARED_DEPS)
   foreach(t SuiteSparse::KLU SuiteSparse::BTF SuiteSparse::AMD SuiteSparse::COLAMD SuiteSparse::SuiteSparseConfig)
     if(TARGET ${t})

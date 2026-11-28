@@ -35,6 +35,7 @@ void usage() {
                "                    [--step H] [--tolerance E] [--output-step H] [--linear-solver klu|sparselu|dense]\n"
                "                    [--step-log FILE]   (t, h, status, Newton iterations of every step attempt)\n"
                "                    [--fixed-step]      (constant step size --step, no step size control)\n"
+               "                    [--statics]         (start from the static equilibrium, at rest)\n"
                "                    [--newton-fixed N]  (exactly N Newton corrections per step, fixed pivots: real-time)\n"
                "                    [--timing]          (fixed step: distribution of the wall-clock time per step)\n"
                "                    [--timing-log FILE] (fixed step: time, Newton iterations, new pivot orders per step)\n"
@@ -196,6 +197,7 @@ int main(int argc, char** argv) {
       else if (!std::strcmp(argv[i], "--linear-solver")) linear_solver = next();
       else if (!std::strcmp(argv[i], "--step-log")) step_log_path = next();
       else if (!std::strcmp(argv[i], "--fixed-step")) model.solver.adaptive = false;
+      else if (!std::strcmp(argv[i], "--statics")) model.solver.statics = true;
       else if (!std::strcmp(argv[i], "--newton-fixed")) {
         model.solver.newton = "fixed";
         model.solver.newton_iterations = std::stoi(next());
@@ -237,7 +239,26 @@ int main(int argc, char** argv) {
     std::vector<double> y;
     double output_seconds = 0.0;
     auto last_flush = std::chrono::steady_clock::now();
+    bool reported = false;
+    auto report_initial = [&] {  // what it took to make the initial state consistent
+      reported = true;
+      const fd::InitialReport& r = hht.initial_report();
+      if (!r.redundant.empty()) {
+        std::printf("redundant constraints, deactivated (no constraint force; the others carry it):");
+        for (int c : r.redundant) std::printf("\n  %s", sys.constraint_name(c).c_str());
+        std::printf("\n");
+      }
+      if (r.assembly_iterations > 0)
+        std::printf("initial positions assembled: |Phi| %.3g -> consistent in %d Newton corrections, "
+                    "largest change %.3g at %s\n",
+                    r.violation, r.assembly_iterations, r.largest_move, sys.dof_name(r.largest_move_dof).c_str());
+      if (s.statics)
+        std::printf("static equilibrium: %d corrections, largest change %.3g at %s\n", r.static_iterations,
+                    r.static_move, r.static_move_dof < 0 ? "-" : sys.dof_name(r.static_move_dof).c_str());
+      std::fflush(stdout);
+    };
     auto write_output = [&](double t) {
+      if (!reported) report_initial();
       const auto t0 = std::chrono::steady_clock::now();
       sys.outputs(y);
       write_row(out, t, y);
@@ -256,7 +277,12 @@ int main(int argc, char** argv) {
       std::function<void(double, double, const fd::StepResult&)> log_attempt;
       if (!step_log_path.empty())
         log_attempt = [&](double t, double h, const fd::StepResult& r) { step_log.push_back({t, h, r}); };
-      n_steps = stepper.run(write_output, log_attempt, before_step);
+      try {
+        n_steps = stepper.run(write_output, log_attempt, before_step);
+      } catch (...) {  // the attempts up to the failure are what explains it
+        if (!step_log_path.empty()) write_step_log(step_log_path, step_log);
+        throw;
+      }
       rejected = stepper.rejected_steps();
     } else {
       n_steps = std::lround(s.end_time / s.step);

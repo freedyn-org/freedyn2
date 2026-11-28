@@ -26,7 +26,8 @@ System::Instance::Instance(const ElementSpec& s, const fd_element_type& t)
       out(optional(t.out)),
       update(optional(t.update)),
       scale(optional(t.scale)),
-      post(optional(t.post)) {
+      post(optional(t.post)),
+      spline(optional(t.spline)) {
   if (init && !(update && scale))
     throw std::runtime_error("element type " + s.type + ": init without update and scale functions");
   if (s.newmark == "modified") {
@@ -98,6 +99,15 @@ System::System(const Model& model) : nq_(model.nq()), nv_(model.nv()), nc_(model
       check(s.p.size(), e.post->sparsity_out(0).nrow, "post function output (parameters)");
       e.post_buf.resize(e.post->sparsity_out(0).nnz());
     }
+    if (e.spline || !s.splines.empty()) {
+      if (!e.spline || e.spline->sparsity_out(0).nrow != static_cast<int>(s.splines.size()))
+        throw std::runtime_error("element " + s.name + ": spline calls and spline function do not match");
+      for (const auto& c : s.splines)
+        if (c.segment < 0 || c.segment + 5 > static_cast<int>(s.p.size()))
+          throw std::runtime_error("element " + s.name + ": spline segment outside p");
+      e.spline_buf.resize(s.splines.size());
+      spline_users_.push_back(static_cast<int>(elems_.size()) - 1);
+    }
     for (const auto& [index, offset] : s.inputs) {
       if (index < 0 || index >= n_inputs() || offset < 0 || offset >= static_cast<int>(s.p.size()))
         throw std::runtime_error("element " + s.name + ": input slot outside the inputs or p");
@@ -135,6 +145,7 @@ System::System(const Model& model) : nq_(model.nq()), nv_(model.nv()), nc_(model
   q.assign(nq_, 0.0);
   for (auto* v : {&qd, &qdd, &incr}) v->assign(nv_, 0.0);
   lam.assign(nc_, 0.0);
+  inactive_mask_.assign(nc_, 0);
 }
 
 void System::gather(Instance& e) {
@@ -155,6 +166,34 @@ void System::update_roads() {
     const RoadSample s = road_->eval(r.point, x, y);
     double* p = e.spec.p.data() + r.p;
     p[0] = x, p[1] = y, p[2] = s.z, p[3] = s.dzdx, p[4] = s.dzdy, p[5] = s.mu;
+  }
+}
+
+void System::update_splines() {
+  for (int k : spline_users_) {
+    Instance& e = elems_[k];
+    gather(e);
+    const std::vector<ElementSpec::SplineCall>& calls = e.spec.splines;
+    const Sparsity& sp = e.spline->sparsity_out(0);
+    // calls in order; a call whose argument holds another spline needs that segment first
+    for (size_t pass = 0; pass < calls.size(); ++pass) {
+      const double* in[] = {e.q.data(), e.qd.data(), e.spec.p.data(), &t};
+      double* out[] = {e.spline_buf.data()};
+      e.spline->eval(in, out);
+      bool changed = false;
+      for (int j = 0; j < sp.nnz(); ++j) {
+        const ElementSpec::SplineCall& c = calls[sp.row[j]];
+        const double* x = c.table.data();
+        const double xv = e.spline_buf[j];
+        // the largest i with x[i] <= xv, 0 below the first point (fdgen.splines.segment)
+        const int i = std::max(static_cast<int>(std::upper_bound(x, x + c.n, xv) - x) - 1, 0);
+        double* seg = e.spec.p.data() + c.segment;
+        if (seg[0] == x[i] && seg[1] == x[c.n + i]) continue;
+        for (int m = 0; m < 5; ++m) seg[m] = x[m * c.n + i];
+        changed = true;
+      }
+      if (!changed) break;
+    }
   }
 }
 
@@ -213,14 +252,14 @@ void System::post_step() {
     const double* in[] = {e.q.data(), e.qd.data(), e.spec.p.data(), &t};
     double* out[] = {e.post_buf.data()};
     e.post->eval(in, out);
-    const Sparsity& sp = e.post->sparsity_out(0);
-    std::fill(e.spec.p.begin(), e.spec.p.end(), 0.0);
+    const Sparsity& sp = e.post->sparsity_out(0);  // the state entries; the rest of p stays
     for (int k = 0; k < sp.nnz(); ++k) e.spec.p[sp.row[k]] = e.post_buf[k];
   }
 }
 
 void System::residual(const HhtCoef& c, double* r, double* f) {
-  update_roads();  // the iteration matrix that follows is evaluated at the same state
+  update_roads();
+  update_splines();  // the iteration matrix that follows is evaluated at the same state
   std::fill(r, r + nx(), 0.0);
   std::fill(f, f + nx(), 0.0);
   const double coef[] = {c.alpha, c.beta, c.gamma, c.h};
@@ -231,6 +270,7 @@ void System::residual(const HhtCoef& c, double* r, double* f) {
     scatter_add(e.res_rows[0], e.res_buf[0].data(), r);
     scatter_add(e.res_rows[1], e.res_buf[1].data(), f);
   }
+  for (int c : inactive_) r[nv_ + c] = lam[c];  // lam_c = 0; f has no constraint rows
 }
 
 const CsrMatrix& System::iteration_matrix(const HhtCoef& c) {
@@ -243,6 +283,7 @@ const CsrMatrix& System::iteration_matrix(const HhtCoef& c) {
     if (e.jac_qd) modified_jacobian(e, c);
     iter_asm_.add(e.iter_block, e.iter_buf.data());
   }
+  pin_inactive(iter_asm_);
   return iter_asm_.matrix();
 }
 
@@ -312,6 +353,7 @@ void System::modified_jacobian(Instance& e, const HhtCoef& c) {
 
 const CsrMatrix& System::ic_system(double* b, double* phi, double* phid) {
   update_roads();
+  update_splines();
   ic_asm_.zero();
   double* vec[] = {nullptr, b, phi, phid};
   for (int i = 1; i < 4; ++i) std::fill(vec[i], vec[i] + nx(), 0.0);
@@ -323,11 +365,14 @@ const CsrMatrix& System::ic_system(double* b, double* phi, double* phid) {
     ic_asm_.add(e.ic_block, e.ic_buf[0].data());
     for (int i = 1; i < 4; ++i) scatter_add(e.ic_rows[i], e.ic_buf[i].data(), vec[i]);
   }
+  pin_inactive(ic_asm_);
+  for (int c : inactive_) b[nv_ + c] = 0.0;
   return ic_asm_.matrix();
 }
 
 void System::outputs(std::vector<double>& y) {
   update_roads();
+  update_splines();
   y.clear();
   for (Instance& e : elems_) {
     gather(e);
@@ -344,6 +389,91 @@ void System::outputs(std::vector<double>& y) {
       for (int k = 0; k < sp.nnz(); ++k) y[base + sp.row[k]] = e.out_buf[i][k];
     }
   }
+}
+
+void System::pin_inactive(MatrixAssembler& a) {
+  for (int c : inactive_) a.pin_row(nv_ + c);
+}
+
+std::vector<int> System::find_redundant_constraints(double tol) {
+  std::vector<double> b(nx()), phi(nx()), phid(nx());
+  const CsrMatrix& A = ic_system(b.data(), phi.data(), phid.data());
+  // B (rows nv.., columns < nv) dense, columns equilibrated (translations and rotations, mm
+  // and m models alike), rows of unit length.
+  std::vector<double> B(static_cast<size_t>(nc_) * nv_, 0.0), colmax(nv_, 0.0);
+  for (int c = 0; c < nc_; ++c)
+    for (int k = A.rowptr[nv_ + c]; k < A.rowptr[nv_ + c + 1]; ++k)
+      if (A.col[k] < nv_) {
+        B[static_cast<size_t>(c) * nv_ + A.col[k]] = A.val[k];
+        colmax[A.col[k]] = std::max(colmax[A.col[k]], std::abs(A.val[k]));
+      }
+  // Modified Gram-Schmidt in model order with reorthogonalization: a row is redundant when
+  // its part orthogonal to the kept rows is below tol.
+  std::vector<double> basis;  // kept rows, orthonormal, nv each
+  std::vector<int> redundant;
+  std::vector<double> v(nv_);
+  for (int c = 0; c < nc_; ++c) {
+    if (inactive_mask_[c]) continue;
+    double n0 = 0.0;
+    for (int j = 0; j < nv_; ++j) {
+      v[j] = colmax[j] > 0.0 ? B[static_cast<size_t>(c) * nv_ + j] / colmax[j] : 0.0;
+      n0 += v[j] * v[j];
+    }
+    n0 = std::sqrt(n0);
+    if (n0 > 0.0)
+      for (double& x : v) x /= n0;
+    for (int pass = 0; pass < 2 && n0 > 0.0; ++pass)
+      for (size_t k = 0; k < basis.size(); k += nv_) {
+        double d = 0.0;
+        for (int j = 0; j < nv_; ++j) d += v[j] * basis[k + j];
+        for (int j = 0; j < nv_; ++j) v[j] -= d * basis[k + j];
+      }
+    double n = 0.0;
+    for (double x : v) n += x * x;
+    n = std::sqrt(n);
+    if (!(n0 > 0.0) || n < tol) {
+      redundant.push_back(c);
+      continue;
+    }
+    for (double x : v) basis.push_back(x / n);
+  }
+  return redundant;
+}
+
+void System::deactivate_constraints(const std::vector<int>& cons) {
+  bool added = false;
+  for (int c : cons) {
+    if (c < 0 || c >= nc_) throw std::out_of_range("constraint " + std::to_string(c));
+    if (inactive_mask_[c]) continue;
+    inactive_mask_[c] = 1;
+    inactive_.push_back(c);
+    iter_asm_.add_diagonal(nv_ + c);
+    ic_asm_.add_diagonal(nv_ + c);
+    lam[c] = 0.0;
+    added = true;
+  }
+  if (!added) return;
+  std::sort(inactive_.begin(), inactive_.end());
+  iter_asm_.finalize(nx());
+  ic_asm_.finalize(nx());
+}
+
+std::string System::constraint_name(int c) const {
+  for (const Instance& e : elems_)
+    for (size_t k = 0; k < e.spec.cons.size(); ++k)
+      if (e.spec.cons[k] == c)
+        return e.spec.cons.size() == 1 ? e.spec.name
+                                       : e.spec.name + " (constraint " + std::to_string(k + 1) + " of " +
+                                             std::to_string(e.spec.cons.size()) + ")";
+  return "constraint " + std::to_string(c);
+}
+
+std::string System::dof_name(int i) const {
+  for (const Instance& e : elems_)
+    if (e.owner())
+      for (int k = 0; k < e.nv; ++k)
+        if (e.map[k] == i) return e.spec.name + " (velocity dof " + std::to_string(k + 1) + " of " + std::to_string(e.nv) + ")";
+  return "velocity dof " + std::to_string(i);
 }
 
 int System::output_index(const std::string& name) const {

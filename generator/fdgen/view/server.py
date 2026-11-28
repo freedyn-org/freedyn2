@@ -24,6 +24,8 @@ From the page (POST, JSON):
                   the file as it is now if it changed since the editor read it (stamp)
   /api/lint       {text, base}: diagnostics of a text not yet saved, at their lines; renames: elements
                   renamed by hand against base (the saved text), found by their ids
+  /api/flex-interface {body, point, radius, type, axis, remove}: an interface of a flexible body
+                  meshed from its STL in the model file (fdgen.flex.edit), saved
   /api/rename     {old, new, section, references_only, text}: a rename (fdgen.rename) as edits of text
                   for the editor; without text, of the model file (renames of the state: offered)
   /api/notes      {text, context, image}: a note to the assistant (fdgen.view.notes)
@@ -473,6 +475,21 @@ class View:
                     "renames": self.renames,
                     "sweep": None if self.sweep is None else {**self.sweep, "results": list(self.sweep["results"])}}
 
+    def flex_interface(self, body):
+        """POST api/flex-interface {body, point, radius?, type?, axis?, remove?}: an explicit interface
+        of a body meshed from its STL in the model file (fdgen.flex.edit), saved; rebuilt as after any
+        save (meshing and reduction again)."""
+        from ..flex.edit import set_interface
+
+        src = source.read(self.model_path)
+        text = set_interface(src["text"], str(body["body"]), body["point"], body.get("radius"), body.get("type"),
+                             body.get("axis"), bool(body.get("remove")))
+        try:
+            source.save(self.model_path, text, src["stamp"])
+        except source.Conflict as e:
+            raise ValueError(f"{e}: try again") from None
+        return {}
+
     def rename(self, body):
         """POST api/rename {old, new, section?, references_only?} with text: the edits of the rename
         for the editor's text ({changes, count, section}); without text: the model file renamed
@@ -638,6 +655,8 @@ class ViewHandler(BaseHTTPRequestHandler):
                        "renames": renamed(str(body["base"]), text) if body.get("base") else []}
             elif url == "/api/rename":
                 out = view.rename(body)
+            elif url == "/api/flex-interface":
+                out = view.flex_interface(body)
             elif url == "/api/notes":
                 out = notes.add_note(view.model_path, body.get("text", ""), body.get("context"), body.get("image"))
             elif url.startswith("/api/notes/"):
