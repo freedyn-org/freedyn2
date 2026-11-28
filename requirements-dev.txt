@@ -7,4 +7,5 @@ jsonschema
 pytest
 mcp
 pyflakes
+fmpy  # tests of the exported FMUs (fdgen.fmu)
 netgen-mesher

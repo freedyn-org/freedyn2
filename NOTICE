@@ -9,6 +9,8 @@ element types) belongs to the user and is not subject to this license.
 Included third-party components:
   ASAM OpenCRG C library (Apache-2.0), runtime/third_party/opencrg: OpenCRG road files;
   see its LICENSE and NOTICE.
+  FMI 2.0 and 3.0 headers (BSD-2-Clause, Modelica Association Project "FMI"),
+  runtime/third_party/fmi: the interface of the exported FMUs; the license is in each header.
   three.js r170 (MIT), generator/fdgen/view/web/vendor: 3D graphics of the viewer;
   see LICENSE-three.js there.
   CodeMirror 6 with its Lezer parsers (MIT), generator/fdgen/view/web/vendor/codemirror.min.js:

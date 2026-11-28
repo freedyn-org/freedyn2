@@ -7,6 +7,7 @@ freedyn2 check model.yaml [result.csv | --run] [-- runtime options]
 freedyn2 examples [name [-o DIR]]
 freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]
 freedyn2 rename model.yaml OLD NEW [--section SECTION]
+freedyn2 fmu model.yaml [-o model.fmu] [--fmi 2|3]
 freedyn2 import-onshape <assembly address> [-o model.yaml] [--no-meshes] [--force | --update] [--record DIR]
 freedyn2 gui [model ...] [--browser] [--port N] [--new-instance]
 freedyn2 update-check
@@ -28,6 +29,7 @@ freedyn2 compare model.fds ... --legacy <FreeDyn>
 | `modal-stress` | modal stresses (`.unv`) and modal coordinates (CSV) of a flexible body in a run, for fatigue by modal superposition ([bodies](reference/bodies.md#flexible-bodies)) |
 | `flex-export` | the FE model of a body meshed from its STL as Nastran bulk data, to change it and use it with `flex.fem` ([bodies](reference/bodies.md#flexible-bodies)) |
 | `rename` | rename an element and every reference to it ([below](#rename)) |
+| `fmu` | the model as an FMU for co-simulation, FMI 2.0 (default) or 3.0 ([Co-simulation](fmu.md)) |
 | `import-onshape` | write an Onshape assembly as a YAML model file ([Coming from Onshape](from-onshape.md)) |
 | `gui` | the [app](viewer.md#the-app): start page, recent models, examples, a window per model (`freedyn2-gui` is the same without a console); `--browser`: in the web browser; `--new-instance`: do not hand the models to a running app |
 | `update-check` | ask GitHub whether a newer release is out and print the answer (no download); see [update notice](viewer.md#update-notice) |

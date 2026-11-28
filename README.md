@@ -17,10 +17,11 @@ The generated C needs no CasADi library.
 
 Contents: rigid bodies (Lie group R³×SO(3)), joints (fixed, spherical, revolute, cylindrical,
 prismatic, generic), gravity, library forces (spring-damper, torsion spring, bushing, constant
-force and torque, contact of spheres and planes with friction), model-specific force laws (expressions of measures, parameters, splines and
-time, compiled into a model plugin), drivers (prescribed motion), splines from data files, tires
-(a Magic Formula tire on an analytic or OpenCRG road), sensors, hardpoints, linearization about
-a steady motion and eigenvalues (stability analysis), extensions.
+force and torque, contact of spheres and planes with friction), model-specific force laws
+(expressions of measures, parameters, splines and time, compiled into a model plugin), drivers
+(prescribed motion), splines from data files, tires (a Magic Formula tire on an analytic or
+OpenCRG road), sensors, hardpoints, linearization about a steady motion and eigenvalues
+(stability analysis), extensions, export as an FMU for co-simulation (FMI 2.0 and 3.0).
 
 **User documentation:** https://freedyn-org.github.io/freedyn2/ (getting started, a tutorial,
 the viewer, the model reference, working with an assistant, coming from FreeDyn or Adams; sources in

@@ -38,6 +38,7 @@ void usage() {
                "                    [--statics]         (start from the static equilibrium, at rest)\n"
                "                    [--rho-inf R]       (generalized-alpha with spectral radius R at infinity)\n"
                "                    [--event-log FILE]  (located events: time, element, +1 contact begins / -1 ends)\n"
+               "                    [--channels]        (list the inputs (name, default) and output channels, no run)\n"
                "                    [--adaptive pi|legacy] (step size control; --tolerance E, --step the largest)\n"
                "                    [--newton-fixed N]  (exactly N Newton corrections per step, fixed pivots: real-time)\n"
                "                    [--timing]          (fixed step: distribution of the wall-clock time per step)\n"
@@ -181,6 +182,12 @@ int main(int argc, char** argv) {
   }
   try {
     fd::Model model = fd::load_model(argv[1]);
+    if (argc > 2 && !std::strcmp(argv[2], "--channels")) {  // the variables of an FMU (fdgen.fmu)
+      const fd::System sys(model);
+      for (const auto& in : model.inputs) std::printf("input %s %.17g\n", in.name.c_str(), in.value);
+      for (const auto& name : sys.output_names()) std::printf("output %s\n", name.c_str());
+      return 0;
+    }
     std::string out_path = model.name + ".csv", linear_solver = fd::default_linear_solver(), step_log_path,
                 timing_log_path, event_log_path;
     bool timing = false;
