@@ -94,6 +94,9 @@ class HhtIntegrator {
   const std::vector<EventRecord>& event_log() const { return event_log_; }
   long event_probes() const { return event_probes_; }  // probe steps of the event location
   long subdivided_steps() const { return subdivided_steps_; }  // grid steps halved (step())
+  // Steps of at most settings.step from time() to t_target, the last one ending there (a
+  // communication step of a co-simulation, fmu/); events and failed steps as for step().
+  StepResult advance_to(double t_target);
   // Fixed step of size settings.step to the next point of the grid k step; events end steps
   // early, then the rest of the grid step follows; a step Newton does not converge is halved
   // (down to step / 1024, then it throws; with newton fixed it throws at once).

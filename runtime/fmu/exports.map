@@ -1,0 +1,5 @@
+/* The symbols a freedyn2 FMU exports (Linux): the FMI functions, nothing else. */
+{
+  global: fmi2*; fmi3*;
+  local: *;
+};

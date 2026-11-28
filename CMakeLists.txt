@@ -174,6 +174,27 @@ fd_copy_runtime_dlls(freedyn2_road)
 # both copy the same DLLs into the same directory: one after the other, not at the same time
 # (parallel builds; file(COPY) of two programs at once fails on Windows)
 add_dependencies(freedyn2_road freedyn2_run)
+# FMUs for co-simulation (fdgen.fmu): one shared library with the FMI 2.0 and 3.0 functions
+# serves every model (the model file is in the resources of the FMU). The runtime is compiled
+# into it again, without KLU (LGPL, a shared library elsewhere): an FMU carries no other shared
+# libraries. Only the fmi* functions are exported; the C++ library is linked statically (gcc).
+add_library(freedyn2_fmu SHARED
+  runtime/fmu/slave.cpp runtime/fmu/fmi2.cpp runtime/fmu/fmi3.cpp
+  runtime/src/generated_function.cpp runtime/src/scatter.cpp runtime/src/model.cpp runtime/src/plugin.cpp
+  runtime/src/system.cpp runtime/src/linear_solver.cpp runtime/src/crg.cpp runtime/src/hht.cpp)
+target_include_directories(freedyn2_fmu PRIVATE runtime/include runtime/fmu runtime/third_party/fmi/fmi2
+                           runtime/third_party/fmi/fmi3)
+target_link_libraries(freedyn2_fmu PRIVATE fd_generated opencrg Eigen3::Eigen ${CMAKE_DL_LIBS})
+set_target_properties(opencrg PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(freedyn2_fmu PROPERTIES PREFIX "" CXX_VISIBILITY_PRESET hidden C_VISIBILITY_PRESET hidden
+                      VISIBILITY_INLINES_HIDDEN ON)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT WIN32)
+  target_link_options(freedyn2_fmu PRIVATE -static-libstdc++ -static-libgcc
+                      -Wl,--version-script=${PROJECT_SOURCE_DIR}/runtime/fmu/exports.map)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT WIN32 AND NOT APPLE)
+  target_link_options(freedyn2_fmu PRIVATE -Wl,--version-script=${PROJECT_SOURCE_DIR}/runtime/fmu/exports.map)
+endif()
+
 # modal reduction of linear FE models (fdgen.fem): Eigen only. On x86-64 also a variant with AVX2
 # and FMA (Eigen's dense kernels about twice as fast); fdgen.fem.reduce takes it where the CPU
 # has them (freedyn2_modal --cpu).
@@ -209,6 +230,7 @@ if(SKBUILD)
     set_target_properties(freedyn2_run freedyn2_road ${FD_MODAL_TARGETS} PROPERTIES INSTALL_RPATH "$ORIGIN")
   endif()
   install(TARGETS freedyn2_run freedyn2_road ${FD_MODAL_TARGETS} RUNTIME DESTINATION fdgen/bin)
+  install(TARGETS freedyn2_fmu RUNTIME DESTINATION fdgen/bin LIBRARY DESTINATION fdgen/bin)
   set(FD_SHARED_DEPS)
   foreach(t SuiteSparse::KLU SuiteSparse::BTF SuiteSparse::AMD SuiteSparse::COLAMD SuiteSparse::SuiteSparseConfig)
     if(TARGET ${t})

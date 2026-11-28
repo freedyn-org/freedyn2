@@ -52,6 +52,14 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- **FMU export** (`freedyn2 fmu model.yaml [--fmi 2|3]`): a model as a Functional Mock-up Unit
+  for co-simulation, FMI 2.0 or 3.0. Inputs are the model's runtime inputs, outputs its result
+  channels; a communication step is integrated with the model's step, contacts located within.
+  One generic library of the runtime (`freedyn2_fmu`, the FMI 2.0 and 3.0 functions, no shared
+  libraries, only the FMI functions exported) serves every model; the model file, its plugin
+  and data files are resources of the FMU. Checked with FMPy: both versions pass its
+  validation, and the outputs equal those of `freedyn2 run` to round-off (`test_fmu.py`).
+  `freedyn2_run --channels` lists a model's inputs and outputs.
 - Viewer: the geometry of contacts on their bodies (the sphere as great circles and a shell, the
   plane as a square under it with its normal, or the second sphere), stronger while the bodies
   touch, with the contact point; the contact force arrow at the contact point (it was drawn at

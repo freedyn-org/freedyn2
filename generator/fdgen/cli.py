@@ -15,6 +15,7 @@
   freedyn2 modal-stress model.yaml body [result.csv] [-o dir]   (fdgen.flex.modal_stress: modal stresses for fatigue)
   freedyn2 flex-info file.fdflex|file.mtx [--mtx out.mtx] [--fdflex out.fdflex]   (modal data: show, convert)
   freedyn2 rename model.yaml old new [--section bodies|joints|...]   (fdgen.rename)
+  freedyn2 fmu model.yaml [-o model.fmu] [--fmi 2|3]   (fdgen.fmu: an FMU for co-simulation)
   freedyn2 import-onshape <assembly URL> [-o model.yaml] [--no-meshes] [--force | --update]  (fdgen.onshape)
 
 `run` imports the model, writes the runtime model file (.fdm) and, for models with expression
@@ -247,6 +248,14 @@ def rename(args):
     return 0
 
 
+def fmu(args):
+    from .fmu import export
+
+    path, v = export(args.model, args.output, args.fmi, args.profile, args.runtime)
+    print(f"wrote {path}: FMI {args.fmi} co-simulation, {len(v['inputs'])} inputs, {len(v['outputs'])} outputs")
+    return 0
+
+
 def import_onshape(args):
     from .onshape import import_onshape as read
 
@@ -355,6 +364,12 @@ def main(argv=None):
     rn.add_argument("old")
     rn.add_argument("new")
     rn.add_argument("--section", help="bodies, joints, ... where the old name is used by several elements")
+    fm = sub.add_parser("fmu", help="write a model as an FMU for co-simulation (FMI 2.0 or 3.0)")
+    fm.add_argument("model")
+    fm.add_argument("-o", "--output", help="the .fmu file (default: next to the model)")
+    fm.add_argument("--fmi", choices=["2", "3"], default="2", help="FMI version (default 2)")
+    fm.add_argument("--profile", default="v2", choices=["v2", "legacy"], help=".fds models: the profile")
+    fm.add_argument("--runtime", help="freedyn2_run (for the list of channels)")
     io = sub.add_parser("import-onshape", help="write an Onshape assembly as a YAML model file (API keys: "
                         "ONSHAPE_ACCESS_KEY, ONSHAPE_SECRET_KEY)")
     io.add_argument("url", help="the assembly's address in the browser (https://cad.onshape.com/documents/...)")
@@ -389,7 +404,7 @@ def main(argv=None):
 
             return update_check()
         return {"view": view, "check": check, "examples": examples, "convert": convert,
-                "import-onshape": import_onshape, "rename": rename, "flex-export": flex_export, "modal-stress": modal_stress,
+                "import-onshape": import_onshape, "rename": rename, "fmu": fmu, "flex-export": flex_export, "modal-stress": modal_stress,
                 "flex-info": flex_info}.get(args.command, run)(args)
     except Exception as e:  # noqa: BLE001  (command line: message, not traceback)
         print(f"freedyn2: {e}", file=sys.stderr)

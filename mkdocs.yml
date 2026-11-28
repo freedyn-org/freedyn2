@@ -79,6 +79,7 @@ nav:
   - Tools:
       - Command line: cli.md
       - Python API: python-api.md
+      - Co-simulation (FMU): fmu.md
   - Switching over:
       - Coming from FreeDyn: from-freedyn.md
       - Coming from Adams: from-adams.md

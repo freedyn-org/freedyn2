@@ -687,20 +687,21 @@ StepResult HhtIntegrator::try_step_to_event(double h, double t_new, double snap)
   return r;
 }
 
-StepResult HhtIntegrator::step() {
-  const double t_grid = static_cast<double>(grid_steps_ + 1) * s_.step;
+StepResult HhtIntegrator::advance_to(double t_target) {
   StepResult r;
   int iterations = 0;
   double h_sub = s_.step;
   bool subdivided = false;
-  // events end steps early; the rest of the grid step follows (a crossing in its last percent
-  // keeps the full step, so that no step is much shorter than the grid). A step Newton does not
-  // converge is halved (down to step / 1024; not in the real-time mode newton fixed, whose work
-  // per step is fixed): a friction contact that reverses its slip within a step.
-  while (t_ < t_grid - 1e-9 * s_.step) {
-    const bool last = t_ + h_sub >= t_grid - 1e-9 * s_.step;
-    const double h = last ? t_grid - t_ : h_sub;
-    r = try_step_to_event(h, last ? t_grid : t_ + h, 1e-2 * h);
+  const double tiny = 1e-9 * s_.step;
+  // steps of settings.step, the last one to t_target (one that is up to 1 % longer rather than a
+  // very short one after it). Events end steps early; the rest follows (a crossing in the last
+  // percent of a step keeps the full step). A step Newton does not converge is halved (down to
+  // step / 1024; not in the real-time mode newton fixed, whose work per step is fixed): a
+  // friction contact that reverses its slip within a step.
+  while (t_ < t_target - tiny) {
+    const bool last = t_ + 1.01 * h_sub >= t_target - tiny;
+    const double h = last ? t_target - t_ : h_sub;
+    r = try_step_to_event(h, last ? t_target : t_ + h, 1e-2 * h);
     if (r.status != StepStatus::ok) {
       if (s_.newton == "fixed" || h_sub < s_.step / 1024.0)
         throw std::runtime_error(std::string("HHT: step failed at t = ") + std::to_string(t_ + h) + ": " +
@@ -711,8 +712,13 @@ StepResult HhtIntegrator::step() {
     iterations += r.iterations;
   }
   subdivided_steps_ += subdivided;
-  ++grid_steps_;
   r.iterations = iterations;
+  return r;
+}
+
+StepResult HhtIntegrator::step() {
+  const StepResult r = advance_to(static_cast<double>(grid_steps_ + 1) * s_.step);
+  ++grid_steps_;
   return r;
 }
 
