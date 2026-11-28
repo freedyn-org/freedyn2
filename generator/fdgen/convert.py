@@ -46,12 +46,13 @@ MEASURE_KEYS = ("type", "body1", "body2", "point1", "point2", "component", "fram
                 "form", "offset")
 MEASURE_DEFAULTS = {"normalize": True}
 DRIVER_KEYS = ("measure", "motion", "ramp")
-SOLVER_KEYS = ("alpha", "form", "end_time", "step", "output_step", "output_begin", "newton", "newton_tol",
-               "max_newton", "adaptive", "eps", "h_min", "error_norm", "exact_output", "vproj_tol")
+SOLVER_KEYS = ("alpha", "rho_inf", "form", "end_time", "step", "output_step", "output_begin", "newton", "newton_tol",
+               "max_newton", "adaptive", "controller", "eps", "h_min", "error_norm", "exact_output", "vproj_tol")
 # the runtime's values of solver keys a model file leaves out (fd::SolverSettings); they are left
 # out of the YAML file too, but for alpha, adaptive and eps
 SOLVER_DEFAULTS = {"form": "arnold_bruls", "output_begin": 0.0, "newton": "velocity", "newton_tol": 1e-10,
-                   "max_newton": 25, "h_min": 1e-14, "error_norm": "mixed", "exact_output": True, "vproj_tol": 1e-12}
+                   "max_newton": 25, "h_min": 1e-14, "error_norm": "mixed", "exact_output": True, "vproj_tol": 1e-12,
+                   "controller": "pi"}
 MODEL_KEYS = ("model", "bodies", "joints", "forces", "parameters", "measures", "splines", "drivers", "gravity",
               "solver")
 

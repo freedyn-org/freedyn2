@@ -59,3 +59,4 @@ void add_rigid_body_tests(Tests& tests);
 void add_joint_tests(Tests& tests);
 void add_force_tests(Tests& tests);
 void add_initial_tests(Tests& tests);
+void add_integrator_tests(Tests& tests);

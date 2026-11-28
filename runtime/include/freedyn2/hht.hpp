@@ -1,6 +1,7 @@
 #pragma once
-// HHT-alpha integrator for index-3 DAEs of multibody dynamics with Newton correction
-// using the generated iteration matrix, in two forms:
+// HHT-alpha / generalized-alpha integrator for index-3 DAEs of multibody dynamics with Newton
+// correction using the generated iteration matrix. Generalized-alpha (SolverSettings::rho_inf,
+// Chung and Hulbert 1993) runs in the arnold_bruls form; HHT in two forms:
 // - arnold_bruls (default): equations of motion at t_{n+1}, alpha only in the Newmark
 //   pseudo-acceleration (generalized-alpha with alpha_m = 0, Arnold & Bruls 2007), second order,
 //   on Lie groups: q_{n+1} = q_n o exp(incr) with the elements' update functions
@@ -83,9 +84,13 @@ class HhtIntegrator {
   SolverSettings s_;
   bool ab_ = true;                          // Arnold-Bruls form, else Negrut
   bool legacy_error_norm_ = false;          // error weights of legacy FreeDyn (SolverSettings::error_norm)
-  double alpha_ = 0, beta_ = 0, gamma_ = 0;  // HHT parameters
+  double alpha_ = 0, beta_ = 0, gamma_ = 0;  // HHT parameters (generalized-alpha: its beta, gamma)
+  bool gen_alpha_ = false;                   // generalized-alpha (SolverSettings::rho_inf)
+  double am_ = 0, af_ = 0;                   // its alpha_m, alpha_f (HHT: 0, -alpha)
+  double c1_ = 1, c2_ = 0, c3_ = 0;          // a_n+1 = c1 qdd_n+1 + c2 qdd_n + c3 a_n
   HhtCoef c_;                               // effective coefficients of the generated functions
-  double psi_ = 0.0;  // Negrut's error scale n eps^2 / (beta - 1/(6(1+alpha)))^2
+  double psi_ = 0.0;         // error scale nv eps^2 / C^2 of the local error C h^2 (qdd - qdd_n)
+  double psi_newton_ = 0.0;  // Negrut's, for the legacy Newton rule (Eq. 40)
   std::unique_ptr<LinearSolver> ls_, ls_ic_;
   std::string ls_name_;
   InitialReport report_;
@@ -119,6 +124,28 @@ class LegacyTimeStepper {
   // Returns the number of accepted steps; throws if the step size gets too small.
   // before_step(t) is called with t = 0 before the initial state is solved and with the end
   // time of every step attempt before it (runtime inputs: System::set_input).
+  long run(const std::function<void(double)>& on_output,
+           const std::function<void(double, double, const StepResult&)>& on_attempt = nullptr,
+           const std::function<void(double)>& before_step = nullptr);
+  long rejected_steps() const { return rejected_; }
+
+ private:
+  HhtIntegrator& hht_;
+  SolverSettings s_;
+  long rejected_ = 0;
+};
+
+// Step size control for accuracy (controller = pi): the PI controller of Gustafsson (1991) as in
+// Hairer and Wanner, Solving ODEs II, IV.8, on the local error estimate of the integrator
+// (err = sqrt(theta) <= 1 accepts): h_new = h 0.9 err_n^(-0.7/k) err_n-1^(0.4/k), k = 3 (the
+// local error is O(h^3)), the factor within [0.2, 5] and not above 1 after a rejected step. A
+// step that Newton does not converge is retried with a quarter. Steps end exactly at the output
+// times (k output_step from output_begin on, and end_time); a step shortened to reach one does
+// not shorten the next. step is the largest step, h_min the smallest.
+class PiTimeStepper {
+ public:
+  PiTimeStepper(HhtIntegrator& hht, const SolverSettings& s) : hht_(hht), s_(s) {}
+  // As LegacyTimeStepper::run.
   long run(const std::function<void(double)>& on_output,
            const std::function<void(double, double, const StepResult&)>& on_attempt = nullptr,
            const std::function<void(double)>& before_step = nullptr);

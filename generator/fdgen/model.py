@@ -62,7 +62,13 @@ def _check_bodies(owner, names, bodies):
 
 def _solver(s):
     s = dict(s)
-    s.setdefault("alpha", -0.1)
+    if "rho_inf" in s:  # generalized-alpha instead of HHT
+        if "alpha" in s:
+            raise ModelError("solver: alpha (HHT) and rho_inf (generalized-alpha) exclude each other")
+    else:
+        s.setdefault("alpha", -0.1)
+    if s.get("adaptive"):
+        s.setdefault("controller", "pi")
     s.setdefault("form", "arnold_bruls")
     s.setdefault("output_step", s["step"])
     s.setdefault("newton_tol", 1e-10)
@@ -469,16 +475,19 @@ def write_fdm(model, path):
     function maps to qd. Joints are written as their primitive constraint elements, which
     reference the coordinates and dofs of the connected bodies.
     """
-    if model["joints"] and model["solver"].get("alpha", 0.0) == 0.0:
+    if model["joints"] and model["solver"].get("alpha", 0.0) == 0.0 and "rho_inf" not in model["solver"]:
         # Trapezoidal rule with index-3 constraints: a (-1)^n mode of lambda grows (docs/findings.md).
         warnings.warn(f"{model['model']}: alpha = 0 is unstable with joints, use alpha < 0 (e.g. -0.01)")
+    if model["joints"] and model["solver"].get("rho_inf") == 1.0:
+        warnings.warn(f"{model['model']}: rho_inf = 1 (no numerical damping) is unstable with joints, use rho_inf < 1 "
+                      "(e.g. 0.9)")
     s = model["solver"]
     keys = {"form": "hht_form"}  # model key -> runtime key, where they differ
     solver = " ".join(
         f"{keys.get(k, k)} {int(s[k]) if isinstance(s[k], bool) else s[k]!r}".replace("'", "")
         for k in ("alpha", "form", "end_time", "step", "output_step", "output_begin", "newton_tol",
                   "max_newton", "newton", "newton_iterations", "adaptive", "h_min", "eps", "exact_output", "vproj_tol",
-                  "error_norm", "statics")
+                  "error_norm", "statics", "rho_inf", "controller")
         if k in s
     )
     lines = [f"freedyn2_model {FDM_VERSION}", f"name {model['model']}", f"solver {solver}"]

@@ -32,6 +32,7 @@ def settings(sim, solver, profile="legacy"):
         "exact_output": flag(sim, "isExactOutputTimeEnforced", False),
         "newton": "legacy",
         "adaptive": True,
+        "controller": "legacy",  # the step size control of legacy FreeDyn (both profiles)
         "form": "negrut",
         "vproj_tol": 1e-5,  # SOL_InitialConditionManager::adaptVelocities
         "error_norm": "legacy",  # weights of the local error: largest magnitude so far

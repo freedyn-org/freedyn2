@@ -32,6 +32,12 @@ struct SolverSettings {
   std::string error_norm = "mixed";
   bool exact_output = true;    // isExactOutputTimeEnforced
   double vproj_tol = 1e-12;    // initial velocity projection when |Phi_q qd| > tol (legacy: 1e-5)
+  // Generalized-alpha with this spectral radius at infinity (0: asymptotic annihilation, 1: no
+  // numerical damping) instead of HHT with alpha; < 0: HHT.
+  double rho_inf = -1.0;
+  // Step size control (adaptive): "pi" (PiTimeStepper) or "legacy" (LegacyTimeStepper, as legacy
+  // FreeDyn). The generator writes it; model files without it are those of .fds models.
+  std::string controller = "legacy";
   bool statics = false;        // start from the static equilibrium, at rest (HhtIntegrator::initialize)
 };
 

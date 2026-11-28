@@ -49,10 +49,35 @@ HhtIntegrator::HhtIntegrator(System& sys, const SolverSettings& s, const std::st
     throw std::runtime_error("HHT: form must be negrut or arnold_bruls");
   ab_ = s.hht_form == "arnold_bruls";
   legacy_error_norm_ = s.error_norm == "legacy";
+  if (s.controller != "legacy" && s.controller != "pi")
+    throw std::runtime_error("HHT: controller must be legacy or pi");
   // Same expressions as SOL_DynSolverHHTParameter.
   alpha_ = s.alpha;
   beta_ = 0.25 * (1. - s.alpha) * (1. - s.alpha);
   gamma_ = 0.5 * (1. - 2. * s.alpha);
+  // Generalized-alpha (Chung and Hulbert 1993) on the Lie group (Arnold and Bruls 2007; Bruls,
+  // Cardona, Arnold 2012) from the spectral radius at infinity rho_inf: the equations at t_n+1,
+  // the pseudo-acceleration (1 - am) a_n+1 + am a_n = (1 - af) qdd_n+1 + af qdd_n, i.e.
+  // a_n+1 = c1 qdd_n+1 + c2 qdd_n + c3 a_n. HHT (Arnold-Bruls form) is the case am = 0,
+  // af = -alpha; it keeps its own expressions below (the same results to the last bit).
+  gen_alpha_ = s.rho_inf >= 0.0;
+  if (gen_alpha_) {
+    const double rho = s.rho_inf;
+    if (rho > 1.0) throw std::runtime_error("HHT: rho_inf must be in [0, 1]");
+    if (s.hht_form != "arnold_bruls") throw std::runtime_error("HHT: rho_inf (generalized-alpha) needs the arnold_bruls form");
+    if (s.newton == "legacy") throw std::runtime_error("HHT: rho_inf (generalized-alpha) does not go with newton legacy");
+    am_ = (2. * rho - 1.) / (rho + 1.);
+    af_ = rho / (rho + 1.);
+    gamma_ = 0.5 + af_ - am_;
+    beta_ = 0.25 * (gamma_ + 0.5) * (gamma_ + 0.5);
+    alpha_ = -af_;  // only for the error constant of the legacy controller and the reports
+    c1_ = (1. - af_) / (1. - am_);
+    c2_ = af_ / (1. - am_);
+    c3_ = -am_ / (1. - am_);
+  } else {
+    am_ = 0.0;
+    af_ = -alpha_;
+  }
   // Coefficients passed to the generated functions. Negrut: r_dyn = M qdd/(1+alpha) + f
   // - alpha/(1+alpha) f_n. Arnold-Bruls: r_dyn = M qdd + f at t_{n+1} with q, qd depending on
   // qdd through the pseudo-acceleration a = (1+alpha) qdd - alpha qdd_n, i.e. with
@@ -61,6 +86,7 @@ HhtIntegrator::HhtIntegrator(System& sys, const SolverSettings& s, const std::st
   c_.alpha = ab_ ? 0. : alpha_;
   c_.beta = ab_ ? (1. + alpha_) * beta_ : beta_;
   c_.gamma = ab_ ? (1. + alpha_) * gamma_ : gamma_;
+  if (gen_alpha_) c_.beta = c1_ * beta_, c_.gamma = c1_ * gamma_;  // dq/dqdd = c1 beta h^2, dqd/dqdd = c1 gamma h
   c_.h = s.step;
   if (!ab_ && !sys.vector_space())
     throw std::runtime_error("HHT: the negrut form needs vector-space elements (e.g. rigid_body_euler)");
@@ -68,7 +94,16 @@ HhtIntegrator::HhtIntegrator(System& sys, const SolverSettings& s, const std::st
     throw std::runtime_error("HHT: newton fixed is meant for a fixed step size (adaptive off)");
   if (ab_ && sys.modified_newmark())
     throw std::runtime_error("HHT: modified Newmark formulas are a legacy option of the negrut form");
-  psi_ = sys.nv() * std::pow(s.eps, 2) / std::pow(beta_ - 1. / (6. * (1. + alpha_)), 2);
+  // Local error of a step: the Newmark truncation term C h^2 (qdd_n+1 - qdd_n) per velocity dof.
+  // Negrut et al. (2007) Eq. 37a: C = beta - 1/(6 (1 + alpha)), for the force-weighted form,
+  // kept with the legacy controller of HHT. For the equations at t_n+1 (Arnold-Bruls HHT,
+  // generalized-alpha) the position increment h v_n + h^2 ((1/2 - beta) a_n + beta a_n+1), with
+  // a_n = qdd(t_n + (am - af) h) for accelerations linear in time, leaves
+  // C = beta + (am - af)/2 - 1/6 (Newmark: beta - 1/6, Zienkiewicz and Xie 1991).
+  const double c_newmark = beta_ - 1. / (6. * (1. + alpha_));
+  const double c_err = ab_ && (gen_alpha_ || s.controller == "pi") ? beta_ + 0.5 * (am_ - af_) - 1. / 6. : c_newmark;
+  psi_ = sys.nv() * std::pow(s.eps, 2) / std::pow(c_err, 2);
+  psi_newton_ = sys.nv() * std::pow(s.eps, 2) / std::pow(c_newmark, 2);
   ls_name_ = linear_solver;
   make_solvers();
   const int nx = sys.nx(), nq = sys.nq(), nv = sys.nv();
@@ -328,10 +363,17 @@ void HhtIntegrator::begin_step(double h) {
   if (ab_) {
     // Lie group form: q = q_n o exp(incr), incr = h (qd_n + h (1/2 - beta) a_n + h beta a_{n+1})
     // with the pseudo-acceleration a_{n+1} = (1+alpha) qdd - alpha qdd_n; qd alike.
-    for (int i = 0; i < sys_.nv(); ++i) {
-      incr_pred_[i] = h * (qd_n_[i] + h * ((0.5 - beta_) * a_n_[i] - beta_ * alpha_ * qdd_n_[i]));
-      qd_pred_[i] = qd_n_[i] + h * ((1. - gamma_) * a_n_[i] - gamma_ * alpha_ * qdd_n_[i]);
-    }
+    if (gen_alpha_)
+      for (int i = 0; i < sys_.nv(); ++i) {
+        const double a_known = c2_ * qdd_n_[i] + c3_ * a_n_[i];  // a_n+1 = c1 qdd + a_known
+        incr_pred_[i] = h * (qd_n_[i] + h * ((0.5 - beta_) * a_n_[i] + beta_ * a_known));
+        qd_pred_[i] = qd_n_[i] + h * ((1. - gamma_) * a_n_[i] + gamma_ * a_known);
+      }
+    else
+      for (int i = 0; i < sys_.nv(); ++i) {
+        incr_pred_[i] = h * (qd_n_[i] + h * ((0.5 - beta_) * a_n_[i] - beta_ * alpha_ * qdd_n_[i]));
+        qd_pred_[i] = qd_n_[i] + h * ((1. - gamma_) * a_n_[i] - gamma_ * alpha_ * qdd_n_[i]);
+      }
   } else {
     // Newmark predictor in the operation order of SOL_DynSolverHHT::applyNewmark.
     const double hh2 = 0.5 * h * h, hg = h * c_.gamma;
@@ -384,7 +426,7 @@ bool HhtIntegrator::newton_converged_legacy(double h) const {
   const double xi = norm_dx_prev_ > kLegacyEps ? norm_dx_ / norm_dx_prev_ : 1.;
   if (std::abs(xi - 1.) <= kLegacyEps) return true;
   return std::pow(xi / (1. - xi), 2.) * std::pow(norm_dx_, 2.) <=
-         std::pow(kAdaptivity, 2.) * psi_ / std::pow(h, 4.);
+         std::pow(kAdaptivity, 2.) * psi_newton_ / std::pow(h, 4.);
 }
 
 StepResult HhtIntegrator::try_step(double h, double t_new) {
@@ -483,7 +525,9 @@ StepResult HhtIntegrator::try_step(double h, double t_new) {
   // f_{n+1} of the converged state (newton fixed with alpha = 0: stale, and not used)
   std::copy(f_.begin(), f_.end(), f_n_.begin());
   if (ab_)
-    for (int i = 0; i < nv; ++i) a_n_[i] = (1. + alpha_) * sys_.qdd[i] - alpha_ * qdd_n_[i];
+    for (int i = 0; i < nv; ++i)
+      a_n_[i] = gen_alpha_ ? c1_ * sys_.qdd[i] + c2_ * qdd_n_[i] + c3_ * a_n_[i]
+                           : (1. + alpha_) * sys_.qdd[i] - alpha_ * qdd_n_[i];
   save_accepted();
   newton_last_ = res.iterations;
   newton_total_ += res.iterations;
@@ -556,6 +600,63 @@ long LegacyTimeStepper::run(const std::function<void(double)>& on_output,
     }
     if (h < s_.h_min)
       throw std::runtime_error("HHT: step size below the minimum step size at t = " + std::to_string(t));
+  }
+}
+
+long PiTimeStepper::run(const std::function<void(double)>& on_output,
+                        const std::function<void(double, double, const StepResult&)>& on_attempt,
+                        const std::function<void(double)>& before_step) {
+  constexpr double kOrder = 3.0, kSafety = 0.9, kMin = 0.2, kMax = 5.0;
+  const double t_final = s_.end_time, dt_out = s_.output_step, h_max = s_.step;
+  const double t_tiny = 1e-12 * std::max(1.0, t_final);
+  // output times k dt_out (from output_begin on) and t_final, each computed from k (no drift)
+  long k_out = 1;
+  while (k_out * dt_out < s_.output_begin - t_tiny) ++k_out;
+  auto next_output = [&] { return std::min(k_out * dt_out, t_final); };
+
+  if (before_step) before_step(0.0);
+  hht_.initialize();
+  on_output(0.0);
+  double t = 0.0, h = h_max, err_prev = 1.0;
+  bool rejected_last = false;
+  long accepted = 0;
+  rejected_ = 0;
+  for (;;) {
+    const double t_out = next_output();
+    double h_try = std::min(h, h_max);
+    bool lands = false;
+    if (t + h_try >= t_out - t_tiny) {
+      h_try = t_out - t, lands = true;
+    } else if (t + 2.0 * h_try > t_out) {
+      h_try = 0.5 * (t_out - t);  // two equal steps instead of a long and a very short one
+    }
+    if (h_try < s_.h_min)
+      throw std::runtime_error("HHT: step size below the minimum step size at t = " + std::to_string(t));
+    const double t_new = lands ? t_out : t + h_try;
+    if (before_step) before_step(t_new);
+    const StepResult r = hht_.try_step(h_try, t_new);
+    if (on_attempt) on_attempt(t_new, h_try, r);
+    if (r.status != StepStatus::ok) {
+      ++rejected_;
+      const double err = std::sqrt(r.theta);
+      h = h_try * (r.status == StepStatus::local_error ? std::max(kMin, kSafety * std::pow(err, -1.0 / kOrder)) : 0.25);
+      rejected_last = true;
+      continue;
+    }
+    ++accepted;
+    const double err = std::max(std::sqrt(r.theta), 1e-10);
+    double factor = kSafety * std::pow(err, -0.7 / kOrder) * std::pow(err_prev, 0.4 / kOrder);
+    factor = std::min(std::max(factor, kMin), rejected_last ? 1.0 : kMax);
+    err_prev = err;
+    rejected_last = false;
+    // a step shortened to land on an output time does not shorten the next one
+    h = lands ? std::max(h, h_try * factor) : h_try * factor;
+    t = t_new;
+    if (lands) {
+      on_output(t);
+      if (t >= t_final - t_tiny) return accepted;
+      ++k_out;
+    }
   }
 }
 
