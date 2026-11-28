@@ -34,6 +34,16 @@ else()
 endif()
 # The example model files and plugins are for the tests; a wheel build (pip install) skips them.
 option(FD_BUILD_EXAMPLES "generate the example model files and plugins (needed by the tests)" ${FD_TOP_LEVEL})
+# AddressSanitizer and UndefinedBehaviorSanitizer for everything compiled here (CI job
+# "sanitizers"; gcc and clang). Model plugins compiled at run time stay without them.
+option(FD_SANITIZE "build with -fsanitize=address,undefined" OFF)
+if(FD_SANITIZE)
+  if(MSVC)
+    message(FATAL_ERROR "FD_SANITIZE: gcc or clang")
+  endif()
+  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined)
+  add_link_options(-fsanitize=address,undefined)
+endif()
 if(NOT FD_BUILD_EXAMPLES)
   set(FD_EXAMPLE_NAMES)
   set(FD_PLUGIN_EXAMPLES)
@@ -101,6 +111,8 @@ add_custom_command(
   VERBATIM)
 
 # Generated C is compiled as is; it needs no CasADi library.
+# The generated sources alone (clang-tidy needs their headers, not their objects).
+add_custom_target(fd_codegen DEPENDS ${FD_GENERATED})
 add_library(fd_generated STATIC ${FD_ELEMENT_SOURCES} ${FD_GEN_DIR}/fd_registry.c)
 target_include_directories(fd_generated PUBLIC ${FD_GEN_DIR})
 set_target_properties(fd_generated PROPERTIES POSITION_INDEPENDENT_CODE ON)

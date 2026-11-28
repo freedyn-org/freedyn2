@@ -100,7 +100,7 @@ class Klu : public LinearSolver {
   void set_fixed_pivots(bool fixed) override { fixed_pivots_ = fixed; }
 
  private:
-  klu_common common_;
+  klu_common common_{};
   klu_symbolic* symbolic_ = nullptr;
   klu_numeric* numeric_ = nullptr;
   double rcond_full_ = 0.0;

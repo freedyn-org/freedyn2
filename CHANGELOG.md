@@ -60,6 +60,12 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   and data files are resources of the FMU. Checked with FMPy: both versions pass its
   validation, and the outputs equal those of `freedyn2 run` to round-off (`test_fmu.py`).
   `freedyn2_run --channels` lists a model's inputs and outputs.
+- CI: the C++ and Python tests with AddressSanitizer and UndefinedBehaviorSanitizer (CMake
+  option `FD_SANITIZE`, leaks checked too), and clang-tidy on the runtime (`.clang-tidy`:
+  bugs, the static analyzer, performance, uninitialized members; warnings are errors). Its
+  findings are fixed: multiplications of element sizes in `int` widened afterwards, members
+  left uninitialized, a stale iteration limit read by `freedyn2_modal`. Neither tool found an
+  error in the runtime's memory use.
 - Viewer: the geometry of contacts on their bodies (the sphere as great circles and a shell, the
   plane as a square under it with its normal, or the second sphere), stronger while the bodies
   touch, with the contact point; the contact force arrow at the contact point (it was drawn at

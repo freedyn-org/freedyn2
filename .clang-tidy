@@ -1,0 +1,22 @@
+# clang-tidy for the C++ runtime (CI job "clang-tidy"; locally: run-clang-tidy -p build runtime/).
+# Bugs, the static analyzer, performance and uninitialized members; warnings are errors.
+# Left out: parameters of the same type next to each other (the numerics have many), the
+# size of small enums, integer -> floating point "narrowing" (counts as doubles), and the
+# analyzer's leak checks: the runtime has no new, delete, malloc or free (all memory is owned by
+# containers and unique_ptr), they report false positives in Eigen's temporaries and for
+# unique_ptr members, and the sanitizer job checks leaks at run time (LeakSanitizer).
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  clang-analyzer-*,
+  -clang-analyzer-cplusplus.NewDeleteLeaks,
+  -clang-analyzer-unix.Malloc,
+  performance-*,
+  -performance-enum-size,
+  cppcoreguidelines-pro-type-member-init
+WarningsAsErrors: '*'
+HeaderFilterRegex: 'runtime/(include|src|app)/'
+CheckOptions:
+  - key: bugprone-narrowing-conversions.WarnOnIntegerToFloatingPointNarrowingConversion
+    value: false
