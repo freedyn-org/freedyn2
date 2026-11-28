@@ -1,6 +1,7 @@
 # Coming from FreeDyn
 
-freedyn2 is the successor of the FreeDyn freeware. If you have worked with the legacy
+freedyn2 is the successor of the FreeDyn freeware, developed at the University of Applied
+Sciences Upper Austria, Campus Wels ([multibody dynamics at FH OÖ](https://fh-ooe.at/en/research/research-center-wels/forschungsschwerpunkte-3/automatisierungstechnik-und-simulation/mehrkoerperdynamik)). If you have worked with the legacy
 FreeDyn binaries, unpacked into a folder, this page says what changes, what stays, and how to
 run your existing `.fds` models in freedyn2.
 

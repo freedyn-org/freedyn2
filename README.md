@@ -472,9 +472,11 @@ affected models, not the architecture adapted. CI runs both levels when the repo
 ## Citing and acknowledgements
 
 To cite freedyn2, use the metadata in `CITATION.cff` (GitHub: "Cite this repository").
-freedyn2 succeeds FreeDyn, developed at the University of Applied Sciences Upper Austria,
-Campus Wels, by Wolfgang Steiner, Wolfgang Witteveen, Karin Nachbagauer, Karim Sherif, Thomas
-Lauss and Stefan Oberpeilsteiner, among others. Its solver served as the reference for every
+freedyn2 succeeds FreeDyn, developed at the University of Applied Sciences Upper Austria
+(FH OÖ), Campus Wels, in its research group for multibody dynamics
+([FH OÖ: Multibody dynamics](https://fh-ooe.at/en/research/research-center-wels/forschungsschwerpunkte-3/automatisierungstechnik-und-simulation/mehrkoerperdynamik);
+freedyn.at leads there), by Wolfgang Steiner, Wolfgang Witteveen, Karin Nachbagauer, Karim
+Sherif, Thomas Lauss and Stefan Oberpeilsteiner, among others. Its solver served as the reference for every
 step and is reproduced in the legacy profile. Publications on FreeDyn:
 
 > Witteveen, W., Lauss, T., Oberpeilsteiner, S. (2021). FreeDyn: a free, flexible and state of

@@ -31,8 +31,8 @@ variants; an AI assistant can build and change the model through the same tools 
   built in) or meshed from the STL of a rigid body; modal stresses for fatigue.
 - **Co-simulation.** Any model as an [FMU](fmu.md) (FMI 2.0 or 3.0) for Simulink, Dymola,
   OpenModelica or FMPy.
-- **Open.** Apache 2.0. The successor of the FreeDyn freeware: its `.fds` models run as
-  they are.
+- **Open.** Apache 2.0. The successor of the FreeDyn freeware of the
+  [University of Applied Sciences Upper Austria](https://fh-ooe.at/en/research/research-center-wels/forschungsschwerpunkte-3/automatisierungstechnik-und-simulation/mehrkoerperdynamik): its `.fds` models run as they are.
 - **Easy to install.** A Windows installer for using it as a program (no Python needed), or
   `pip install freedyn2` for use from Python, Jupyter and on Linux.
 
