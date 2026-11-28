@@ -114,6 +114,7 @@ Model load_model(const std::string& path) {
         else if (k == "exact_output") ss >> s.exact_output;
         else if (k == "output_begin") ss >> s.output_begin;
         else if (k == "vproj_tol") ss >> s.vproj_tol;
+        else if (k == "statics") ss >> s.statics;
         else fail("unknown solver key '" + k + "'");
       }
     } else if (key == "element") {

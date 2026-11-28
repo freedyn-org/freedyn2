@@ -32,6 +32,7 @@ struct SolverSettings {
   std::string error_norm = "mixed";
   bool exact_output = true;    // isExactOutputTimeEnforced
   double vproj_tol = 1e-12;    // initial velocity projection when |Phi_q qd| > tol (legacy: 1e-5)
+  bool statics = false;        // start from the static equilibrium, at rest (HhtIntegrator::initialize)
 };
 
 struct ElementSpec {

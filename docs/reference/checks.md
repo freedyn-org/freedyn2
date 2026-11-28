@@ -16,7 +16,7 @@ The exit status is 1 if there is an error or a failed reference – usable in CI
 | | |
 |---|---|
 | **errors** | inertia no real body has (I1 + I2 < I3), a spring whose points coincide, non-finite results |
-| **likely slips** | gravity, lengths or masses not in SI units; a joint far from both its bodies; more constraints than degrees of freedom (redundant joints); a tire deep in the road or in the air at the start; drift of the orientation |
+| **likely slips** | gravity, lengths or masses not in SI units; a joint far from both its bodies; more constraints than degrees of freedom (redundant joints: the runtime deactivates the repeated ones, which then carry no force); a tire deep in the road or in the air at the start; drift of the orientation |
 | **good to know** | degrees of freedom and total mass; bodies not connected to the ground or not at rest at the start; parameters no expression uses |
 
 ## References

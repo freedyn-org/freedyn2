@@ -44,6 +44,18 @@ void MatrixAssembler::finalize(int n) {
   }
 }
 
+void MatrixAssembler::add_diagonal(int i) {
+  Sparsity sp;
+  sp.nrow = sp.ncol = 1;
+  sp.colind = {0, 1};
+  sp.row = {0};
+  add_block(sp, {i});
+}
+
+void MatrixAssembler::pin_row(int i) {
+  for (int k = A_.rowptr[i]; k < A_.rowptr[i + 1]; ++k) A_.val[k] = A_.col[k] == i ? 1.0 : 0.0;
+}
+
 void MatrixAssembler::zero() { std::fill(A_.val.begin(), A_.val.end(), 0.0); }
 
 void MatrixAssembler::add(int block, const double* local_nz) {

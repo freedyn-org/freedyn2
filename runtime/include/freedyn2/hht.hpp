@@ -32,12 +32,29 @@ struct StepResult {
   double correction = 0.0;
 };
 
+// What initialize() did to reach a consistent initial state.
+struct InitialReport {
+  std::vector<int> redundant;   // constraints found redundant and deactivated (System::constraint_name)
+  double violation = 0.0;       // largest |Phi| of the active constraints in the given positions
+  int assembly_iterations = 0;  // Newton corrections of the positions (0: consistent as given)
+  double largest_move = 0.0;    // largest change of a coordinate by the assembly (velocity dof units)
+  int largest_move_dof = -1;    // its velocity dof
+  int static_iterations = 0;    // corrections of the static equilibrium (SolverSettings::statics)
+  double static_move = 0.0;     // largest change of a coordinate by it
+  int static_move_dof = -1;
+};
+
 class HhtIntegrator {
  public:
   HhtIntegrator(System& sys, const SolverSettings& s, const std::string& linear_solver = "sparselu");
 
-  // Set q, qd from the model and solve for consistent qdd and lam at t = 0.
+  // Set q, qd from the model and solve for consistent qdd and lam at t = 0: redundant
+  // constraints are deactivated (lam = 0, the others carry the load), positions that violate
+  // the constraints are assembled (Newton, the smallest correction in the mass metric:
+  // [M B^T; B 0] [delta; mu] = [0; -Phi]), with SolverSettings::statics moved into the static
+  // equilibrium at rest, velocities projected onto the constraints.
   void initialize();
+  const InitialReport& initial_report() const { return report_; }
   // Try one step of size h from the last accepted state, ending at time t_new. On
   // success the new state is accepted, otherwise the last accepted state is restored.
   StepResult try_step(double h, double t_new);
@@ -70,6 +87,14 @@ class HhtIntegrator {
   HhtCoef c_;                               // effective coefficients of the generated functions
   double psi_ = 0.0;  // Negrut's error scale n eps^2 / (beta - 1/(6(1+alpha)))^2
   std::unique_ptr<LinearSolver> ls_, ls_ic_;
+  std::string ls_name_;
+  InitialReport report_;
+  void make_solvers();
+  void assemble_positions();
+  // Newton corrections of the positions onto Phi = 0 in the mass metric (active constraints),
+  // accumulated per velocity dof in moved; |Phi| before in *violation. Throws if they fail.
+  int project_positions(std::vector<double>& moved, double* violation = nullptr);
+  void static_equilibrium();
   double t_ = 0.0;
   long n_steps_ = 0;
   long newton_total_ = 0;

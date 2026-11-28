@@ -105,7 +105,9 @@ def check_model(model):
     if dof < 0:
         out.append(finding("warning", "overconstrained",
                            f"{-dof} more constraints than degrees of freedom: redundant constraints "
-                           "(the solver may fail; replace joints by ones that fix fewer directions)"))
+                           "(the runtime deactivates the repeated ones and names them at the start; they carry "
+                           "no force, so their reactions are not those of the real part: replace joints by ones "
+                           "that fix fewer directions where the reactions matter)"))
     elif dof == 0 and bodies:
         out.append(finding("info", "no_motion", "0 degrees of freedom: the motion is prescribed entirely"))
     free, lonely = _connectivity(model)

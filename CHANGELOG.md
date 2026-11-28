@@ -42,6 +42,16 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- The initial state is made consistent before the first step, and the run says what that
+  took. **Redundant constraints** (an overconstrained mechanism, such as a planar loop of
+  revolute joints) are found in model order and deactivated (multiplier 0, the others carry
+  the load) instead of a singular matrix; a redundant constraint that is violated while the
+  others hold stops the run with its name. **Positions that violate the constraints** are
+  assembled by Newton's method (the smallest correction in the mass metric) instead of
+  stopping the run. **`solver: statics: true`** (`freedyn2_run --statics`) starts from the
+  static equilibrium at rest, by pseudo-transient continuation with the generated iteration
+  matrix. Example `parallelogram.yaml`. Models that were consistent and not overconstrained
+  run as before.
 - Flexible bodies: `max_frequency` and `exclude_modes` select modes (the selection is a
   `.fdflex` of its own in the user cache); without `damping` the modes are damped as in
   Adams/Flex (1 % below 100 Hz, 10 % to 1000 Hz, 100 % above; `damping: 0` for none, the

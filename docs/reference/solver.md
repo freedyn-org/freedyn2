@@ -25,6 +25,33 @@ method and a sparse LU (KLU). The equations and their Jacobians are exact (gener
 Any of them can be overridden on the command line without editing the model:
 `freedyn2 run model.yaml -- --end-time 2 --step 1e-4`.
 
+## The initial state
+
+Before the first step the runtime makes the initial state consistent and says on its output
+what that took:
+
+- **Redundant constraints** (an overconstrained mechanism, e.g. a planar loop of revolute
+  joints, which is overconstrained in space): constraints that repeat others are found in
+  model order and deactivated. They carry no force (their `lambda` is 0), the others carry
+  the load, and the motion is the same. The run lists them (`redundant constraints,
+  deactivated: pin_b.ax ...`). If one of them is violated while the others hold, the
+  mechanism does not fit together (hinge axes of a loop not parallel) and the run stops with
+  that constraint named. Example: [`parallelogram.yaml`](../examples.md).
+- **Assembly**: positions that violate the joints or drivers are corrected by Newton's method,
+  the smallest change in the mass metric (light bodies move more than heavy ones), and the run
+  reports the largest change. Positions that cannot be assembled stop the run.
+- **Static equilibrium** with `statics: true`:
+
+  ```yaml
+  solver: {type: HHT, end_time: 5, step: 0.001, statics: true}
+  ```
+
+  the positions move until gravity, springs and preloads balance, the bodies at rest
+  (initial velocities are not used, drivers hold their values at t = 0), and the motion
+  starts from there: a vehicle settled on its springs, a mechanism hanging in its stable
+  position. On the command line for one run: `freedyn2 run model.yaml -- --statics`. A body
+  free to fall has no equilibrium and stops the run.
+
 ## Real-time mode
 
 ```yaml
