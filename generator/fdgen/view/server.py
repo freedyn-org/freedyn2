@@ -16,7 +16,10 @@ From the page (POST, JSON):
   /api/overrides  {path: value}: numbers of the model file tuned in the viewer (apply_overrides),
                   kept by the server (not written to the file) and applied to every rebuild;
                   simulates in the background, a simulation still running is stopped
-  /api/runs/<id>  {reference: true | false} / {delete: true} / {keep: true | false} / {label: text}
+  /api/runs/<id>  {reference: true | false} / {delete: true} / {keep: true | false} / {label: text};
+                  kept and named runs are saved next to the model (fdgen.view.store) and are there
+                  again after a restart
+  /api/layout     the plot layout (pages, plots, formulas), saved as <model>.view.json; GET: it, or null
   /api/sweep      {path, values}: one tuned number over several values, simulated in parallel
                   (fdgen.sweep; the fan of curves, key figures over the value) / {stop: true}
                   / {clear: true}; its results: GET /api/sweep/<k>.csv
@@ -55,7 +58,7 @@ from pathlib import Path
 import numpy as np
 
 from ..checks import check_model, check_references, check_results
-from . import notes, source
+from . import notes, source, store
 from .scene import attach_sources, read_results, scene
 
 WEB = Path(__file__).resolve().parent / "web"
@@ -110,7 +113,9 @@ class View:
         self.scene, self.csv, self.meshes = None, None, []
         self.overrides, self.model, self.fdm, self._modes = {}, None, None, {}
         self.runs, self.current, self.reference = [], None, None  # runs: [{id, csv, overrides, edit, seconds, created, label, keep}]
-        self._edits, self._file_stamp = 0, None  # versions of the model file the runs were made with
+        self._sources = []  # hashes of the versions of the model file the runs were made with (run["edit"] - 1)
+        self._store = threading.Lock()  # writing the kept runs next to the model, one at a time
+        self._load_runs()
         self._progress = None  # (csv, end time) of the simulation in progress
         self.sweep, self._sweep_csv, self._sweeps = None, [], 0  # the parameter sweep (fan) and its results
         self._generation = 0  # raised by every request; a rebuild of an older one stops
@@ -312,12 +317,34 @@ class View:
                 return float(opts[k + 1])
         return float(model["solver"].get("end_time", 0.0))
 
+    def _edit(self, source):
+        """The version number of the model file with this hash (1, 2, ... in the order seen)."""
+        if source not in self._sources:
+            self._sources.append(source)
+        return self._sources.index(source) + 1
+
+    def _load_runs(self):
+        """The runs kept next to the model by an earlier viewer (fdgen.view.store)."""
+        runs, reference = store.read_runs(self.model_path)
+        for r in runs:
+            self.runs.append({**r, "csv": None, "keep": True, "edit": self._edit(r["source"])})
+        self.reference = reference
+
+    def _persist(self, save=None):
+        """The kept runs next to the model: the results of run `save` (if kept) and the index."""
+        with self._lock:
+            runs = [dict(r) for r in self.runs]
+            reference = self.reference
+            run = next((r for r in runs if r["id"] == save and r["keep"]), None)
+        with self._store:
+            if run is not None and store.save_run(self.model_path, run) is None:
+                return False
+            return store.write_index(self.model_path, runs, reference)
+
     def _new_run(self, csv_path, seconds):
         """A finished simulation (or a given result file) as a run; the oldest of more than MAX_RUNS go
         (not the reference, not the runs marked to keep)."""
-        stamp = self._watched().get(self.model_path)
-        if stamp != self._file_stamp:
-            self._edits, self._file_stamp = self._edits + 1, stamp
+        source = store.source_hash(self.model_path)
         rid = 1 + max([r["id"] for r in self.runs] or [0])
         path = self.workdir / f"run_{rid}.csv"
         for attempt in range(20):  # Windows: not while the page reads the running file
@@ -328,33 +355,48 @@ class View:
                 if attempt == 19:
                     raise
                 time.sleep(0.05)
-        self.runs.append({"id": rid, "csv": path, "overrides": dict(self.overrides), "edit": self._edits,
-                          "seconds": seconds, "created": time.strftime("%H:%M:%S"), "label": "", "keep": False})
+        self.runs.append({"id": rid, "csv": path, "overrides": dict(self.overrides), "edit": self._edit(source),
+                          "source": source, "seconds": seconds, "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+                          "label": "", "keep": False})
         loose = [r for r in self.runs if r["id"] not in (self.reference, rid) and not r["keep"]]
         for old in loose[:max(0, len(loose) + 1 - MAX_RUNS)]:
             self.runs.remove(old)
-            old["csv"].unlink(missing_ok=True)
+            if old["csv"] is not None:
+                old["csv"].unlink(missing_ok=True)
         return rid, path
 
     def run_csv(self, rid):
-        return next((r["csv"] for r in self.runs if r["id"] == rid), None)
+        """The CSV of a run; that of a run kept from an earlier viewer is made from its .npz."""
+        run = next((r for r in self.runs if r["id"] == rid), None)
+        if run is None:
+            return None
+        if (run["csv"] is None or not run["csv"].is_file()) and run.get("npz") and run["npz"].is_file():
+            run["csv"] = store.npz_to_csv(run["npz"], self.workdir / f"run_{rid}.csv")
+        return run["csv"]
 
     def set_reference(self, rid):
         with self._lock:
-            if rid is not None and self.run_csv(rid) is None:
+            if rid is not None and not any(r["id"] == rid for r in self.runs):
                 raise ValueError(f"no run {rid}")
             self.reference = rid
+        self._persist()
 
     def mark_run(self, rid, keep=None, label=None):
-        """A run kept (not dropped as one of the oldest) or not, and its name ("": none)."""
+        """A run kept or not, and its name ("": none; a name keeps it). Kept runs are not dropped
+        as one of the oldest and are saved next to the model (fdgen.view.store)."""
         with self._lock:
             run = next((r for r in self.runs if r["id"] == rid), None)
             if run is None:
                 raise ValueError(f"no run {rid}")
-            if keep is not None:
-                run["keep"] = bool(keep)
             if label is not None:
                 run["label"] = " ".join(str(label).split())[:80]
+                if run["label"]:
+                    keep = True if keep is None else keep
+            if keep is not None and not keep and run["keep"]:
+                self.run_csv(rid)  # its results stay for this session when the saved file goes
+            if keep is not None:
+                run["keep"] = bool(keep)
+        self._persist(rid)
 
     def delete_run(self, rid):
         with self._lock:
@@ -362,9 +404,12 @@ class View:
             if run is None or rid == self.current:
                 raise ValueError(f"run {rid}: " + ("the current run stays" if run else "no such run"))
             self.runs.remove(run)
-            run["csv"].unlink(missing_ok=True)
+            if run["csv"] is not None:
+                run["csv"].unlink(missing_ok=True)
             if self.reference == rid:
                 self.reference = None
+        if run["keep"]:
+            self._persist()
 
     def partial(self):
         """The CSV of the simulation in progress, up to its last complete row (b"" if none)."""
@@ -466,7 +511,7 @@ class View:
 
     def state(self):
         with self._lock:
-            runs = [{k: v for k, v in r.items() if k != "csv"} for r in self.runs]
+            runs = [{k: v for k, v in r.items() if k not in ("csv", "npz", "source")} for r in self.runs]
             return {"version": self.version, "status": self.status, "error": self.error, "log": self.log,
                     "model_file": str(self.model_path), "scene": self.scene is not None, "results": self.csv is not None,
                     "runs": runs, "current": self.current, "reference": self.reference,
@@ -574,6 +619,8 @@ class ViewHandler(BaseHTTPRequestHandler):
             return self._file(view.csv) if view.csv else self._send(b"", "text/csv")
         if url == "/api/source":
             return self._send(json.dumps(source.read(view.model_path)).encode(), "application/json")
+        if url == "/api/layout":
+            return self._send(json.dumps(store.read_layout(view.model_path)).encode(), "application/json")
         if url == "/api/schema":
             from ..model import load_schema
 
@@ -641,6 +688,10 @@ class ViewHandler(BaseHTTPRequestHandler):
                 else:
                     view.set_reference(rid if body.get("reference", True) else None)
                 out = view.state()
+            elif url == "/api/layout":
+                if not isinstance(body, dict):
+                    raise ValueError("a layout is an object")
+                out = {"saved": store.write_layout(view.model_path, body)}
             elif url == "/api/source":
                 try:
                     out = {"stamp": source.save(view.model_path, body["text"], body.get("stamp"))}

@@ -141,7 +141,8 @@ Below the 3D view (drag the border to resize, ⤢ for large plots):
   above the plots (double click: rename, drag: move, a channel dragged onto a tab opens that
   page). Keep a page per topic, e.g. *wheel loads*, *steering*, *K&C*.
 - **PNG** and **CSV** export of the plots of the page shown (CSV: the visible time range).
-  Pages, plots and formulas are remembered per model.
+  Pages, plots and formulas are saved next to the model as `<model>.view.json`: they are there
+  again after a restart and for everyone who opens the model (commit the file to share them).
 
 Add channels by clicking them in the list (to the active plot, marked at its left edge) or by
 dragging them onto a plot.
@@ -201,6 +202,13 @@ In the table a run gets a **name** (shown in the strip instead of its values) an
 viewer keeps the last 20 runs and drops the oldest, but never the reference and the runs
 kept. **show none** hides all other runs in the plots, **remove the others** removes every run
 that is neither current, reference, kept nor shown.
+
+Kept and named runs are saved next to the model in `<model>.runs/` and are there again after a
+restart, with their names and the reference; the other runs last for the session. Each run is
+one `run_<id>.npz` (NumPy: one array per channel, the full precision, about a third of the
+CSV; `numpy.load("car.runs/run_3.npz")["chassis.R_x"]`) and `index.json` holds the names and
+tuned values. The folder ignores itself in git (`.gitignore`). Unticking *keep* or × deletes
+the run's file.
 
 Runs are compared by the names of their channels, so they stay comparable when the model
 changes between them (a new body, another joint): a channel a run does not have, e.g. that of a

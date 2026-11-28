@@ -7,7 +7,8 @@
 //
 // With many runs the strip shows only the current run, the reference, the runs shown, kept or
 // named, and the newest; "≡ all runs" opens the run table: every run with its tuned values as
-// columns (sortable), a name, "keep" (not dropped as one of the oldest), show, ★, ⟲, ×, and
+// columns (sortable), a name, "keep" (not dropped as one of the oldest; saved next to the model
+// and there again after a restart, as are named runs), show, ★, ⟲, ×, and
 // "remove the others" for all runs neither current, reference, kept nor shown. The data lives in
 // the viewer (fdview/viewer.js); strip and table only show it and report the clicks.
 
@@ -19,6 +20,13 @@ const short = (v) => {
   const a = Math.abs(v);
   return a >= 1e4 && a < 1e7 ? `${+(v / 1e3).toPrecision(4)}k` : String(+v.toPrecision(4));
 };
+
+// when a run was made: the time for today's runs, else the date (runs kept from earlier sessions)
+function when(created) {
+  const d = new Date(), pad = (n) => String(n).padStart(2, "0");
+  const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return created.length > 10 && created.slice(0, 10) === today ? created.slice(11) : created.slice(0, 10);
+}
 
 export function runLabel(run, runs, named = true) {
   // the run's name, or what it is: its tuned values, and the version of the model file if there were several
@@ -127,9 +135,9 @@ export class RunStrip {
       { key: "label", head: "name", get: (r) => r.label || "" },
       ...keys.map((k) => ({ key: `o:${k}`, head: tuneLabel(k), title: k, num: true, get: (r) => (r.overrides && k in r.overrides ? r.overrides[k] : null) })),
       ...(edits ? [{ key: "edit", head: "file", title: "version of the model file", get: (r) => r.edit }] : []),
-      { key: "created", head: "at", get: (r) => r.created },
+      { key: "created", head: "at", get: (r) => r.created, show: when },
       { key: "seconds", head: "sim s", title: "simulated time", num: true, get: (r) => r.seconds },
-      { key: "keep", head: "keep", title: "kept: not dropped as one of the oldest runs", get: (r) => (r.keep ? 1 : 0) },
+      { key: "keep", head: "keep", title: "kept: not dropped as one of the oldest runs, saved next to the model (<model>.runs/) and there again after a restart", get: (r) => (r.keep ? 1 : 0) },
     ];
     const col = cols.find((c) => c.key === this.sort.key) || cols[1];
     const rows = [...runs].sort((x, y) => {
@@ -169,7 +177,7 @@ export class RunStrip {
         if (c.key === "label") return `<td><input type="text" class="name" spellcheck="false" maxlength="80" placeholder="${esc(runLabel(r, runs, false))}" value="${esc(r.label || "")}"></td>`;
         if (c.key === "keep") return `<td><input type="checkbox" class="keep"${r.keep ? " checked" : ""}></td>`;
         const v = c.get(r);
-        return `<td${c.num ? ' class="num"' : ""}>${v === null ? "" : c.key === "seconds" ? v.toFixed(2) : c.num ? short(v) : c.key === "edit" ? `v${v}` : esc(v)}</td>`;
+        return `<td${c.num ? ' class="num"' : ""}>${v === null ? "" : c.show ? esc(c.show(v)) : c.key === "seconds" ? v.toFixed(2) : c.num ? short(v) : c.key === "edit" ? `v${v}` : esc(v)}</td>`;
       });
       tr.innerHTML = cells.join("") + `<td class="acts"><button class="icon star" title="${isRef ? "no reference" : "reference"}">${isRef ? "★" : "☆"}</button>` +
         (isCur ? "" : '<button class="icon back" title="these values back into Tune">⟲</button><button class="icon del" title="remove">×</button>') + "</td>";

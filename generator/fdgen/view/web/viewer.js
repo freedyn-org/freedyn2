@@ -697,17 +697,37 @@ const panels = new Panels({
   discardFile: () => editor && editor.discard(),
 });
 
+// The layout (pages, plots, formulas) is saved next to the model as <model>.view.json (POST
+// api/layout, fdgen.view.store), so it is there again after a restart, on any port and for
+// everyone who opens the model; the page shown is remembered in the browser. A layout kept in
+// the browser by an earlier version is taken over once.
 const storeKey = () => `fdview.plots.${model ? model.model : ""}`;
+const pageKey = () => `fdview.page.${model ? model.model : ""}`;
+let layoutReady = false, layoutTimer = null, layoutSent = null;
 function saveLayout() {
-  if (!model) return;
-  try { localStorage.setItem(storeKey(), JSON.stringify({ ...area.layout(), formulas: formulas.map(({ name, expr }) => ({ name, expr })) })); } catch (e) { /* no storage */ }
+  if (!model || !layoutReady) return;  // not before the saved layout is restored
+  const { pages, page } = area.layout();
+  try { localStorage.setItem(pageKey(), String(page)); } catch (e) { /* no storage */ }
+  const text = JSON.stringify({ pages, formulas: formulas.map(({ name, expr }) => ({ name, expr })) });
+  if (text === layoutSent) return;
+  clearTimeout(layoutTimer);
+  layoutTimer = setTimeout(() => {
+    layoutSent = text;
+    post("api/layout", JSON.parse(text)).catch(() => { layoutSent = null; });
+  }, 400);
 }
-function restoreLayout() {
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(storeKey()) || "null"); } catch (e) { saved = null; }
+async function restoreLayout() {
+  layoutReady = false;
+  let saved = await fetch("api/layout", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (!saved) try { saved = JSON.parse(localStorage.getItem(storeKey()) || "null"); } catch (e) { saved = null; }
+  if (saved && !saved.pages && saved.panes) saved = { ...saved, pages: [{ name: "page 1", panes: saved.panes }] };
+  try { if (saved) saved = { ...saved, page: +localStorage.getItem(pageKey()) || 0 }; } catch (e) { /* page 1 */ }
   formulas = [];
   for (const f of (saved && saved.formulas) || []) try { formulas.push({ ...f, tree: parse(f.expr) }); } catch (e) { /* dropped */ }
   area.restore(saved, (n) => !results || results.map.has(n) || formulas.some((f) => f.name === n));
+  layoutSent = saved && saved.pages ? JSON.stringify({ pages: saved.pages, formulas: saved.formulas || [] }) : null;
+  layoutReady = true;
+  saveLayout();  // a layout from the browser: now next to the model
 }
 
 function addFormula(text) {
