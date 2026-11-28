@@ -7,6 +7,10 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Fixed
 
+- The viewer of `freedyn2 view` (and of the MCP tools) answers requests for 127.0.0.1 or
+  localhost only, as the app does: a web page whose host name resolves to 127.0.0.1 (DNS
+  rebinding) could read the model file and results and post to the viewer, since the Origin
+  check of the POSTs passes when Origin and Host are both that name.
 - The modal reduction of large FE models is about 6 times faster: an own multifrontal
   supernodal LDL^T (Eigen's dense kernels, all cores; 12 times faster than Eigen's
   SimplicialLDLT, no new dependency), an AVX2 variant of freedyn2_modal taken where the CPU has
