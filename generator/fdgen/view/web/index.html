@@ -75,10 +75,42 @@ body.running #stale-note { border-color: var(--running); color: var(--running); 
 #runs .run .lbl { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 #runs .run .star { color: var(--pending); }
 #runs .run.fan { border-style: dashed; }
+#runs .run .kept { color: var(--muted); }
+#runs .all { padding: 1px 8px; font-size: 11px; white-space: nowrap; }
+#runs .all.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+#run-table { display: flex; flex-direction: column; max-height: 45%; border-bottom: 1px solid var(--line); flex: none; font-size: 11px; }
+#run-table[hidden] { display: none; }
+#run-table .bar { display: flex; gap: 6px; align-items: center; padding: 3px 8px; }
+#run-table .bar .hint { color: var(--muted); margin-right: auto; }
+#run-table .bar button:not(.icon) { padding: 1px 8px; font-size: 11px; }
+#run-table .scroll { overflow: auto; min-height: 0; }
+#run-table table { border-collapse: collapse; width: 100%; }
+#run-table th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 500; text-align: left;
+  padding: 2px 8px; border-bottom: 1px solid var(--line); cursor: pointer; white-space: nowrap; user-select: none; }
+#run-table td { padding: 1px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+#run-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+#run-table tr.current td { font-weight: 600; }
+#run-table tr.current td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+#run-table td input.name { width: 100%; min-width: 120px; font: inherit; padding: 0 4px; border: 1px solid transparent; background: none; color: var(--text); }
+#run-table td input.name:hover, #run-table td input.name:focus { border-color: var(--line); }
+#run-table td svg { vertical-align: middle; color: var(--text); }
+#run-table .acts { text-align: right; }
+#run-table .star { color: var(--pending); }
 #runs .run.fan .scale { display: inline-block; width: 40px; height: 6px; border-radius: 2px;
   background: linear-gradient(90deg, hsl(220,75%,45%), hsl(165,75%,45%), hsl(110,75%,45%), hsl(55,75%,45%), hsl(0,75%,45%)); }
 #runs .run.fan.off .scale { opacity: 0.3; }
 .pane-head select.kpi { font-size: 11px; padding: 0 4px; }
+.pages { display: flex; gap: 2px; align-items: flex-end; padding: 2px 8px 0; border-bottom: 1px solid var(--line); overflow-x: auto; flex: none; }
+.pages[hidden] { display: none; }
+.pages .page { display: inline-flex; align-items: center; gap: 5px; padding: 2px 4px 2px 10px; font-size: 11px; white-space: nowrap;
+  border: 1px solid var(--line); border-bottom: 0; border-radius: 2px 2px 0 0; color: var(--muted); cursor: pointer; user-select: none;
+  margin-bottom: -1px; background: var(--panel); }
+.pages .page.on { color: var(--text); border-color: var(--line); border-bottom: 1px solid var(--panel); box-shadow: inset 0 2px 0 var(--accent); }
+.pages .page small { color: var(--muted); }
+.pages .page b { font-weight: normal; color: var(--muted); padding: 0 3px; }
+.pages .page b:hover { color: var(--text); }
+.pages .page .name[contenteditable="true"] { outline: 1px solid var(--accent); padding: 0 2px; cursor: text; user-select: text; }
+.pages .add { border: 0; background: none; color: var(--muted); font-size: 14px; padding: 0 6px; }
 .tune-row.pending .name { color: var(--pending); font-weight: 600; }
 .tune-row.pending { box-shadow: inset 3px 0 0 var(--pending); padding-left: 4px; }
 #view { position: relative; min-height: 0; background: var(--scene); }
@@ -336,10 +368,12 @@ header .model.editable:hover { color: var(--accent); border-color: var(--accent)
 <div id="plot" class="empty">
   <div id="plot-split" title="drag: size of the plots"></div>
   <div id="runs" hidden></div>
+  <div id="run-table" hidden></div>
   <div class="plot-bar">
     <button id="plot-add-time" title="a plot over time">+ time</button>
     <button id="plot-add-xy" title="a plot over another channel">+ x-y</button>
     <button id="plot-add-fft" title="spectrum of the visible time range (channels of the active plot)">+ spectrum</button>
+    <button id="plot-add-page" title="a new page of plots: the plots of a page share its height, other pages are tabs">+ page</button>
     <button id="plot-add-kpi" title="a key figure (max, rms, ... over the visible time range) of the channels of the active plot over the value of a sweep (≋ in Tune)">+ key figure</button>
     <span class="sep"></span>
     <button id="plot-formula" title="a channel from a formula">ƒ formula</button>
@@ -353,6 +387,7 @@ header .model.editable:hover { color: var(--accent); border-color: var(--accent)
     <span class="help">wheel: zoom · shift+wheel: values · drag: zoom range · shift+drag: pan · double click: reset</span>
   </div>
   <div id="plot-ask"><input spellcheck="false"><span class="err"></span></div>
+  <div class="pages" hidden></div>
   <div class="panes"></div>
   <div class="measure"></div>
 </div>

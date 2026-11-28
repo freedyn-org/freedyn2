@@ -697,17 +697,37 @@ const panels = new Panels({
   discardFile: () => editor && editor.discard(),
 });
 
+// The layout (pages, plots, formulas) is saved next to the model as <model>.view.json (POST
+// api/layout, fdgen.view.store), so it is there again after a restart, on any port and for
+// everyone who opens the model; the page shown is remembered in the browser. A layout kept in
+// the browser by an earlier version is taken over once.
 const storeKey = () => `fdview.plots.${model ? model.model : ""}`;
+const pageKey = () => `fdview.page.${model ? model.model : ""}`;
+let layoutReady = false, layoutTimer = null, layoutSent = null;
 function saveLayout() {
-  if (!model) return;
-  try { localStorage.setItem(storeKey(), JSON.stringify({ ...area.layout(), formulas: formulas.map(({ name, expr }) => ({ name, expr })) })); } catch (e) { /* no storage */ }
+  if (!model || !layoutReady) return;  // not before the saved layout is restored
+  const { pages, page } = area.layout();
+  try { localStorage.setItem(pageKey(), String(page)); } catch (e) { /* no storage */ }
+  const text = JSON.stringify({ pages, formulas: formulas.map(({ name, expr }) => ({ name, expr })) });
+  if (text === layoutSent) return;
+  clearTimeout(layoutTimer);
+  layoutTimer = setTimeout(() => {
+    layoutSent = text;
+    post("api/layout", JSON.parse(text)).catch(() => { layoutSent = null; });
+  }, 400);
 }
-function restoreLayout() {
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(storeKey()) || "null"); } catch (e) { saved = null; }
+async function restoreLayout() {
+  layoutReady = false;
+  let saved = await fetch("api/layout", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (!saved) try { saved = JSON.parse(localStorage.getItem(storeKey()) || "null"); } catch (e) { saved = null; }
+  if (saved && !saved.pages && saved.panes) saved = { ...saved, pages: [{ name: "page 1", panes: saved.panes }] };
+  try { if (saved) saved = { ...saved, page: +localStorage.getItem(pageKey()) || 0 }; } catch (e) { /* page 1 */ }
   formulas = [];
   for (const f of (saved && saved.formulas) || []) try { formulas.push({ ...f, tree: parse(f.expr) }); } catch (e) { /* dropped */ }
   area.restore(saved, (n) => !results || results.map.has(n) || formulas.some((f) => f.name === n));
+  layoutSent = saved && saved.pages ? JSON.stringify({ pages: saved.pages, formulas: saved.formulas || [] }) : null;
+  layoutReady = true;
+  saveLayout();  // a layout from the browser: now next to the model
 }
 
 function addFormula(text) {
@@ -759,7 +779,7 @@ function showChannels() {
     if (f) d.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       formulas = formulas.filter((x) => x.name !== n);
-      for (const p of area.panes) p.series = p.series.filter((s) => s.name !== n);
+      for (const p of area.allPanes()) p.series = p.series.filter((s) => s.name !== n);
       area.build();
     });
     box.appendChild(d);
@@ -792,7 +812,8 @@ $("plot-add-xy").addEventListener("click", () => ask("x channel, e.g. wheel_fl1.
 }));
 $("plot-formula").addEventListener("click", () => ask("name = formula, e.g. v_kmh = chassis1.Rdot_x * 3.6;  der(), int(), hypot(), deg()", addFormula));
 $("plot-measure").addEventListener("click", (e) => { e.currentTarget.classList.toggle("on"); area.setMeasure(e.currentTarget.classList.contains("on")); });
-$("plot-reset").addEventListener("click", () => { area.xRange = null; for (const p of area.panes) p.view = null; area.draw(); });
+$("plot-reset").addEventListener("click", () => { area.xRange = null; for (const p of area.allPanes()) p.view = null; area.draw(); });
+$("plot-add-page").addEventListener("click", () => area.addPage());
 function download(name, href) { const a = document.createElement("a"); a.href = href; a.download = name; a.click(); }
 $("plot-png").addEventListener("click", () => { const u = area.png(); if (u) download(`${model.model}_plots.png`, u); });
 $("plot-csv").addEventListener("click", () => download(`${model.model}_plots.csv`, URL.createObjectURL(new Blob([area.csv()], { type: "text/csv" }))));
@@ -1188,11 +1209,15 @@ async function post(url, body) {
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
   return r.json();
 }
-const strip = new RunStrip($("runs"), {
+const strip = new RunStrip($("runs"), $("run-table"), {
   toggle: (id) => { if (shown.has(id)) shown.delete(id); else shown.add(id); pollSoon(); },
+  show: (ids, on) => { for (const id of ids) if (on) shown.add(id); else shown.delete(id); pollSoon(); },
   reference: (id) => post(`api/runs/${id ?? referenceRun}`, { reference: id !== null }).then(pollSoon),
   restore: (run) => panels.restore(run.overrides),
   remove: (id) => post(`api/runs/${id}`, { delete: true }).then(pollSoon),
+  removeMany: async (ids) => { for (const id of ids) await post(`api/runs/${id}`, { delete: true }).catch(() => null); pollSoon(); },
+  keep: (id, on) => post(`api/runs/${id}`, { keep: on }).then(pollSoon),
+  label: (id, text) => post(`api/runs/${id}`, { label: text }).then(pollSoon),
   dash: runDash,
   sweepShown: () => { if (sweep) { sweep.shown = !sweep.shown; pollSoon(); } },
   sweepStop: () => post("api/sweep", { clear: true }).then(pollSoon),

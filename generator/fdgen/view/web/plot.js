@@ -10,6 +10,9 @@
 // a fan of curves in the same color scale; a key figure pane shows a key figure of its channels
 // (max, rms, ... over the visible time range) over the swept value.
 //
+// The panes are organized in pages (tabs above the panes): only the panes of the current page are
+// shown, so they keep their height however many plots there are.
+//
 // Mouse: wheel zooms the time axis (shift: the value axis of the pane), drag zooms to a range,
 // shift+drag pans, double click resets, click sets the time (with cursors on: moves the nearer
 // cursor). Channels are added by click (to the active pane) or dragged onto a pane.
@@ -121,8 +124,8 @@ export class PlotArea {
     this.p = provider;
     this.onseek = onseek;
     this.onchange = onchange || (() => {});
-    this.panes = [];
-    this.active = 0;
+    this.pages = [{ name: "page 1", panes: [], active: 0 }];
+    this.page = 0;
     this.xRange = null;  // [t0, t1] of the time panes, null: all
     this.time = 0;
     this.hover = null;   // time (or x) under the mouse
@@ -131,6 +134,114 @@ export class PlotArea {
     this.colors = new Map();
     this.box = root.querySelector(".panes");
     this.table = root.querySelector(".measure");
+    this.tabs = root.querySelector(".pages");
+  }
+
+  // the panes of the current page, and the active one of them
+  get panes() { return this.pages[this.page].panes; }
+  set panes(v) { this.pages[this.page].panes = v; }
+  get active() { return this.pages[this.page].active; }
+  set active(k) { this.pages[this.page].active = k; }
+  allPanes() { return this.pages.flatMap((p) => p.panes); }
+
+  // ---------- pages ----------
+  addPage() {
+    const used = new Set(this.pages.map((p) => p.name));
+    let n = this.pages.length + 1;
+    while (used.has(`page ${n}`)) n++;
+    this.pages.push({ name: `page ${n}`, panes: [], active: 0 });
+    this.page = this.pages.length - 1;
+    this.build();
+  }
+
+  setPage(k) {
+    if (k === this.page || !this.pages[k]) return;
+    this.page = k;
+    this.build();
+  }
+
+  removePage(k) {
+    if (this.pages.length < 2) { this.pages[0].panes = []; this.pages[0].active = 0; this.build(); return; }
+    this.pages.splice(k, 1);
+    if (this.page > k || this.page >= this.pages.length) this.page = Math.max(0, this.page - 1);
+    this.build();
+  }
+
+  renamePage(k, name) {
+    name = String(name || "").trim().slice(0, 40);
+    if (name) { this.pages[k].name = name; this.onchange(); }
+    this.buildTabs();
+  }
+
+  movePage(k, to) {
+    if (to < 0 || to >= this.pages.length || to === k) return;
+    const cur = this.pages[this.page];
+    const [p] = this.pages.splice(k, 1);
+    this.pages.splice(to, 0, p);
+    this.page = this.pages.indexOf(cur);
+    this.build();
+  }
+
+  buildTabs() {
+    // the tabs: shown once there are two pages; double click renames, a channel dragged over a tab opens it
+    const box = this.tabs;
+    if (!box) return;
+    box.hidden = this.pages.length < 2;
+    box.innerHTML = "";
+    this.pages.forEach((p, k) => {
+      const tab = document.createElement("span");
+      tab.className = "page" + (k === this.page ? " on" : "");
+      tab.title = "click: show this page · double click: rename · drag: move";
+      tab.draggable = true;
+      const n = p.panes.length;
+      tab.innerHTML = `<span class="name"></span><small>${n}</small><b title="remove this page and its plots">×</b>`;
+      tab.querySelector(".name").textContent = p.name;
+      tab.addEventListener("click", (e) => {
+        if (e.target.tagName === "B") {
+          if (!n || confirm(`Remove the page "${p.name}" with its ${n} plot${n > 1 ? "s" : ""}?`)) this.removePage(k);
+        } else this.setPage(k);
+      });
+      tab.addEventListener("dblclick", (e) => {
+        if (e.target.tagName === "B") return;
+        const name = tab.querySelector(".name");
+        name.contentEditable = "true";
+        name.focus();
+        document.getSelection().selectAllChildren(name);
+        const done = (ok) => { name.contentEditable = "false"; this.renamePage(k, ok ? name.textContent : p.name); };
+        name.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") { ev.preventDefault(); done(true); }
+          else if (ev.key === "Escape") done(false);
+          ev.stopPropagation();
+        });
+        name.addEventListener("blur", () => done(true), { once: true });
+      });
+      tab.addEventListener("dragstart", (e) => { e.dataTransfer.setData("application/x-fd-page", String(k)); });
+      tab.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (!e.dataTransfer.types.includes("application/x-fd-page") && k !== this.page) {  // a channel: open the page
+          clearTimeout(this.tabTimer);
+          this.tabTimer = setTimeout(() => this.setPage(k), 350);
+        }
+      });
+      tab.addEventListener("dragleave", () => clearTimeout(this.tabTimer));
+      tab.addEventListener("drop", (e) => {
+        e.preventDefault();
+        clearTimeout(this.tabTimer);
+        const from = e.dataTransfer.getData("application/x-fd-page");
+        if (from !== "") this.movePage(+from, k);
+        else {
+          const name = e.dataTransfer.getData("text/plain");
+          if (name) { this.setPage(k); this.addChannel(name); }
+        }
+      });
+      box.appendChild(tab);
+    });
+    const add = document.createElement("button");
+    add.className = "icon add";
+    add.title = "a new page of plots";
+    add.textContent = "+";
+    add.addEventListener("click", () => this.addPage());
+    box.appendChild(add);
   }
 
   color(name) {
@@ -165,7 +276,7 @@ export class PlotArea {
     this.build();
   }
 
-  selected() { return this.panes.flatMap((p) => p.series.map((s) => s.name)); }
+  selected() { return this.panes.flatMap((p) => p.series.map((s) => s.name)); }  // of the current page
 
   showReference(r) {
     // a curve reference: over its channel (x-y) or over time, in a pane of its own
@@ -175,7 +286,8 @@ export class PlotArea {
   }
 
   layout() {
-    return { panes: this.panes.filter((p) => p.mode !== "locus").map((p) => ({ mode: p.mode, xName: p.xName, kpi: p.kpi, series: p.series.map((s) => s.name) })) };
+    const panes = (list) => list.filter((p) => p.mode !== "locus").map((p) => ({ mode: p.mode, xName: p.xName, kpi: p.kpi, series: p.series.map((s) => s.name) }));
+    return { pages: this.pages.map((p) => ({ name: p.name, panes: panes(p.panes) })), page: this.page };
   }
 
   addKpi() {
@@ -190,8 +302,7 @@ export class PlotArea {
 
   addLocus(locus) {
     // locus: {label, path, values, eigenvalues: [[[re, im], ...] per value], current, time}; replaces one of the same number
-    const old = this.panes.findIndex((p) => p.mode === "locus" && p.locus.path === locus.path);
-    if (old >= 0) this.panes.splice(old, 1);
+    for (const pg of this.pages) pg.panes = pg.panes.filter((p) => !(p.mode === "locus" && p.locus.path === locus.path));
     const pane = { mode: "locus", xName: null, series: [], view: null, el: null, locus };
     this.panes.push(pane);
     this.active = this.panes.length - 1;
@@ -200,16 +311,24 @@ export class PlotArea {
   }
 
   restore(layout, has) {
-    this.panes = [];
-    for (const p of (layout && layout.panes) || []) {
-      const series = p.series.filter(has).map((name) => ({ name, hidden: false }));
-      if (series.length || p.mode !== "time") this.panes.push({ mode: p.mode, xName: p.xName, kpi: p.kpi, series, view: null, el: null });
-    }
-    this.active = 0;
+    // layout: {pages: [{name, panes}], page}, or {panes} as saved before there were pages
+    const pages = (layout && (layout.pages || (layout.panes && [{ name: "page 1", panes: layout.panes }]))) || [];
+    this.pages = pages.map((pg, k) => {
+      const panes = [];
+      for (const p of pg.panes || []) {
+        const series = p.series.filter(has).map((name) => ({ name, hidden: false }));
+        if (series.length || p.mode !== "time") panes.push({ mode: p.mode, xName: p.xName, kpi: p.kpi, series, view: null, el: null });
+      }
+      return { name: String(pg.name || `page ${k + 1}`), panes, active: 0 };
+    });
+    if (!this.pages.length) this.pages = [{ name: "page 1", panes: [], active: 0 }];
+    this.page = Math.min(Math.max(0, +(layout && layout.page) || 0), this.pages.length - 1);
     this.build();
   }
 
   build() {
+    this.buildTabs();
+    for (const p of this.allPanes()) if (p.el && !this.panes.includes(p)) { p.el = null; p.canvas = null; p.frame = null; }
     this.box.innerHTML = "";
     this.panes.forEach((pane, k) => {
       const el = document.createElement("div");
@@ -254,7 +373,7 @@ export class PlotArea {
       this.box.appendChild(el);
       new ResizeObserver(() => this.drawPane(pane)).observe(pane.canvas);
     });
-    this.root.classList.toggle("empty", !this.panes.length);
+    this.root.classList.toggle("empty", !this.allPanes().length);
     this.onchange();
     this.draw();
   }

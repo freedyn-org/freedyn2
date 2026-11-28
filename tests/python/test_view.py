@@ -356,6 +356,80 @@ def test_tuned_values_are_simulated(tmp_path):
         httpd.shutdown()
 
 
+def test_runs_kept_and_named(tmp_path):
+    """Of the runs, the oldest of more than MAX_RUNS go, but not the reference and not those
+    marked to keep; a run has a name (label), blanks folded."""
+    model = tmp_path / "p.yaml"
+    write_pendulum(model, stiffness=10.0)
+    view = server.View(model, run=False)
+
+    def run():
+        csv = tmp_path / "r.csv"
+        csv.write_text("t\n0\n")
+        return view._new_run(csv, 0.1)[0]
+
+    for _ in range(3):
+        run()
+    view.set_reference(1)
+    view.mark_run(2, keep=True, label="  soft   spring ")
+    for _ in range(server.MAX_RUNS + 5):
+        run()
+    ids = [r["id"] for r in view.runs]
+    assert ids[:2] == [1, 2] and len(ids) == server.MAX_RUNS + 2 and ids[-1] == server.MAX_RUNS + 8
+    assert view.runs[1]["label"] == "soft spring" and view.runs[1]["keep"] and view.runs[1]["csv"].is_file()
+    assert not (view.workdir / "run_3.csv").exists()  # dropped with its file
+    view.mark_run(2, keep=False)
+    run()  # now the oldest one that may go
+    assert [r["id"] for r in view.runs][0] == 1 and 2 not in [r["id"] for r in view.runs]
+    assert len(view.runs) == server.MAX_RUNS + 1
+    with pytest.raises(ValueError):
+        view.mark_run(2, label="gone")
+
+
+def test_kept_runs_and_layout_after_a_restart(tmp_path):
+    """Kept and named runs are saved next to the model (<model>.runs/: index.json, run_<id>.npz
+    with the full precision) and are there again in a new viewer, with their names, the
+    reference and the version of the model file; the plot layout is <model>.view.json."""
+    from fdgen.view import store
+
+    model = tmp_path / "p.yaml"
+    write_pendulum(model, stiffness=10.0)
+    view = server.View(model, run=False)
+    values = [0.1, 1 / 3, -2.718281828459045e-17]
+
+    def run(scale=1.0):
+        csv = tmp_path / "r.csv"
+        csv.write_text("t,rod.R_x\n" + "".join(f"{k},{v * scale!r}\n" for k, v in enumerate(values)))
+        return view._new_run(csv, 2.0)[0]
+
+    run(), run(2.0), run(3.0)
+    view.mark_run(2, label="stiff")  # a name keeps it
+    view.mark_run(3, keep=True)
+    view.set_reference(2)
+    runs = tmp_path / "p.runs"
+    assert sorted(f.name for f in runs.iterdir()) == [".gitignore", "index.json", "run_2.npz", "run_3.npz"]
+    write_pendulum(model, stiffness=20.0)  # another version of the file
+    run()
+
+    again = server.View(model, run=False)
+    assert [(r["id"], r["label"], r["keep"], r["edit"]) for r in again.runs] == [(2, "stiff", True, 1), (3, "", True, 1)]
+    assert again.reference == 2 and again.runs[0]["seconds"] == 2.0
+    data = read_results(again.run_csv(2))
+    assert list(data) == ["t", "rod.R_x"] and data["rod.R_x"].tolist() == [2 * v for v in values]  # bitwise
+    (tmp_path / "r.csv").write_text("t\n0\n")
+    assert again._new_run(tmp_path / "r.csv", 1.0)[0] == 4  # after the kept ones
+    assert again.runs[-1]["edit"] == 2  # the file changed since runs 2 and 3
+    again.mark_run(3, keep=False)  # stays for this session, its file goes
+    assert not (runs / "run_3.npz").exists() and again.run_csv(3).is_file()
+    again.delete_run(2)
+    assert not (runs / "run_2.npz").exists() and server.View(model, run=False).runs == []
+
+    assert store.read_layout(model) is None
+    layout = {"pages": [{"name": "wheel loads", "panes": [{"mode": "time", "series": ["rod.R_x"]}]}], "formulas": []}
+    assert store.write_layout(model, layout) and store.read_layout(model) == layout
+    assert (tmp_path / "p.view.json").is_file()
+
+
 def test_notes_from_the_viewer(tmp_path):
     from fdgen.view import notes
 

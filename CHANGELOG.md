@@ -126,6 +126,17 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 - Viewer: flexible bodies deform (their STL, or the surface of the FE mesh), magnified with
   *deformation* about their best-fitting rigid motion; eigenmodes with the deformation. Mesh
   shapes count for the size of the scene and *fit view*.
+- Viewer: plots in pages (**+ page**, tabs above the plots: rename, move, drop a channel on a
+  tab). The plots of a page share its height, so many plots no longer get smaller and smaller.
+- Viewer: the run table (**≡ all runs** in the run strip): every run with its tuned values as
+  sortable columns, a name per run, show, ★, ⟲, ×, and *keep*, so a run is not dropped as one
+  of the oldest; *show none* and *remove the others* for many runs. The strip shows the
+  current, reference, shown, kept and named runs and the newest.
+- Viewer: kept and named runs are saved next to the model (`<model>.runs/`: one NumPy `.npz`
+  per run with the full precision, about a third of the CSV, and `index.json`) and are there
+  again after a restart, with their names and the reference. The plot layout (pages, plots,
+  formulas) is `<model>.view.json` next to the model instead of the browser's storage, so it
+  no longer depends on the app's port and can be shared in a repository.
 
 ## [0.1.0rc4] - 2026-11-07
 
