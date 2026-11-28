@@ -3,7 +3,8 @@
 **Multibody dynamics for engineers – and for the assistants they work with.**
 
 freedyn2 simulates mechanical systems of rigid bodies, joints and forces: suspensions,
-drivelines, mechanisms, vehicles on roads, motorcycles. A model is a short text file; a
+drivelines, mechanisms, vehicles on roads, motorcycles, parts that hit and rub on each other
+([contact](reference/forces.md#contact)). A model is a short text file; a
 viewer in the browser shows it, plays the results and lets you tune, compare and study
 variants; an AI assistant can build and change the model through the same tools you use.
 
