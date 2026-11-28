@@ -1,4 +1,4 @@
-add_executable(fd_tests main.cpp test_support.cpp rigid_body_tests.cpp joint_tests.cpp force_tests.cpp)
+add_executable(fd_tests main.cpp test_support.cpp rigid_body_tests.cpp joint_tests.cpp force_tests.cpp initial_tests.cpp)
 target_link_libraries(fd_tests PRIVATE freedyn2_runtime)
 fd_copy_runtime_dlls(fd_tests)
 target_compile_definitions(fd_tests PRIVATE FD_GEN_DIR="${FD_GEN_DIR}")
@@ -8,6 +8,9 @@ foreach(t fd_element fd_global free_body_alpha0 free_body_alpha01 precession dzh
 endforeach()
 foreach(t pendulum double_pendulum newton_fixed)
   add_test(NAME joints.${t} COMMAND fd_tests ${t})
+endforeach()
+foreach(t redundant assembly statics)
+  add_test(NAME initial.${t} COMMAND fd_tests ${t})
 endforeach()
 add_test(NAME forces.all COMMAND fd_tests forces)
 add_test(NAME forces.inputs COMMAND fd_tests inputs)
@@ -20,3 +23,9 @@ add_test(NAME runner.inputs
 # End-to-end: the command line runner on the shipped example.
 add_test(NAME runner.free_body
   COMMAND freedyn2_run ${FD_GEN_DIR}/free_body.fdm -o ${CMAKE_CURRENT_BINARY_DIR}/free_body.csv)
+
+# The supernodal LDL^T of freedyn2_modal against Eigen's SimplicialLDLT.
+add_executable(supernodal_tests supernodal_tests.cpp)
+target_include_directories(supernodal_tests PRIVATE ${PROJECT_SOURCE_DIR}/runtime/app)
+target_link_libraries(supernodal_tests PRIVATE Eigen3::Eigen Threads::Threads)
+add_test(NAME modal.supernodal COMMAND supernodal_tests)

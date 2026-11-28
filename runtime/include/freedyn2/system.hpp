@@ -63,6 +63,24 @@ class System {
   // Overwrite qd of those elements by the modified formulas at the current q, qdd.
   void apply_modified_newmark(const HhtCoef& c);
 
+  // Redundant constraints (an overconstrained mechanism): rows of the constraint Jacobian B at
+  // the current state that depend linearly on earlier rows, in model order, so that the later
+  // element is the one reported. Tested on B with equilibrated columns and unit rows: a row
+  // whose part orthogonal to the earlier ones is below tol is redundant. Inactive rows are
+  // skipped.
+  std::vector<int> find_redundant_constraints(double tol = 1e-8);
+  // Replace the equations of these constraints by lam_c = 0 (residual row lam_c, unit row in
+  // the iteration matrix and the initial-condition matrix, b_c = 0; phi and phid stay the
+  // constraint values, for checks). The other constraints carry their forces. Changes the
+  // matrix pattern: call it before a linear solver has analyzed one.
+  void deactivate_constraints(const std::vector<int>& cons);
+  const std::vector<int>& inactive_constraints() const { return inactive_; }
+  bool constraint_active(int c) const { return !inactive_mask_[c]; }
+  // "<element> (constraint k of n)" of the global constraint c ("<element>" if it has one).
+  std::string constraint_name(int c) const;
+  // "<element> (velocity dof k of n)" of the global velocity dof i.
+  std::string dof_name(int i) const;
+
   // Runtime inputs (Model::inputs): parameters of the elements that use them, changed between
   // two steps (constant inside a step, also inside its Newton iterations). An input no element
   // uses can be set but has no effect.
@@ -105,6 +123,10 @@ class System {
   };
 
   void gather(Instance& e);
+  // lam_c = 0 for the inactive constraints: their rows of the assembled matrix.
+  void pin_inactive(MatrixAssembler& a);
+  std::vector<int> inactive_;
+  std::vector<char> inactive_mask_;
   // Road plane of the *_local tires at their current wheel position (before res / ic / out).
   void update_roads();
   // Segments of the spline calls at the current state: their coefficients into p (before res /

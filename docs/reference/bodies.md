@@ -38,6 +38,8 @@ bodies:
     flex:
       modal: data/flex_beam.mtx  # .fdflex, or an Adams MTX file (values in the units of the model)
       damping: 0.02              # modal damping ratio, or one per mode: [0.02, 0.05]
+      max_frequency: 5000        # optional: keep the modes up to 5000 Hz
+      exclude_modes: [3]         # optional: leave out mode 3
     position: [0, 0, 0]
 joints:
   clamp: {type: fixed, body1: beam, node: 10001}   # at node 10001 of the modal data
@@ -72,7 +74,8 @@ joints:
 
   Every joint and force at the body gets an interface node at its point (a `torque` needs a
   `point`, a `torsion_spring` a `location` there), connected to the
-  surface nodes around it by an RBE2 (`interface_type: rbe3` for an interpolating one).
+  surface nodes around it by an RBE2 (`interface_type: rbe3` for an interpolating one, its nodes
+  weighted by their share of the surface area).
   Joints act at that node (a joint with the flexible body as body1 swaps its bodies); forces act
   on a massless body `<body>_if<k>` fixed to it, so that every force law works. The spider of a
   revolute or cylindrical joint takes the **bore** around its axis (joint z): the surface at the
@@ -127,6 +130,41 @@ joints:
   order of the file, rigid body modes left out).
 - Any number of modes, no compiler needed. The cost grows with the square of the number of
   modes (full coupling); high-frequency modes need small time steps.
+
+**Limits of the model** (the floating frame of reference with linear modes, as Adams/Flex and
+legacy FreeDyn):
+
+- **Small, linear deformation** about the body frame: the deformation is a sum of mode shapes,
+  node rotations are linearized.
+- **No geometric stiffening.** The centrifugal stiffening of a spinning part (and the
+  stiffening by a preload) is not modelled: a body that spins at Omega lacks a stiffness share of
+  the order of (Omega / omega_1)^2, omega_1 its first elastic frequency, and very fast spin can
+  even make it unstable. `freedyn2 check` warns from 10 % of omega_1 (`spin_stiffening`). For
+  rotors, turbine blades or crankshafts at high speed the results are then too soft.
+- **The body frame is a floating reference frame**, not a material point (the mode shapes are
+  orthogonal to the rigid body motions, nearly the mean axes). Joints, forces, measures and
+  sensors that are not at an interface node act on that frame and do not see the deformation:
+  joints and forces warn, measures and sensors too. Use the interface nodes (a force at a node
+  acts through a massless body `<body>_if<k>` fixed to it; a measure on that body moves with the
+  node).
+- **Modal damping** `damping` acts on the free-free modes of the body, not on the modes of the
+  system it is built into: a clamped body with `damping: 1` is not critically damped. Without
+  `damping` the modes are damped as in Adams/Flex: 1 % below 100 Hz, 10 % from 100 to 1000 Hz,
+  100 % from 1000 Hz (the stiff constraint modes of the interfaces do not ring); `damping: 0`
+  for none. Critically damped modes are no oscillation in the eigenvalues (`modes`).
+- **Mode selection**: `max_frequency` (Hz) keeps the modes up to it, `exclude_modes` leaves out
+  modes by number; the kept modes are numbered from 1 again (`flex_info` shows which). Leaving
+  out modes makes the body stiffer and its interfaces less accurate: check with
+  `flex_convergence`. The cost of a body grows with the square of its number of modes.
+- **Interfaces far from the surface** (more than 3 mesh sizes and a tenth of the part) warn: the
+  spider is then a long rigid lever.
+- **The modes** are those of the Craig-Bampton basis: `modes` fixed-interface modes plus 6 per
+  interface node. The reduction checks by a Sturm count that they are the lowest ones; kept
+  modes that end inside a multiple eigenvalue (a symmetric part) give a warning, as do modes
+  that converged to a residual above the tolerance only.
+- **FE models** (`fem`): solids (CTETRA, CHEXA), rods (CBAR with PBARL ROD), RBE2, RBE3 and
+  INCLUDE files. Other elements, point masses (CONM2), other rigid elements and MPC are an
+  error, not left out; loads, SPC and output requests are ignored.
 
 ## Shapes
 

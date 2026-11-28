@@ -12,9 +12,11 @@
       <include path="bin/freedyn2-gui.exe" />
       <include path="python/Scripts/freedyn2.exe" />
       <include path="python/Scripts/freedyn2-gui.exe" />
-      <!-- the solver and the road tool -->
+      <!-- the solver, the road tool and the modal reduction (with its AVX2 variant) -->
       <include path="python/Lib/site-packages/fdgen/bin/freedyn2_run.exe" />
       <include path="python/Lib/site-packages/fdgen/bin/freedyn2_road.exe" />
+      <include path="python/Lib/site-packages/fdgen/bin/freedyn2_modal.exe" />
+      <include path="python/Lib/site-packages/fdgen/bin/freedyn2_modal_avx2.exe" />
       <for-each>
         <authenticode-sign />
       </for-each>

@@ -1,0 +1,47 @@
+# Parallelogram linkage of four revolute joints, released with the cranks at 45 degrees. A planar
+# loop of revolute joints is overconstrained in space: 3 of its constraints repeat the others
+# (the Gruebler count says -2 degrees of freedom, it moves with 1). The runtime finds them at the
+# start, reports them and carries the load with the others. With solver statics: true the run
+# starts from the hanging equilibrium instead.
+model: parallelogram
+gravity: [0, 0, -9.81]
+bodies:
+  crank_a:
+    mass: 1.0
+    inertia: [0.01, 0.0833333333333333, 0.0833333333333333]  # rod along body x
+    position: [0.3535533905932738, 0, 0.3535533905932738]
+    orientation: [0.9238795325112867, 0, -0.3826834323650898, 0]  # body x 45 degrees up
+    shapes:
+      - {type: box, size: [1.0, 0.05, 0.05]}
+  crank_b:
+    mass: 1.0
+    inertia: [0.01, 0.0833333333333333, 0.0833333333333333]
+    position: [0.8535533905932738, 0, 0.3535533905932738]
+    orientation: [0.9238795325112867, 0, -0.3826834323650898, 0]
+    shapes:
+      - {type: box, size: [1.0, 0.05, 0.05]}
+  coupler:
+    mass: 2.0
+    inertia: [0.01, 0.0416666666666667, 0.0416666666666667]  # 0.5 m along x
+    position: [0.9571067811865476, 0, 0.7071067811865476]
+    shapes:
+      - {type: box, size: [0.5, 0.06, 0.06], color: "#e15759"}
+ground:
+  shapes:
+    - {type: box, size: [0.7, 0.2, 0.05], position: [0.25, 0, -0.05], color: "#777777"}
+joints:  # hinge axes along global y (joint z = global y)
+  pivot_a: {type: revolute, body1: crank_a, location: [0, 0, 0], orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]}
+  pivot_b: {type: revolute, body1: crank_b, location: [0.5, 0, 0], orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]}
+  pin_a:
+    type: revolute
+    body1: coupler
+    body2: crank_a
+    location: [0.7071067811865476, 0, 0.7071067811865476]
+    orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]
+  pin_b:
+    type: revolute
+    body1: coupler
+    body2: crank_b
+    location: [1.2071067811865476, 0, 0.7071067811865476]
+    orientation: [0.7071067811865476, -0.7071067811865476, 0, 0]
+solver: {type: HHT, alpha: -0.01, end_time: 5.0, step: 1.0e-3, output_step: 1.0e-2}

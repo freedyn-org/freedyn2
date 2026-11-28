@@ -162,7 +162,7 @@ def build_run(model, work):
 
 
 def beam_model(name, **extra):
-    m = {"model": name, "bodies": {"beam": {"flex": {"modal": str(MTX)}}},
+    m = {"model": name, "bodies": {"beam": {"flex": {"modal": str(MTX), "damping": 0.0}}},
          "solver": {"type": "HHT", "alpha": -0.05, "step": 1e-6, "end_time": 2e-6}}
     m.update(extra)
     return m
@@ -261,3 +261,55 @@ def test_set_interface_edits_only_the_flex_block():
     assert "      - point: [0.0, 0.0, 0.1]" in set_interface(block, "arm", [0, 0, 0.1], radius=0.01)
     with pytest.raises(ModelError, match="no flex block"):
         set_interface(flow, "other", [0, 0, 0])
+
+
+def test_body_frame_warnings(beam):
+    """Measures, sensors and forces that act on the body frame of a flexible body (no interface
+    node there) warn: they do not see the deformation."""
+    from fdgen.model import validate
+    far = (beam.node_positions.max(axis=0) * 3 + 1).tolist()
+    m = beam_model("warn", measures={"z": {"type": "displacement", "body1": "beam", "component": "z"}},
+                   forces={"spring": {"type": "spring_damper", "body1": "beam", "point1": far, "point2": [0, 0, 9],
+                                      "stiffness": 1.0}})
+    with pytest.warns(UserWarning) as record:
+        validate(m)
+    text = " ".join(str(w.message) for w in record)
+    assert "measure z: on the body frame of the flexible body beam" in text
+    assert "force spring: point1 is at no interface node of the flexible body beam" in text
+
+
+def test_spin_stiffening_check(beam):
+    """freedyn2 check: a flexible body spinning fast against its first frequency is a warning."""
+    from fdgen.checks import check_results
+    from fdgen.model import validate
+    model = validate(beam_model("spin"))
+    w1 = 2 * np.pi * beam.frequencies.min()
+    t = np.linspace(0, 1, 5)
+    res = {"t": t, "beam.omega_x": 0 * t, "beam.omega_y": 0 * t, "beam.omega_z": 0.05 * w1 + 0 * t}
+    assert not [f for f in check_results(model, res)["findings"] if f["code"] == "spin_stiffening"]
+    res["beam.omega_z"] = 0.3 * w1 + 0 * t
+    (f,) = [f for f in check_results(model, res)["findings"] if f["code"] == "spin_stiffening"]
+    assert "30 % of its first elastic frequency" in f["message"] and "9.0 %" in f["message"]
+
+
+def test_mode_selection_and_default_damping(tmp_path, beam):
+    """flex.max_frequency and exclude_modes keep a subset of the modes (a .fdflex of their own,
+    numbered from 1 again, with the invariants of the kept modes); without damping the modes
+    get the Adams/Flex default: 1 % below 100 Hz, 10 % below 1000 Hz, 100 % above."""
+    from fdgen.flex import default_damping, load_modal
+    from fdgen.model import validate
+    f = beam.frequencies
+    m = beam_model("sel")
+    del m["bodies"]["beam"]["flex"]["damping"]
+    m["bodies"]["beam"]["flex"].update(max_frequency=float(f[5]) * 1.0001, exclude_modes=[2])
+    model = validate(m)
+    flex = model["bodies"]["beam"]["flex"]
+    d = load_modal(flex["modal"])
+    assert d.nm == 5 and np.allclose(d.frequencies, f[[0, 2, 3, 4, 5]])
+    assert d.meta["kept_modes"] == [1, 3, 4, 5, 6] and flex["modal_all"].endswith("flex_beam.mtx")
+    assert np.allclose(d.I9, beam.I9[np.ix_([0, 2, 3, 4, 5], [0, 2, 3, 4, 5])])
+    assert flex["damping_default"] and flex["damping"] == default_damping(d.frequencies)
+    assert default_damping([10, 99.9, 100, 999, 1000, 5e4]) == [0.01, 0.01, 0.1, 0.1, 1.0, 1.0]
+    with pytest.raises(Exception, match="no mode left"):
+        m["bodies"]["beam"]["flex"]["max_frequency"] = float(f[0]) / 2
+        validate(m)

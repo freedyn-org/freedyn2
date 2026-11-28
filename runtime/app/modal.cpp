@@ -18,12 +18,23 @@
 //   d: Kr, Mr (ncols x ncols, column major): V^T K V, V^T M V
 //
 // Constraint modes: interior response to a unit displacement of one boundary dof (K_ii Psi =
-// -K_ib), normal modes: K_ii phi = lambda M_ii phi with the boundary fixed, by subspace iteration
-// with (K_ii - shift M_ii)^-1 (sparse LDL^T); shift < 0 for a free body (nb = 0).
+// -K_ib), normal modes: K_ii phi = lambda M_ii phi with the boundary fixed, by shift-invert
+// Lanczos with (K_ii - shift M_ii)^-1 (multifrontal supernodal LDL^T, supernodal.hpp; full
+// reorthogonalization); shift < 0 for a free body (nb = 0). A Sturm count (the negative pivots of K_ii - sigma M_ii just above the
+// highest eigenvalue) checks that no eigenvalue below it is missing.
+//
+// Exit status 1 with a message on stderr: no result. Lines "freedyn2_modal: warning: ..." on
+// stderr with exit status 0: a result to use with care (fdgen.fem.reduce shows them).
 
 #include <Eigen/Dense>
-#include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
+
+#include "supernodal.hpp"
+
+#if defined(_MSC_VER)
+#include <immintrin.h>
+#include <intrin.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -45,6 +56,60 @@ using Vec = Eigen::VectorXd;
 using Trip = Eigen::Triplet<double>;
 
 namespace {
+
+// AVX2 and FMA usable (CPU and operating system): the freedyn2_modal_avx2 variant runs here.
+bool cpu_has_avx2_fma() {
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+  int r[4];
+  __cpuid(r, 0);
+  if (r[0] < 7) return false;
+  __cpuid(r, 1);
+  const bool fma = (r[2] >> 12) & 1, osxsave = (r[2] >> 27) & 1, avx = (r[2] >> 28) & 1;
+  if (!(fma && osxsave && avx) || (_xgetbv(0) & 6) != 6) return false;
+  __cpuidex(r, 7, 0);
+  return (r[1] >> 5) & 1;
+#elif (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__i386__))
+  __builtin_cpu_init();
+  return __builtin_cpu_supports("avx2") && __builtin_cpu_supports("fma");
+#else
+  return false;
+#endif
+}
+
+// Number of eigenvalues of K x = lambda M x below sigma: the negative pivots of K - sigma M
+// (Sylvester's law of inertia); -1 if the factorization fails.
+// f: a factorization whose pattern analysis is reused (K - sigma M has the pattern it was made for).
+int count_below(fd::SupernodalLDLT& f, const Eigen::SparseMatrix<double>& K, const Eigen::SparseMatrix<double>& M,
+                double sigma) {
+  const Eigen::SparseMatrix<double> A = K - sigma * M;
+  if (!f.factorize(A)) return -1;
+  return f.negatives();
+}
+
+// The m eigenvalues lam (ascending) found must be the m lowest: no eigenvalue below the highest
+// is missing (Lanczos can miss one of a multiple eigenvalue). An eigenvalue equal to the highest
+// that is not kept (the kept modes end inside a multiple eigenvalue) is a warning.
+void sturm_check(fd::SupernodalLDLT& f, const Eigen::SparseMatrix<double>& K,
+                 const Eigen::SparseMatrix<double>& M, const Eigen::VectorXd& lam) {
+  const int m = static_cast<int>(lam.size());
+  const double top = lam(m - 1), scale = std::max(std::abs(top), lam.cwiseAbs().maxCoeff());
+  const double eps = 1e-6 * scale + 1e-300;
+  const int above = count_below(f, K, M, top + eps);
+  if (above < 0) {
+    std::cerr << "freedyn2_modal: warning: Sturm count not possible (factorization of K - sigma M failed)\n";
+    return;
+  }
+  if (above == m) return;
+  const int below = count_below(f, K, M, top - eps);
+  if (above > m && below >= 0 && below <= m - 1) {
+    std::cerr << "freedyn2_modal: warning: the highest mode kept is one of " << (above - below)
+              << " equal eigenvalues (kept: " << (m - below) << "), the reduced body is less symmetric than the part: "
+              << "ask for " << above << " modes to keep them all\n";
+    return;
+  }
+  throw std::runtime_error("eigenvalues missing: " + std::to_string(above) + " below " + std::to_string(top) +
+                           ", " + std::to_string(m) + " found (a multiple eigenvalue?)");
+}
 
 struct Reader {
   std::ifstream in;
@@ -89,8 +154,12 @@ Sp select(const Sp& A, const std::vector<int>& rows, const std::vector<int>& col
 
 int main(int argc, char** argv) {
   try {
+    if (argc == 2 && std::string(argv[1]) == "--cpu") {  // for the choice of the AVX2 variant
+      std::cout << (cpu_has_avx2_fma() ? "avx2" : "generic") << "\n";
+      return 0;
+    }
     if (argc != 3) {
-      std::cerr << "usage: freedyn2_modal input.bin output.bin\n";
+      std::cerr << "usage: freedyn2_modal input.bin output.bin | --cpu\n";
       return 2;
     }
     const bool verbose = std::getenv("FD_MODAL_VERBOSE") != nullptr;
@@ -144,15 +213,17 @@ int main(int argc, char** argv) {
     Sp Kii = select(Kn, in, in), Mii = select(Mn, in, in), Kib = select(Kn, in, b);
 
     const double s = nb > 0 ? 0.0 : shift;
-    Sp A = Kii - s * Mii;
-    Eigen::SimplicialLDLT<Sp> ldlt(A);
-    if (ldlt.info() != Eigen::Success) throw std::runtime_error("factorization failed (body not restrained by the boundary?)");
-    if ((ldlt.vectorD().array() <= 0).any() && s <= 0)
+    Sp A = Kii - s * Mii;  // the pattern of K_ii and M_ii (also for s = 0): the Sturm count reuses its analysis
+    fd::SupernodalLDLT ldlt;
+    ldlt.analyze(A);
+    lap("analyze");
+    if (!ldlt.factorize(A)) throw std::runtime_error("factorization failed (body not restrained by the boundary?)");
+    if ((ldlt.pivots().array() <= 0).any() && s <= 0)
       throw std::runtime_error("matrix not positive definite: the boundary does not restrain all rigid body motions"
                                " (or a free body without a negative shift)");
 
     lap("factorize");
-    if (verbose) std::cerr << "n " << ni << ", nnz(K_ii) " << Kii.nonZeros() << ", nnz(L) " << ldlt.matrixL().nestedExpression().nonZeros() << "\n";
+    if (verbose) std::cerr << "n " << ni << ", nnz(K_ii) " << Kii.nonZeros() << ", nnz(L) " << ldlt.nnz_l() << ", supernodes " << ldlt.supernodes() << "\n";
     // constraint modes: the columns solved in parallel (the factor is only read)
     Mat Psi(ni, nb);
     if (nb > 0) {
@@ -177,31 +248,36 @@ int main(int argc, char** argv) {
     int it = 0;
     if (m > 0) {
       const int kmax = std::min(ni, std::max(4 * m + 40, 3 * m + 60) * 4);
-      Mat Q(ni, std::min(kmax + 1, ni));
+      // Q and M Q: one product with M per step (the orthogonalization updates M w along)
+      Mat Q(ni, std::min(kmax + 1, ni)), MQ(ni, Q.cols());
       std::vector<double> alpha, beta;
       std::mt19937 gen(12345);
       std::normal_distribution<double> nd;
       Vec q(ni);
       for (int i = 0; i < ni; ++i) q(i) = nd(gen);
       Vec Mq = Mii * q;
-      q /= std::sqrt(q.dot(Mq));
-      Q.col(0) = q;
+      const double q0 = std::sqrt(q.dot(Mq));
+      Q.col(0) = q / q0;
+      MQ.col(0) = Mq / q0;
       int k = 0, next_check = std::min(ni, 2 * m + 20);
       double best = 1e300;
       int best_k = 0;
       for (;;) {
         // one Lanczos step: w = A^-1 M q_k, orthogonalized (M) against all q (twice)
-        Vec w = ldlt.solve(Vec(Mii * Q.col(k)));
+        Vec w = ldlt.solve(Vec(MQ.col(k)));
+        Vec Mw = Mii * w;
         for (int pass = 0; pass < 2; ++pass) {
-          const Vec c = Q.leftCols(k + 1).transpose() * (Mii * w);
+          const Vec c = Q.leftCols(k + 1).transpose() * Mw;
           w -= Q.leftCols(k + 1) * c;
+          Mw -= MQ.leftCols(k + 1) * c;
           if (pass == 0) alpha.push_back(c(k));
         }
-        const double b = std::sqrt(std::max(w.dot(Mii * w), 0.0));
+        const double b = std::sqrt(std::max(w.dot(Mw), 0.0));
         ++k, ++it;
         if (k < next_check && k < ni && b > 1e-14) {
           beta.push_back(b);
           Q.col(k) = w / b;
+          MQ.col(k) = Mw / b;
           continue;
         }
         // Ritz values of T (k x k): theta = 1 / (lambda - s), the largest nearest the shift
@@ -224,7 +300,12 @@ int main(int argc, char** argv) {
         const bool done = mm == m && (err < tol || (best < 1e3 * tol && err > 0.9 * best && k - best_k >= m));
         if (err < 0.9 * best) best = err, best_k = k;
         if (done || k >= kmax || k >= ni || b <= 1e-14) {
-          if (!done) std::cerr << "freedyn2_modal: Lanczos residual " << err << " after " << k << " vectors\n";
+          if (!done && (mm < m || err > 1e-3))
+            throw std::runtime_error("the modes did not converge (residual " + std::to_string(err) + " after " +
+                                     std::to_string(k) + " Lanczos vectors): ask for fewer modes");
+          if (!done)
+            std::cerr << "freedyn2_modal: warning: modes converged to a residual of " << err << " only (tolerance "
+                      << tol << ")\n";
           // M-orthonormal Ritz vectors (reorthogonalized Lanczos: Q is M-orthonormal)
           Phi = X;
           for (int j = 0; j < mm; ++j) Phi.col(j) /= std::sqrt(Phi.col(j).dot(MX.col(j)));
@@ -232,10 +313,13 @@ int main(int argc, char** argv) {
         }
         beta.push_back(b);
         Q.col(k) = w / b;
+        MQ.col(k) = Mw / b;
         next_check = std::min(ni, k + std::max(10, m / 2));
       }
       lap("lanczos");
       if (verbose) std::cerr << "solves " << it << "\n";
+      sturm_check(ldlt, Kii, Mii, lam.head(m));  // the factor is not needed any more
+      lap("sturm count");
     }
 
     // basis in the independent dofs, then all dofs

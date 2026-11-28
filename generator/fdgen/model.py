@@ -16,7 +16,7 @@ from . import forces
 from . import joints as joint_types
 from .geometry import rotation_matrix
 from . import curve_forces, drivers, extensions, flex_body, formulas, hardpoints, plugin, resources, rigid_body, shapes, splines
-from .flex import load_modal
+from .flex import default_damping, load_modal, select_modes
 from .measures import POSITION_MEASURES
 from .errors import ModelError  # noqa: F401  (re-exported: fdgen.model.ModelError)
 
@@ -116,7 +116,11 @@ def _flex(name, b, base_dir):
         raise ModelError(f"body {name}: modal data file {path} not found")
     flex["modal"] = str(path.resolve())
     try:
-        data = load_modal(path)
+        if "max_frequency" in flex or flex.get("exclude_modes"):  # the selected modes, as a file of their own
+            flex.setdefault("modal_all", flex["modal"])
+            flex["modal"] = str(select_modes(flex["modal_all"], flex.get("max_frequency"),
+                                             [int(m) for m in flex.get("exclude_modes") or []]))
+        data = load_modal(flex["modal"])
     except ModelError as e:
         raise ModelError(f"body {name}: {e}") from None
     if "mass" in b and abs(data.mass / b["mass"] - 1) > 0.05:
@@ -126,11 +130,30 @@ def _flex(name, b, base_dir):
     Jc = data.I7 - data.mass * (np.dot(c, c) * np.eye(3) - np.outer(c, c))
     b["mass"] = float(data.mass)
     b["inertia"] = [float(max(x, 1e-12 * np.trace(Jc))) for x in np.linalg.eigvalsh(Jc)]
-    flex.setdefault("damping", 0.0)
+    if "damping" not in flex:  # as Adams: 1 % / 10 % / 100 % below 100 Hz / below 1000 Hz / above
+        flex["damping"] = default_damping(data.frequencies)
+        flex["damping_default"] = True
     flex.setdefault("rotation_coupling", True)
     flex.setdefault("quadratic_inertia", True)
     if data.nm == 0:
         raise ModelError(f"body {name}: the modal data has no elastic modes")
+
+
+def _warn_body_frame(bodies, measures, sensors):
+    """Measures and sensors use the body frame of a flexible body (its floating reference
+    frame, not a material point): the deformation is not in them."""
+    flex = {b for b, body in bodies.items() if "flex" in body}
+    if not flex:
+        return
+    for name, m in measures.items():
+        used = sorted(flex & {m.get("body1"), m.get("body2"), m.get("frame")})
+        if used:
+            warnings.warn(f"measure {name}: on the body frame of the flexible body {', '.join(used)} (its floating "
+                          "frame): the deformation is not in it")
+    for sn in sensors:
+        if sn["body1"] in flex:
+            warnings.warn(f"sensor {sn['name']}: on the body frame of the flexible body {sn['body1']}: the "
+                          "deformation is not in it")
 
 
 def _joint(name, j, bodies):
@@ -382,6 +405,7 @@ def validate(model, base_dir=None, prepare_flex=True):
         prepare(bodies, joints, forces, base_dir)
     measures = {name: _measure(name, m, bodies) for name, m in section("measures")}
     sensors = [_sensor(name, sn, bodies) for name, sn in section("sensors")]
+    _warn_body_frame(bodies, measures, sensors)
     parameters = dict(model.get("parameters") or {})
     inputs = {name: float(v) for name, v in (model.get("inputs") or {}).items()}
     model_splines = {name: _spline(name, sp, base_dir) for name, sp in section("splines")}
@@ -454,7 +478,7 @@ def write_fdm(model, path):
         f"{keys.get(k, k)} {int(s[k]) if isinstance(s[k], bool) else s[k]!r}".replace("'", "")
         for k in ("alpha", "form", "end_time", "step", "output_step", "output_begin", "newton_tol",
                   "max_newton", "newton", "newton_iterations", "adaptive", "h_min", "eps", "exact_output", "vproj_tol",
-                  "error_norm")
+                  "error_norm", "statics")
         if k in s
     )
     lines = [f"freedyn2_model {FDM_VERSION}", f"name {model['model']}", f"solver {solver}"]

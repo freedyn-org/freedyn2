@@ -211,7 +211,7 @@ def test_cantilever_from_fem(tmp_path, modal_tool, monkeypatch):
     monkeypatch.setenv("FREEDYN2_HOME", str(tmp_path / "home"))
     beam_bdf(tmp_path / "beam.bdf", nx=40)
     m = {"model": "cantilever", "bodies": {"beam": {"flex": {"fem": "beam.bdf", "interfaces": [1001, 1002],
-                                                             "modes": 10}}},
+                                                             "modes": 10, "damping": 0.0}}},
          "joints": {"clamp": {"type": "fixed", "body1": "beam", "node": 1001}},
          "solver": {"type": "HHT", "alpha": -0.05, "step": 1e-5, "end_time": 2e-5}}
     path = tmp_path / "cantilever.yaml"
@@ -277,3 +277,43 @@ def test_modal_stress_cantilever(tmp_path, modal_tool, monkeypatch):
     assert np.abs(s[mid, 1:]).max() < 0.05 * np.abs(sxx).max()
     # the CSV holds the run's modal coordinates
     assert eta[-1, 0] == pytest.approx(0.06)
+
+
+def test_nastran_include_and_unsupported_cards(tmp_path):
+    """INCLUDE files are read (and their content is in the cache key); case control before
+    BEGIN BULK is skipped; a card that changes mass or stiffness and is not supported (here a
+    point mass CONM2, a shell CQUAD4) is an error, not a silently lighter model; loads and
+    parameters are listed only."""
+    from fdgen.fem.nastran import bulk_files
+    full = beam_bdf(tmp_path / "full.bdf", nx=4, ny=1, nz=1).read_text().splitlines()
+    grids = [line for line in full if line.startswith("GRID")]
+    (tmp_path / "mesh").mkdir()
+    (tmp_path / "mesh" / "grids.bdf").write_text("\n".join(grids) + "\n")
+    rest = [line for line in full if not line.startswith(("GRID", "$", "BEGIN"))]
+    main = tmp_path / "main.bdf"
+    main.write_text("SOL 103\nCEND\nSUBCASE 1\n  METHOD = 1\nBEGIN BULK\nPARAM,POST,-1\nEIGRL,1,,,10\n"
+                    "INCLUDE 'mesh/grids.bdf'\n" + "\n".join(rest) + "\n")
+    fe = read_nastran(main)
+    ref = read_nastran(tmp_path / "full.bdf")
+    assert fe.nodes == ref.nodes and len(fe.solids) == len(ref.solids)
+    assert set(fe.ignored) == {"PARAM", "EIGRL"}
+    text, files = bulk_files(main)
+    assert "GRID,1," in text and [f.name for f in files] == ["main.bdf", "grids.bdf"]  # the cache key hashes text
+    for card in ("CONM2,99,1,,1.0", "CQUAD4,98,5,1,2,3,4"):
+        bad = tmp_path / "bad.bdf"
+        bad.write_text(main.read_text().replace("PARAM,POST,-1", card))
+        with pytest.raises(ModelError, match=card.split(",")[0]):
+            read_nastran(bad)
+
+
+def test_sturm_count_of_the_modes(tmp_path, modal_tool):
+    """freedyn2_modal checks by a Sturm count that the modes are the lowest ones; kept modes that
+    end inside a multiple eigenvalue (the bending pair of a square beam) are a warning."""
+    import warnings
+    a = assemble(read_nastran(beam_bdf(tmp_path / "b.bdf", nx=20)))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        reduce(a, [1001], 2, tool=modal_tool)  # the first bending pair: complete
+        reduce(a, [], 8, tool=modal_tool)      # free: 6 rigid body modes and the pair
+    with pytest.warns(UserWarning, match="one of 2 equal eigenvalues .* ask for 4 modes"):
+        reduce(a, [1001], 3, tool=modal_tool)

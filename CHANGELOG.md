@@ -11,6 +11,23 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
   localhost only, as the app does: a web page whose host name resolves to 127.0.0.1 (DNS
   rebinding) could read the model file and results and post to the viewer, since the Origin
   check of the POSTs passes when Origin and Host are both that name.
+- The modal reduction of large FE models is about 6 times faster: an own multifrontal
+  supernodal LDL^T (Eigen's dense kernels, all cores; 12 times faster than Eigen's
+  SimplicialLDLT, no new dependency), an AVX2 variant of freedyn2_modal taken where the CPU has
+  it, Lanczos with one product with M per step, the inertia invariants from two matrix products
+  (64 000 dofs: 79 s to 14 s). freedyn2_modal is signed in the Windows installer.
+- Flexible bodies, from a review:
+  - The Nastran reader no longer leaves out cards silently: elements, point masses (CONM2),
+    rigid elements and MPC it does not support are an error; INCLUDE files are read (and are
+    in the cache key of the reduction); the case control before BEGIN BULK is skipped.
+  - The modal reduction checks the modes by a Sturm count (no eigenvalue below the highest
+    missing; kept modes that end inside a multiple eigenvalue warn); modes that did not
+    converge are an error, a residual above the tolerance a warning (it was only printed).
+  - Forces, measures and sensors on the body frame of a flexible body (not at an interface
+    node) warn: they do not see the deformation.
+  - `freedyn2 check` warns when a flexible body spins faster than 10 % of its first elastic
+    frequency (`spin_stiffening`: no geometric stiffening). The limits of the model are
+    documented (docs/reference/bodies.md).
 - Splines are data, not code: the runtime looks up the segment (binary search) and the
   compiled law evaluates one cubic. A driver on an Akima spline of 1000 points (legacy
   101_V8Motion) builds in 0.3 s instead of 20 minutes (1.9 MB of C before, 45 kB now), with
@@ -29,6 +46,21 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- The initial state is made consistent before the first step, and the run says what that
+  took. **Redundant constraints** (an overconstrained mechanism, such as a planar loop of
+  revolute joints) are found in model order and deactivated (multiplier 0, the others carry
+  the load) instead of a singular matrix; a redundant constraint that is violated while the
+  others hold stops the run with its name. **Positions that violate the constraints** are
+  assembled by Newton's method (the smallest correction in the mass metric) instead of
+  stopping the run. **`solver: statics: true`** (`freedyn2_run --statics`) starts from the
+  static equilibrium at rest, by pseudo-transient continuation with the generated iteration
+  matrix. Example `parallelogram.yaml`. Models that were consistent and not overconstrained
+  run as before.
+- Flexible bodies: `max_frequency` and `exclude_modes` select modes (the selection is a
+  `.fdflex` of its own in the user cache); without `damping` the modes are damped as in
+  Adams/Flex (1 % below 100 Hz, 10 % to 1000 Hz, 100 % above; `damping: 0` for none, the
+  `.fds` import keeps the legacy value); RBE3 spiders of meshed bodies weight their nodes by
+  surface area; an interface far from the surface warns.
 - Splines as library items: `spring_damper` and `torsion_spring` take a spline name as
   `stiffness` or `damping` (force over the deflection, over the rate), and drivers along a
   curve of time (`motion: <spline>(t)`) on angles, distances and displacements are built into

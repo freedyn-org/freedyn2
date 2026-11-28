@@ -136,3 +136,52 @@ interfaces, 20 fixed-interface modes: elimination 3 s, LDL^T 12 s (28 million en
 factor), constraint modes 0.2 s (in parallel), modes 10 s with 60 solves (before: 46 s, 320
 solves), the same eigenvalues to 2e-11. The factorization is next: CHOLMOD (supernodal) would
 need BLAS / LAPACK in the Windows build.
+
+**Supernodal factorization** (`runtime/app/supernodal.hpp`, since then): a multifrontal LDL^T
+with Eigen's dense kernels (the columns with the same structure as dense blocks, the update as a
+matrix product; large updates and assemblies on all cores, a small thread pool) instead of
+Eigen's SimplicialLDLT, which works column by column. The same factor (AMD ordering, 37 million
+entries for 64 000 dofs of TET10), the same results to 1e-12, the same inertia. Factorization
+of that matrix on 4 cores:
+
+| | factorize |
+|---|---|
+| Eigen SimplicialLDLT (before) | 18.2 s |
+| Eigen SimplicialLDLT, METIS ordering | 12.2 s |
+| supernodal, generic x86-64 (SSE2) | 3.4 s |
+| supernodal, AVX2 and FMA | 1.5 s |
+| CHOLMOD supernodal with OpenBLAS (reference, not used: its supernodal module is GPL) | 1.1 s |
+
+The wheels are built for any x86-64 CPU: `freedyn2_modal_avx2` is built beside `freedyn2_modal`
+and taken where the CPU has AVX2 and FMA (`freedyn2_modal --cpu`). Lanczos keeps M Q along (one
+product with M per step instead of four). The inertia invariants come from two matrix products
+of the weighted moments of the quadrature points (the identities of the skew matrices) instead
+of einsum over all points and mode pairs: 12.7 s to 0.3 s, the same to 1e-15. The whole
+reduction of the box beam (64 000 dofs, 2 interfaces, 20 modes, Sturm count, invariants and
+stresses): 79 s before, 14 s now (freedyn2_modal 11.6 s: elimination 2.6 s, analysis 1.2 s,
+factorization 1.5 s, Lanczos 4.4 s, Sturm count 1.4 s).
+
+A Sturm count checks the modes since then: the negative pivots of K_ii - sigma M_ii just above
+the highest eigenvalue must be the number of modes (Lanczos with one start vector can miss one
+of a multiple eigenvalue; on the test beams it did not, against SciPy to 1e-10 with the double
+bending eigenvalues and the six rigid body modes found). It costs one more numeric
+factorization (the pattern analysis is reused): box beam with TET10, 64 000 dofs, factor 35
+million entries: elimination 3 s, analysis 1 s, LDL^T 22 s, modes 11 s, Sturm count 22 s,
+the reduction 79 s with the invariants and stresses. The reduction is kept (cms) and made again
+only when its inputs change.
+
+The legacy flexible body tests spin fast against their first elastic frequency: 03_FlyingFleBo
+at 63 %, 04_FlexRotUHackerl at 38 % (`freedyn2 check`: `spin_stiffening`). Without geometric
+stiffening (neither in legacy FreeDyn nor here) their deformation is too soft by a share of the
+order of 40 % and 14 %: the agreement with legacy is that of the same model, not with the real
+parts.
+
+## Forces at interface nodes: the massless interface bodies
+
+A force at an interface node acts on a massless body `<body>_if<k>` fixed to the node (6 dofs
+and 6 constraints per interface). A force element at the node itself would see the node through
+all modes (its size would depend on the number of modes, against the element types of fixed
+size). Measured on the flexible arm with a spring at its tip (1000 steps, 8 modes): massless
+2168 Newton iterations, with 1e-4 kg 2167, with 1e-2 kg 2162, no step rejected; the massless
+body costs nothing in convergence. (The round-off floor of 106_V8_FlexConRod came from the
+massless dummy bodies of the legacy model, in mm-t-s.) So it stays.
