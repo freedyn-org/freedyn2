@@ -5,7 +5,8 @@
   freedyn2 view model.yaml --no-run         the model at t = 0
   freedyn2 view ... --export page.html      one self-contained HTML file instead of a server
 
-The server listens on localhost only. The page polls /api/state; a new version means: fetch
+The server listens on localhost only and answers requests for 127.0.0.1 or localhost only
+(Host: no DNS rebinding). The page polls /api/state; a new version means: fetch
 /api/scene and /api/results.csv again (the camera and the time stay). Every simulation is kept
 as a run (/api/runs/<id>.csv, the last MAX_RUNS and the reference run), so the page compares
 runs; while a simulation runs, /api/running.csv is its CSV so far and the state has its
@@ -583,10 +584,21 @@ class ViewHandler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
+        if not self._local():
+            return self._send(b"refused", "text/plain", 403)  # (DNS rebinding)
         self.view_get(self.view, self.path)
 
     def do_POST(self):
+        if not self._local():
+            return self._send(b"refused", "text/plain", 403)
         self.view_post(self.view, self.path)
+
+    def _local(self):
+        """The request names this server by its loopback address (Host): a page of another host
+        name that resolves to 127.0.0.1 (DNS rebinding) is refused. The Origin check of the POSTs
+        alone does not catch that, its Origin and Host are both the other name."""
+        port = self.server.server_address[1]
+        return self.headers.get("Host", "") in (f"127.0.0.1:{port}", f"localhost:{port}")
 
     def _send(self, body, ctype, code=200):
         self.send_response(code)

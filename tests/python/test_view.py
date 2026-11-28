@@ -704,3 +704,29 @@ def test_rename_in_the_editor_and_by_hand(tmp_path):
         assert e.value.code == 400 and "no element named nope" in json.loads(e.value.read())["error"]
     finally:
         httpd.shutdown()
+
+
+def test_only_its_own_host(tmp_path):
+    """Requests for another host name (DNS rebinding: a page whose name resolves to 127.0.0.1)
+    are refused, also when its Origin matches its Host; the server's own names are served."""
+    model = tmp_path / "p.yaml"
+    write_pendulum(model)
+    view = server.View(model, run=False)
+    view.rebuild()
+    httpd, base = serve_view(view)
+    port = httpd.server_address[1]
+    try:
+        for host in ("127.0.0.1", "localhost"):
+            req = urllib.request.Request(base + "api/source", headers={"Host": f"{host}:{port}"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                assert r.status == 200
+        evil = {"Host": f"evil.example:{port}", "Origin": f"http://evil.example:{port}"}
+        for body in (None, json.dumps({"text": "x"}).encode()):
+            req = urllib.request.Request(base + ("api/source" if body is None else "api/notes"), body, evil)
+            with pytest.raises(urllib.error.HTTPError) as e:
+                urllib.request.urlopen(req, timeout=10)
+            assert e.value.code == 403
+        assert not (tmp_path / "p.notes").exists()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
