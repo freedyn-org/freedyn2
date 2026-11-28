@@ -120,7 +120,8 @@ def _joints(model):
 
 def _forces(model):
     """Lines (springs, dampers, bushings) between points of two bodies, points of applied loads,
-    tires (their contact point is a result)."""
+    tires (their contact point is a result), the geometry of contacts (in the frames of their
+    bodies)."""
     out = []
     for f in model.get("forces", []):
         kind, b1, b2 = f["type"], f["body1"], f.get("body2", "ground")
@@ -133,6 +134,24 @@ def _forces(model):
             o = np.asarray(f.get("orientation", [1.0, 0.0, 0.0, 0.0]), dtype=float)
             entry["point1"] = local_point(model, b1, loc).tolist()
             entry["point2"], entry["orientation2"] = _frame_on(model, b2, loc, rotation_matrix(o / np.linalg.norm(o)))
+        elif kind == "contact":  # the sphere on body1; the plane (point, normal) or sphere on body2 / the ground
+            entry["geometry"] = f.get("geometry", "sphere_plane")
+            entry["radius"] = f["radius"]
+            entry["point1"] = local_point(model, b1, f.get("point1")).tolist()
+            entry["point2"] = local_point(model, b2, f.get("point2")).tolist()
+            if entry["geometry"] == "sphere_plane":
+                n = np.asarray(f.get("normal", [0.0, 0.0, 1.0]), dtype=float)
+                n = n / np.linalg.norm(n)
+                # the square drawn of the plane: around the foot of the sphere's center at t = 0
+                c1 = np.asarray(f.get("point1", model["bodies"][b1]["position"]), dtype=float)
+                p2 = np.asarray(f.get("point2", [0.0, 0.0, 0.0] if b2 == "ground" else model["bodies"][b2]["position"]),
+                                dtype=float)
+                entry["center2"] = local_point(model, b2, c1 - n * (n @ (c1 - p2))).tolist()
+                if b2 != "ground":
+                    n = rotation_matrix(model["bodies"][b2]["orientation"]).T @ n
+                entry["normal2"] = n.tolist()
+            else:
+                entry["radius2"] = f["radius2"]
         elif kind in ("force", "torque", "expression_force", "expression_torque", "curve_force", "curve_torque") or "point" in f:
             entry["point1"] = local_point(model, b1, f.get("point")).tolist()  # also types of extensions
         elif kind != "tire":

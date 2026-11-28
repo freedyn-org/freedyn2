@@ -185,6 +185,79 @@ function jointGlyph(j) {
   return m;
 }
 
+// The geometry of a contact (force type contact), on the bodies that carry it: the sphere on
+// body1 as three great circles and a faint shell (the circles turn with the body), the plane (a
+// square under the sphere at t = 0, with its normal) or the second sphere on body2 / the ground. Drawn
+// through the shapes (the sphere is usually the shape of the body itself); stronger while the
+// bodies touch (penetration > 0), with the contact point.
+function contactObjects(f, byName, ground, worldGroup) {
+  const holder = (body) => (body === "ground" ? ground : byName.get(body)?.group);
+  const touch = { on: false };  // the bodies touch at the current time
+  const parts = [];
+  // opacity apart and in contact (contactOpacity; highlight() dims and colors them)
+  const part = (o, apart, contact) => { o.userData.opacity = [apart, contact]; o.userData.touch = touch; parts.push(o); };
+  const tag = (o) => o.traverse((x) => { x.userData.forceName = f.name; x.userData.contact = true; });
+  const sphere = (body, center, radius) => {
+    const g = new THREE.Group();
+    g.position.fromArray(center);
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 16), new THREE.MeshBasicMaterial({
+      color: TIRE_COLOR, transparent: true, opacity: 0.06, depthWrite: false, depthTest: false }));
+    shell.renderOrder = 9;
+    g.add(shell);
+    part(shell, 0.06, 0.25);
+    const pts = new THREE.EllipseCurve(0, 0, radius, radius).getPoints(64).map((v) => new THREE.Vector3(v.x, v.y, 0));
+    for (const rot of [[0, 0, 0], [Math.PI / 2, 0, 0], [0, Math.PI / 2, 0]]) {
+      const c = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({
+        color: TIRE_COLOR, transparent: true, opacity: 0.7, depthTest: false }));
+      c.rotation.set(...rot);
+      c.renderOrder = 10;
+      g.add(c);
+      part(c, 0.7, 1.0);
+    }
+    tag(g);
+    holder(body)?.add(g);
+  };
+  sphere(f.body1, f.point1, f.radius);
+  if (f.geometry === "sphere_sphere") {
+    sphere(f.body2, f.point2, f.radius2);
+  } else {
+    const side = Math.max(8 * f.radius, 0.6 * modelSize);
+    const plane = new THREE.Group();
+    plane.position.fromArray(f.center2 || f.point2);
+    plane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...f.normal2));
+    // in front of a ground shape in the same plane (polygon offset), the outline through everything
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(side, side), new THREE.MeshBasicMaterial({
+      color: TIRE_COLOR, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    const edge = new THREE.LineSegments(new THREE.EdgesGeometry(face.geometry),
+      new THREE.LineBasicMaterial({ color: TIRE_COLOR, transparent: true, opacity: 0.7, depthTest: false }));
+    edge.renderOrder = 9;
+    const normal = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(), 0.15 * side, TIRE_COLOR);
+    plane.add(face, edge, normal);
+    part(face, 0.12, 0.3);
+    part(edge, 0.7, 1.0);
+    tag(plane);
+    holder(f.body2)?.add(plane);
+  }
+  const pen = column(`${f.name}.penetration`), px = column(`${f.name}.point_x`);
+  if (!pen || !px) return;
+  const py = column(`${f.name}.point_y`), pz = column(`${f.name}.point_z`);
+  const point = marker(TIRE_COLOR, 0.012 * modelSize);
+  point.userData.forceName = f.name;
+  worldGroup.add(point);
+  updaters.push((k) => {
+    touch.on = pen[k] > 0;
+    for (const m of parts) m.material.opacity = contactOpacity(m);
+    point.visible = touch.on;
+    point.position.set(px[k], py[k], pz[k]);
+  });
+}
+
+function contactOpacity(o) {
+  const [apart, contact] = o.userData.opacity;
+  return (o.userData.touch.on ? contact : apart) * (o.userData.dim ?? 1);
+}
+
 function marker(color, radius) {
   const m = new THREE.Mesh(new THREE.SphereGeometry(radius, 14, 10),
     new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: 0.9 }));
@@ -325,6 +398,8 @@ function build(scene) {
       m.userData.forceName = f.name;
       forceGroup.add(m);
       updaters.push((k) => m.position.copy(worldPoint(f.body1, f.point1, k)));
+    } else if (f.type === "contact") {
+      contactObjects(f, byName, ground, forceGroup);
     } else if (f.type === "tire") {
       const cx = column(`${f.name}.contact_x`), cy = column(`${f.name}.contact_y`), cz = column(`${f.name}.contact_z`);
       if (!cx) continue;
@@ -379,6 +454,7 @@ function applyToggles() {
     if (o.userData.frame) o.visible = $("show-frames").checked;
     if (o.userData.point) o.visible = $("show-points").checked;
     if (o.userData.spider) o.visible = $("show-spiders").checked;
+    if (o.userData.contact) o.visible = $("show-forces").checked;
   });
   const f = root.getObjectByName("forces"); if (f) f.visible = $("show-forces").checked;
   const a = root.getObjectByName("arrows"); if (a) a.visible = $("show-arrows").checked;
@@ -398,7 +474,7 @@ $("deform-scale").addEventListener("input", (e) => {
 // ---------- force arrows ----------
 // Arrows at the points of application, from the force outputs of the elements: force and torque
 // vectors (global), spring forces along the spring (on both ends), bushings (outputs in their
-// frame on body2), tires (outputs in the contact frame: longitudinal, lateral, normal; the
+// frame on body2), contacts (at the contact point, on both bodies), tires (outputs in the contact frame: longitudinal, lateral, normal; the
 // normal is drawn upright, without the camber of the road). Length: the largest force of the
 // run is 0.3 model sizes (torques likewise), times the scale.
 function forceArrows(scene, worldPoint, byName) {
@@ -423,6 +499,9 @@ function forceArrows(scene, worldPoint, byName) {
       const frame = (k) => rot(f.body2, k).multiply(q(f.orientation2));
       add(f, "force", (k) => [worldPoint(f.body1, f.point1, k), vec(`${n}.force`, k).applyQuaternion(frame(k))]);
       add(f, "torque", (k) => [worldPoint(f.body1, f.point1, k), vec(`${n}.torque`, k).applyQuaternion(frame(k))]);
+    } else if (f.type === "contact" && has("force_x") && has("point_x")) {  // at the contact point
+      add(f, "force", (k) => [vec(`${n}.point`, k), vec(`${n}.force`, k)]);
+      if (f.body2 !== "ground") add(f, "force", (k) => [vec(`${n}.point`, k), vec(`${n}.force`, k).negate()]);
     } else if (f.type !== "tire" && f.type !== "sensor" && f.point1 && has("force_x")) {  // types of extensions
       add(f, "force", (k) => [worldPoint(f.body1, f.point1, k), vec(`${n}.force`, k)]);
     } else if (f.type === "tire" && has("force_x") && has("contact_x")) {
@@ -931,6 +1010,12 @@ function highlight() {
     const name = o.userData.jointName || o.userData.forceName || o.userData.pointName;
     if (!name || !o.material) return;
     const picked = sel && sel.name === name, on = !rel || rel.elements.has(name);
+    if (o.userData.contact) {  // contact geometry: its own opacities, at its size, colored when picked
+      o.userData.dim = on ? 1 : 0.25;
+      o.material.opacity = o.userData.opacity ? contactOpacity(o) : (on ? 0.9 : 0.15);
+      o.material.color.setHex(picked ? 0xffd43b : TIRE_COLOR);
+      return;
+    }
     o.material.opacity = on ? 0.9 : 0.15;
     if (o.isMesh) o.scale.setScalar(picked ? 1.8 : 1);  // markers and glyphs; lines are in world coordinates
     else o.material.color.setHex(picked ? 0xffd43b : lineColor(o));
@@ -939,7 +1024,7 @@ function highlight() {
 
 function lineColor(o) {
   const f = model.forces.find((x) => x.name === o.userData.forceName);
-  return f && f.type === "tire" ? TIRE_COLOR : SPRING_COLOR;
+  return f && (f.type === "tire" || f.type === "contact") ? TIRE_COLOR : SPRING_COLOR;
 }
 
 function showInspector() {

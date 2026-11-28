@@ -68,7 +68,8 @@ variable `FREEDYN2_NO_UPDATE_CHECK=1`.
   drives away is followed by itself).
 - Space plays, the arrow keys step, the speed menu slows down or speeds up.
 - Bodies are drawn with their [shapes](reference/bodies.md#shapes), or as the box of their
-  mass and inertia if they have none; joints, springs, bushings and tire contacts are marked.
+  mass and inertia if they have none; joints, springs, bushings and tire contacts are marked,
+  contacts with their spheres and planes (stronger while the bodies touch).
   *View* shows body frames, traces, **force arrows** (forces red, torques purple, scaled to
   the largest of the run) and the reference run.
 - **Click an element** to inspect it: its data, its result channels (click to plot), its
