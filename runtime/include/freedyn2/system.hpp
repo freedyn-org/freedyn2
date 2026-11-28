@@ -67,13 +67,17 @@ class System {
   // the current state that depend linearly on earlier rows, in model order, so that the later
   // element is the one reported. Tested on B with equilibrated columns and unit rows: a row
   // whose part orthogonal to the earlier ones is below tol is redundant. Inactive rows are
-  // skipped.
-  std::vector<int> find_redundant_constraints(double tol = 1e-8);
+  // skipped, unless all: then every row counts, as if no constraint were inactive (the rank of
+  // the whole Jacobian, e.g. to tell redundancy of the structure from that of a position).
+  std::vector<int> find_redundant_constraints(double tol = 1e-8, bool all = false);
   // Replace the equations of these constraints by lam_c = 0 (residual row lam_c, unit row in
   // the iteration matrix and the initial-condition matrix, b_c = 0; phi and phid stay the
   // constraint values, for checks). The other constraints carry their forces. Changes the
-  // matrix pattern: call it before a linear solver has analyzed one.
-  void deactivate_constraints(const std::vector<int>& cons);
+  // matrix pattern the first time a constraint is deactivated: then (true returned) the linear
+  // solvers must analyze the matrices again.
+  bool deactivate_constraints(const std::vector<int>& cons);
+  // Make deactivated constraints active again (their equations back; the pattern stays).
+  void activate_constraints(const std::vector<int>& cons);
   const std::vector<int>& inactive_constraints() const { return inactive_; }
   bool constraint_active(int c) const { return !inactive_mask_[c]; }
   // "<element> (constraint k of n)" of the global constraint c ("<element>" if it has one).
@@ -136,7 +140,8 @@ class System {
   // lam_c = 0 for the inactive constraints: their rows of the assembled matrix.
   void pin_inactive(MatrixAssembler& a);
   std::vector<int> inactive_;
-  std::vector<char> inactive_mask_;
+  std::vector<char> inactive_mask_, has_diagonal_;
+  bool raw_ = false;  // find_redundant_constraints(all): matrices without the inactive rows pinned
   // Road plane of the *_local tires at their current wheel position (before res / ic / out).
   void update_roads();
   // Segments of the spline calls at the current state: their coefficients into p (before res /

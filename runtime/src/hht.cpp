@@ -299,9 +299,27 @@ void HhtIntegrator::initialize() {
   // singular position); the new pattern needs new linear solvers.
   sys_.deactivate_constraints(sys_.find_redundant_constraints());
   report_.redundant = sys_.inactive_constraints();
+  candidates_.clear();
+  rank_log_.clear();
   make_solvers();
+  if (!report_.redundant.empty() && s_.newton != "fixed") classify_redundant();
   assemble_positions();
-  if (s_.statics) static_equilibrium();
+  if (s_.statics) {
+    static_equilibrium();
+    // The equilibrium can be a singular position (a linkage hanging stretched): its rank is
+    // checked again there (as after a failed step); what is redundant now is so by the position.
+    if (s_.newton != "fixed") {
+      const std::vector<int> found = sys_.find_redundant_constraints(1e-6);
+      if (!found.empty()) {
+        if (sys_.deactivate_constraints(found)) make_solvers();
+        for (int c : found) {
+          report_.redundant.push_back(c);
+          report_.positional.push_back(c);
+          candidates_.push_back(c);
+        }
+      }
+    }
+  }
   std::vector<double> b(nx), phi(nx), phid(nx), rhs(nx, 0.0), dv(nx);
   sys_.ic_system(b.data(), phi.data(), phid.data());
   // A redundant constraint that its independent ones do not satisfy: the overconstrained
@@ -534,6 +552,13 @@ StepResult HhtIntegrator::try_step(double h, double t_new) {
   }
   if (res.status != StepStatus::ok) {
     restore_accepted();
+    const bool solver = res.status == StepStatus::newton_not_converged || res.status == StepStatus::linear_solver_failed ||
+                        res.status == StepStatus::residual_increased;
+    if (solver && !probe_ && !rank_retry_ && s_.newton != "fixed" && recheck_rank()) {
+      rank_retry_ = true;
+      res = try_step(h, t_new);
+      rank_retry_ = false;
+    }
     return res;
   }
   // f_{n+1} of the converged state (newton fixed with alpha = 0: stale, and not used)
@@ -547,7 +572,68 @@ StepResult HhtIntegrator::try_step(double h, double t_new) {
   newton_total_ += res.iterations;
   ++n_steps_;
   t_ = t_new;
+  reactivate_constraints();
   return res;
+}
+
+// Redundant in this position only (a singular position: a stretched linkage), or by the
+// structure (a planar loop in space)? The mechanism is moved a little along a motion it can make
+// (delta in the null space of the active constraints, [M B^T; B 0] [delta; mu] = [r; 0], at most
+// 1e-3 per dof) and assembled there exactly (project_positions): rows redundant by the structure
+// stay redundant on the constraint manifold, those of a singular position become independent.
+// The latter are made active again once the mechanism has left the position.
+void HhtIntegrator::classify_redundant() {
+  const int nx = sys_.nx(), nv = sys_.nv();
+  const std::vector<double> q0 = sys_.q;
+  std::vector<double> b(nx), phi(nx), phid(nx), rhs(nx, 0.0), x(nx), moved(nv, 0.0);
+  for (int i = 0; i < nv; ++i) rhs[i] = std::sin(1.0 + 2.4 * i);  // a fixed, generic direction
+  ls_ic_->factorize(sys_.ic_system(b.data(), phi.data(), phid.data()));
+  ls_ic_->solve(rhs.data(), x.data());
+  double big = 0.0;
+  for (int i = 0; i < nv; ++i) big = std::max(big, std::abs(x[i]));
+  std::vector<int> nearby = report_.redundant;  // no motion (driven entirely): nothing positional
+  if (big > 0.0) {
+    for (int i = 0; i < nv; ++i) sys_.incr[i] = 1e-3 * x[i] / big;
+    sys_.update_configuration(q0);
+    std::fill(sys_.incr.begin(), sys_.incr.end(), 0.0);
+    try {
+      project_positions(moved);
+      nearby = sys_.find_redundant_constraints(1e-8, true);
+    } catch (const std::exception&) {  // cannot be assembled there: keep them all as structural
+    }
+    sys_.q = q0;
+  }
+  for (int c : report_.redundant)
+    if (std::find(nearby.begin(), nearby.end(), c) == nearby.end()) candidates_.push_back(c);
+  report_.positional = candidates_;
+}
+
+bool HhtIntegrator::recheck_rank() {
+  const std::vector<int> found = sys_.find_redundant_constraints(1e-6);
+  if (found.empty()) return false;
+  if (sys_.deactivate_constraints(found)) make_solvers();
+  for (int c : found) {
+    if (std::find(candidates_.begin(), candidates_.end(), c) == candidates_.end()) candidates_.push_back(c);
+    rank_log_.push_back({t_, c, -1, 0.0});
+  }
+  return true;
+}
+
+void HhtIntegrator::reactivate_constraints() {
+  std::vector<int> off;
+  for (int c : candidates_)
+    if (!sys_.constraint_active(c)) off.push_back(c);
+  if (off.empty()) return;
+  const std::vector<int> dependent = sys_.find_redundant_constraints(1e-3, true);
+  std::vector<int> back;
+  for (int c : off)
+    if (std::find(dependent.begin(), dependent.end(), c) == dependent.end()) back.push_back(c);
+  if (back.empty()) return;
+  const int nx = sys_.nx();
+  std::vector<double> b(nx), phi(nx), phid(nx);
+  sys_.ic_system(b.data(), phi.data(), phid.data());
+  sys_.activate_constraints(back);
+  for (int c : back) rank_log_.push_back({t_, c, 1, std::abs(phi[sys_.nv() + c])});
 }
 
 StepResult HhtIntegrator::try_step_to_event(double h, double t_new, double snap) {

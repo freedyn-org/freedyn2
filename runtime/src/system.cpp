@@ -154,6 +154,7 @@ System::System(const Model& model) : nq_(model.nq()), nv_(model.nv()), nc_(model
   for (auto* v : {&qd, &qdd, &incr}) v->assign(nv_, 0.0);
   lam.assign(nc_, 0.0);
   inactive_mask_.assign(nc_, 0);
+  has_diagonal_.assign(nc_, 0);
 }
 
 void System::gather(Instance& e) {
@@ -374,7 +375,8 @@ const CsrMatrix& System::ic_system(double* b, double* phi, double* phid) {
     for (int i = 1; i < 4; ++i) scatter_add(e.ic_rows[i], e.ic_buf[i].data(), vec[i]);
   }
   pin_inactive(ic_asm_);
-  for (int c : inactive_) b[nv_ + c] = 0.0;
+  if (!raw_)
+    for (int c : inactive_) b[nv_ + c] = 0.0;
   return ic_asm_.matrix();
 }
 
@@ -400,12 +402,15 @@ void System::outputs(std::vector<double>& y) {
 }
 
 void System::pin_inactive(MatrixAssembler& a) {
+  if (raw_) return;
   for (int c : inactive_) a.pin_row(nv_ + c);
 }
 
-std::vector<int> System::find_redundant_constraints(double tol) {
+std::vector<int> System::find_redundant_constraints(double tol, bool all) {
   std::vector<double> b(nx()), phi(nx()), phid(nx());
+  raw_ = all;
   const CsrMatrix& A = ic_system(b.data(), phi.data(), phid.data());
+  raw_ = false;
   // B (rows nv.., columns < nv) dense, columns equilibrated (translations and rotations, mm
   // and m models alike), rows of unit length.
   std::vector<double> B(static_cast<size_t>(nc_) * nv_, 0.0), colmax(nv_, 0.0);
@@ -421,7 +426,7 @@ std::vector<int> System::find_redundant_constraints(double tol) {
   std::vector<int> redundant;
   std::vector<double> v(nv_);
   for (int c = 0; c < nc_; ++c) {
-    if (inactive_mask_[c]) continue;
+    if (inactive_mask_[c] && !all) continue;
     double n0 = 0.0;
     for (int j = 0; j < nv_; ++j) {
       v[j] = colmax[j] > 0.0 ? B[static_cast<size_t>(c) * nv_ + j] / colmax[j] : 0.0;
@@ -448,22 +453,34 @@ std::vector<int> System::find_redundant_constraints(double tol) {
   return redundant;
 }
 
-void System::deactivate_constraints(const std::vector<int>& cons) {
+bool System::deactivate_constraints(const std::vector<int>& cons) {
   bool added = false;
   for (int c : cons) {
     if (c < 0 || c >= nc_) throw std::out_of_range("constraint " + std::to_string(c));
     if (inactive_mask_[c]) continue;
     inactive_mask_[c] = 1;
     inactive_.push_back(c);
+    lam[c] = 0.0;
+    if (has_diagonal_[c]) continue;  // deactivated before: its diagonal is in the pattern
+    has_diagonal_[c] = 1;
     iter_asm_.add_diagonal(nv_ + c);
     ic_asm_.add_diagonal(nv_ + c);
-    lam[c] = 0.0;
     added = true;
   }
-  if (!added) return;
   std::sort(inactive_.begin(), inactive_.end());
+  if (!added) return false;
   iter_asm_.finalize(nx());
   ic_asm_.finalize(nx());
+  return true;
+}
+
+void System::activate_constraints(const std::vector<int>& cons) {
+  for (int c : cons) {
+    if (c < 0 || c >= nc_) throw std::out_of_range("constraint " + std::to_string(c));
+    if (!inactive_mask_[c]) continue;
+    inactive_mask_[c] = 0;
+    inactive_.erase(std::find(inactive_.begin(), inactive_.end(), c));
+  }
 }
 
 std::string System::constraint_name(int c) const {

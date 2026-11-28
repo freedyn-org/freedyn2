@@ -26,6 +26,15 @@ enum class StepStatus { ok, newton_not_converged, residual_increased, local_erro
 
 // A located event: event function `index` (System::event_name) changed sign at time t, to
 // positive (direction +1: a contact begins) or to negative (-1: it ends).
+// A constraint switched during the run because of its position (a singular position of a
+// mechanism): deactivated (-1) where a step failed and it was redundant, or active again (+1)
+// once independent; violation: |Phi| when it became active again.
+struct RankChange {
+  double t;
+  int constraint, direction;
+  double violation;
+};
+
 struct EventRecord {
   double t;
   int index, direction;
@@ -44,6 +53,7 @@ struct StepResult {
 // What initialize() did to reach a consistent initial state.
 struct InitialReport {
   std::vector<int> redundant;   // constraints found redundant and deactivated (System::constraint_name)
+  std::vector<int> positional;  // of them, redundant in this position only (independent nearby)
   double violation = 0.0;       // largest |Phi| of the active constraints in the given positions
   int assembly_iterations = 0;  // Newton corrections of the positions (0: consistent as given)
   double largest_move = 0.0;    // largest change of a coordinate by the assembly (velocity dof units)
@@ -64,8 +74,15 @@ class HhtIntegrator {
   // equilibrium at rest, velocities projected onto the constraints.
   void initialize();
   const InitialReport& initial_report() const { return report_; }
+  // Constraints switched during the run (singular positions): see try_step.
+  const std::vector<RankChange>& rank_changes() const { return rank_log_; }
   // Try one step of size h from the last accepted state, ending at time t_new. On
   // success the new state is accepted, otherwise the last accepted state is restored.
+  // Singular positions (not with newton fixed): a step that fails in Newton or the linear solver
+  // has the rank of the constraints checked again at the accepted state (tolerance 1e-6); newly
+  // redundant constraints are deactivated and the step is tried once more. Constraints that are
+  // redundant in a position only (at the start, or deactivated so) are active again after the
+  // accepted step at which they are clearly independent (1e-3: a hysteresis).
   StepResult try_step(double h, double t_new);
   // The step of size h to t_new with event location (System::events): a step in which an event
   // function changes sign is not accepted; the time of the sign change is located by the
@@ -116,6 +133,12 @@ class HhtIntegrator {
   InitialReport report_;
   void make_solvers();
   void assemble_positions();
+  void classify_redundant();    // initialize: redundant by the position, not the structure
+  bool recheck_rank();          // after a failed step: deactivate newly redundant constraints
+  void reactivate_constraints();  // after an accepted step: positional ones independent again
+  std::vector<int> candidates_;   // constraints redundant in a position only
+  std::vector<RankChange> rank_log_;
+  bool rank_retry_ = false;
   // Newton corrections of the positions onto Phi = 0 in the mass metric (active constraints),
   // accumulated per velocity dof in moved; |Phi| before in *violation. Throws if they fail.
   int project_positions(std::vector<double>& moved, double* violation = nullptr);

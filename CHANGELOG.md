@@ -7,6 +7,12 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Fixed
 
+- Singular positions of mechanisms: a constraint that is redundant in one position only (a
+  stretched parallelogram) is told from those redundant by the structure, and made active again
+  once the mechanism has left the position (before, it stayed off and the parallelogram could
+  fold). The rank is checked again after the static equilibrium: a linkage hanging stretched
+  went unstable from rest and the run broke down within 0.05 s; it now stays at rest. Also
+  after a step that Newton does not converge. The run lists the changes.
 - The viewer of `freedyn2 view` (and of the MCP tools) answers requests for 127.0.0.1 or
   localhost only, as the app does: a web page whose host name resolves to 127.0.0.1 (DNS
   rebinding) could read the model file and results and post to the viewer, since the Origin

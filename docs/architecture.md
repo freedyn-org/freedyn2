@@ -238,7 +238,19 @@ equilibrated, rows of unit length, modified Gram-Schmidt in model order, a row w
 orthogonal to the earlier ones is below 1e-8 is redundant) and deactivated
 (`System::deactivate_constraints`: residual row `lam_c`, unit row in the iteration and the
 initial-condition matrix, so the pattern grows by those diagonal entries and nothing else
-changes). Positions that violate the active constraints are assembled by Newton's method with
+changes). Redundancy of a position is told from that of the structure
+(`HhtIntegrator::classify_redundant`): the mechanism is moved by 1e-3 along a motion it can make
+(the null space of the active B, from the initial-condition matrix) and assembled there exactly;
+rows independent there are redundant in this position only. They are checked after every
+accepted step and made active again when their orthogonal part exceeds 1e-3 (a hysteresis
+against the 1e-8 of the detection), with `System::activate_constraints` (the pattern keeps their
+diagonal, so the linear solvers keep their analysis); only while one is off does a step pay for
+the check. The rank is checked again (1e-6) after the static equilibrium, which can end in a
+singular position (a stretched linkage hanging; integrated with the nearly dependent row active,
+HHT went unstable there), and after a step that fails in Newton or the linear solver (then the
+step is tried once more). A singular position as such rarely makes a step fail: the linear solver
+takes the nearly singular, consistent system. Positions that violate the active constraints are
+assembled by Newton's method with
 the initial-condition matrix, `[M B^T; B 0] [delta; mu] = [0; -Phi]` (the smallest correction in
 the mass metric), applied as `q o exp(delta)`. With `statics` the static equilibrium follows,
 by pseudo-transient continuation (Kelley and Keyes 1998) with the generated iteration matrix at

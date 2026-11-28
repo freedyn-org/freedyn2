@@ -70,10 +70,22 @@ what that took:
 - **Redundant constraints** (an overconstrained mechanism, e.g. a planar loop of revolute
   joints, which is overconstrained in space): constraints that repeat others are found in
   model order and deactivated. They carry no force (their `lambda` is 0), the others carry
-  the load, and the motion is the same. The run lists them (`redundant constraints,
+  the load, and the motion is the same. The joint forces are then one of many possible
+  distributions, not necessarily that of the real, elastic part: where the bearing forces
+  matter, choose joints that fix fewer directions (a spherical joint for a revolute one, as in
+  any multibody program). The run lists them (`redundant constraints,
   deactivated: pin_b.ax ...`). If one of them is violated while the others hold, the
   mechanism does not fit together (hinge axes of a loop not parallel) and the run stops with
   that constraint named. Example: [`parallelogram.yaml`](../examples.md).
+- **Singular positions**: a mechanism can have one more redundant constraint in a particular
+  position, e.g. a parallelogram stretched out with all its links on one line. The runtime tells
+  such a constraint from those of the structure (it is independent as soon as the mechanism
+  moves a little) and makes it active again once the mechanism has left the position, so a
+  parallelogram stays a parallelogram. The same check runs after the static equilibrium (a
+  linkage can hang stretched) and after a step that Newton does not converge. The run lists
+  every such change (`constraints switched in singular positions`). Not covered: a mechanism
+  that creeps into a singular position during the run and stays there without a step failing
+  (moving through it, as a driven crank does, is fine).
 - **Assembly**: positions that violate the joints or drivers are corrected by Newton's method,
   the smallest change in the mass metric (light bodies move more than heavy ones), and the run
   reports the largest change. Positions that cannot be assembled stop the run.
