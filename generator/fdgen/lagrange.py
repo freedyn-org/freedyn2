@@ -33,7 +33,10 @@ STD_INPUTS = ("q", "qd", "qdd", "lam", "p", "coef", "incr", "t")
 # its nonzeros, the other entries of p stay.
 # spline(q, qd, p, t) -> x: the arguments of the spline calls; the runtime selects the segment
 # of each and writes its coefficients to p (fdgen.measures.Consts.add_spline_call).
-ROLES = ("res", "iter", "iter_noqv", "ic", "init", "out", "update", "scale", "mn_qd", "jac_qd", "post", "spline")
+# event(q, qd, p, t) -> g: switching functions (a contact's penetration); the runtime locates the
+# times where one changes sign (HhtIntegrator::try_step_to_event).
+ROLES = ("res", "iter", "iter_noqv", "ic", "init", "out", "update", "scale", "mn_qd", "jac_qd", "post", "spline",
+         "event")
 
 
 class ElementFunctions:

@@ -140,6 +140,8 @@ def check_model(model):
                                                              f"initial length {L:.4g} m (large preload)", [f["name"]]))
         elif f["type"] == "tire" and "crg" not in (model.get("road") or {}):
             out += _tire_start(model, f)
+        elif f["type"] == "contact":
+            out += _contact_start(model, f)
     unused_points = sorted(name for name, r in (model.get("point_refs") or {}).items() if not r["users"])
     if unused_points:
         out.append(finding("info", "unused_points", f"points and frames not used: {', '.join(unused_points)}",
@@ -177,6 +179,24 @@ def _global(model, body, point):
     if point is not None:
         return np.asarray(point, dtype=float)
     return np.zeros(3) if body == "ground" else np.asarray(model["bodies"][body]["position"], dtype=float)
+
+
+def _contact_start(model, f):
+    """Penetration of a contact at t = 0: deep (the bodies start overlapping, the first step meets a
+    large force) or a sphere of no size against the distances of the model."""
+    c1 = _global(model, f["body1"], f.get("point1"))
+    p2 = _global(model, f.get("body2", "ground"), f.get("point2"))
+    r = f["radius"]
+    if f.get("geometry", "sphere_plane") == "sphere_plane":
+        n = np.asarray(f.get("normal", [0.0, 0.0, 1.0]), dtype=float)
+        delta = r - float(n @ (c1 - p2)) / float(np.linalg.norm(n))
+    else:
+        delta = r + f.get("radius2", 0.0) - float(np.linalg.norm(c1 - p2))
+    if delta > 0.1 * r:
+        return [finding("warning", "contact_deep", f"contact {f['name']}: {delta:.3g} m penetration at t = 0 "
+                                                   f"({delta / r:.0%} of the radius): the bodies start overlapping",
+                        [f["name"]])]
+    return []
 
 
 def _tire_start(model, f):

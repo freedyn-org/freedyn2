@@ -117,6 +117,7 @@ Model load_model(const std::string& path) {
         else if (k == "statics") ss >> s.statics;
         else if (k == "rho_inf") ss >> s.rho_inf;
         else if (k == "controller") ss >> s.controller;
+        else if (k == "event_tol") ss >> s.event_tol;
         else fail("unknown solver key '" + k + "'");
       }
     } else if (key == "element") {

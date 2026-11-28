@@ -27,7 +27,8 @@ System::Instance::Instance(const ElementSpec& s, const fd_element_type& t)
       update(optional(t.update)),
       scale(optional(t.scale)),
       post(optional(t.post)),
-      spline(optional(t.spline)) {
+      spline(optional(t.spline)),
+      event(optional(t.event)) {
   if (init && !(update && scale))
     throw std::runtime_error("element type " + s.type + ": init without update and scale functions");
   if (s.newmark == "modified") {
@@ -107,6 +108,13 @@ System::System(const Model& model) : nq_(model.nq()), nv_(model.nv()), nc_(model
           throw std::runtime_error("element " + s.name + ": spline segment outside p");
       e.spline_buf.resize(s.splines.size());
       spline_users_.push_back(static_cast<int>(elems_.size()) - 1);
+    }
+    if (e.event) {
+      if (e.event->n_in() != 4) throw std::runtime_error("element " + s.name + ": event function with other inputs");
+      e.event_offset = n_events_;
+      e.event_buf.resize(e.event->sparsity_out(0).nnz());
+      n_events_ += e.event->sparsity_out(0).nrow;
+      event_users_.push_back(static_cast<int>(elems_.size()) - 1);
     }
     for (const auto& [index, offset] : s.inputs) {
       if (index < 0 || index >= n_inputs() || offset < 0 || offset >= static_cast<int>(s.p.size()))
@@ -474,6 +482,32 @@ std::string System::dof_name(int i) const {
       for (int k = 0; k < e.nv; ++k)
         if (e.map[k] == i) return e.spec.name + " (velocity dof " + std::to_string(k + 1) + " of " + std::to_string(e.nv) + ")";
   return "velocity dof " + std::to_string(i);
+}
+
+void System::events(std::vector<double>& g) {
+  g.assign(n_events_, 0.0);  // no allocation once g has its size
+  if (!n_events_) return;
+  update_roads();
+  update_splines();
+  for (int k : event_users_) {
+    Instance& e = elems_[k];
+    gather(e);
+    const Sparsity& sp = e.event->sparsity_out(0);
+    const double* in[] = {e.q.data(), e.qd.data(), e.spec.p.data(), &t};
+    double* out[] = {e.event_buf.data()};
+    e.event->eval(in, out);
+    for (int j = 0; j < sp.nnz(); ++j) g[e.event_offset + sp.row[j]] = e.event_buf[j];
+  }
+}
+
+std::string System::event_name(int i) const {
+  for (int k : event_users_) {
+    const Instance& e = elems_[k];
+    const int n = e.event->sparsity_out(0).nrow;
+    if (i >= e.event_offset && i < e.event_offset + n)
+      return n == 1 ? e.spec.name : e.spec.name + "[" + std::to_string(i - e.event_offset) + "]";
+  }
+  return "event " + std::to_string(i);
 }
 
 int System::output_index(const std::string& name) const {

@@ -38,6 +38,7 @@ struct SolverSettings {
   // Step size control (adaptive): "pi" (PiTimeStepper) or "legacy" (LegacyTimeStepper, as legacy
   // FreeDyn). The generator writes it; model files without it are those of .fds models.
   std::string controller = "legacy";
+  double event_tol = 1e-7;     // events (contacts): their times are located to this [s]
   bool statics = false;        // start from the static equilibrium, at rest (HhtIntegrator::initialize)
 };
 

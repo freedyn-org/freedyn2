@@ -167,6 +167,50 @@ The force acts as `+value · e` on body1 at `point1` and `−value · e` on body
 a fixed direction and points that do not lie on one line along `e`, the pair of forces also
 makes a moment: action and reaction are equal and opposite, but not collinear.
 
+## Contact
+
+A sphere on body1 against a plane or another sphere on body2 or the ground: the bodies touch
+when the sphere penetrates, `δ > 0`, and then push each other apart (a penalty force) and rub
+(friction). For a ball, a foot, the end of a stop, a pin in a slot, the corners of a box (one
+sphere each).
+
+```yaml
+forces:
+  floor:
+    type: contact
+    body1: ball
+    radius: 0.05            # the sphere on body1, centered at point1 (default: its center of mass)
+    normal: [0, 0, 1]       # sphere_plane (default): the plane through point2, towards body1
+    stiffness: 1.0e+7       # k
+    exponent: 1.5           # e (Hertz, the default)
+    damping: 2.0e+4         # d: energy lost per impact
+    friction: 0.4           # mu (sliding)
+    static_friction: 0.5    # mu_s at slip 0 (default: friction)
+```
+
+`geometry: sphere_sphere` with `point2` (the center on body2 / the ground) and `radius2` puts a
+second sphere in place of the plane.
+
+- **Normal force** (Hunt and Crossley): `Fn = max(0, k δ^e + d δ^e δ̇)`, acting along the normal
+  at the middle of the overlap. It starts from 0 at the touch (no jump), and the damping only
+  acts during the contact. For small damping the coefficient of restitution is about
+  `1 − (2/3) (d/k) v` for an impact at speed `v`: choose `d` from the energy an impact should lose.
+  `k` for steel spheres follows from Hertz' law: `(4/3) E* sqrt(R*)`.
+- **Friction** against the slip velocity `v_t` of the touching points: `F_t = −μ(|v_t|) Fn
+  v_t / sqrt(|v_t|² + v_ε²)`, Coulomb friction made smooth below `slip_velocity` `v_ε` (default
+  1 mm/s) so that the solver can take it; `μ(v) = μ + (μ_s − μ) exp(−(v/v_s)²)` with
+  `stribeck_velocity` `v_s` gives a static peak. A sphere set sliding starts to roll as it
+  should (at 5/7 of its speed, test `test_contact.py`).
+- **Events**: the runtime locates the moment each contact begins and ends (to `event_tol`,
+  default 1e-7 s) and ends a step there, so an impact starts with no penetration however large
+  the step. `freedyn2_run --event-log FILE` lists them; the run reports how many.
+- **Outputs**: `penetration`, `penetration_rate`, `normal_force`, `friction_force`,
+  `slip_velocity`, `point` (the contact point), `force` (on body1).
+- **The step**: during a contact the step must resolve it. A Hertz contact (`e = 1.5`) lasts about
+  `3.22 (m/k)^(2/5) v^(-1/5)` (m the mass, v the impact speed; the ball of the tests: 2.9 ms); 20 to 30 steps across it are enough, or `adaptive: true`. With a fixed
+  step an elastic impact keeps its energy very well (the scheme is time-reversible); with variable
+  steps the energy error is that of the tolerance `eps`.
+
 ## Tire
 
 See [Tires and roads](tires-roads.md).

@@ -46,6 +46,22 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- **Contact** (`type: contact`): a sphere on body1 against a plane or a sphere on body2 or the
+  ground. Normal force of Hunt and Crossley (`k δ^e + d δ^e δ̇`, continuous at the touch),
+  Coulomb friction with a Stribeck peak, regularized below a slip velocity; library types (no
+  plugin, no compiler), exact Jacobians. Checked against independent references: the onset of
+  a falling ball's contact (1.5e-8 s from the closed form), its Hertz penetration, the
+  coefficient of restitution of a damped impact (5e-6 from an RK4 integration of the impact), a
+  sliding sphere that starts to roll at 5/7 of its speed, the velocity exchange of two equal
+  spheres. `freedyn2 check` warns about a contact deep at t = 0.
+- **Events**: element types can have switching functions (registry role `event`, a contact's
+  penetration); the runtime locates their sign changes to `solver: event_tol` (regula falsi with
+  the Illinois modification on probe steps) and ends a step there, with the fixed step and the PI
+  controller. `freedyn2_run --event-log FILE`. The registry layout is 4: model plugins of earlier
+  versions are built again.
+- Fixed step: a step that Newton does not converge is halved (down to 1/1024 of the step)
+  instead of stopping the run, as for a friction contact that reverses its slip within a step;
+  the run reports how many (not in the real-time mode `newton: fixed`).
 - **Generalized-alpha** (`solver: rho_inf`, Chung and Hulbert, in the Lie group form of Arnold
   and Bruls; `freedyn2_run --rho-inf`): the numerical damping set by the spectral radius at
   infinity, with less damping of the resolved motion than HHT at the same value (pendulum: a

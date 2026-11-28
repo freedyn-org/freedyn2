@@ -82,6 +82,14 @@ with `statics: true` it starts hanging still in its equilibrium instead.
 
 `freedyn2 examples parallelogram`
 
+## Bouncing ball
+
+A ball dropped on the floor with a sideways throw and backspin: a [contact](reference/forces.md#contact)
+with damping and friction. At the first impact the friction reverses the spin and the ball leaves
+rolling; every bounce loses a part of the energy. The runtime locates each impact.
+
+`freedyn2 examples bouncing_ball`
+
 ## More
 
 `freedyn2 examples` lists the others: oscillators, a torsion pendulum, a bushing mount, a

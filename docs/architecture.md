@@ -221,6 +221,17 @@ value at rest, joining `f` C2 at `Ta`) replaces `f` for `t < Ta`. The time deriv
 (`phid = B v + Phi_t`, `gamma = -d/dt(B) v - 2 (B v)_t - Phi_tt`), derived by CasADi for any
 element; the multiplier is the driving force or torque.
 
+**Events** (contacts). An element type may have an `event` function, switching functions of
+`(q, qd, p, t)` (a contact's penetration). `HhtIntegrator::try_step_to_event` does not accept a
+step in which one changes sign: it locates the time of the sign change by regula falsi with the
+Illinois modification on probe steps from the last accepted state (each a full step of another
+length, never accepted), to `event_tol`, and accepts the step to just past it. So no step is
+shorter than needed for the location, and an impact starts with no penetration. The PI controller
+takes such a step as ended early (the next one is not shortened), the fixed step continues to its
+grid point (a crossing in the last percent of a grid step keeps the full step). With `newton fixed`
+(real time) events are not located. The contact law itself is smooth (`fmax`, regularized
+friction), so no restart of the integrator is needed at an event.
+
 **Initial state** (`HhtIntegrator::initialize`). Redundant constraints are found on the
 constraint Jacobian B at the given positions (`System::find_redundant_constraints`: columns
 equilibrated, rows of unit length, modified Gram-Schmidt in model order, a row whose part

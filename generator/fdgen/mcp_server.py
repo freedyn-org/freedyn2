@@ -45,7 +45,8 @@ body's orientation gives the principal axes); a real body satisfies I1 + I2 >= I
 Joints: a joint frame (location, orientation) fixed on body1 and body2 (or the ground);
 revolute turns about its z axis, prismatic and cylindrical move along z; generic: list the fixed
 directions (dx dy dz ax ay az). body2 defaults to the ground.
-Forces: spring_damper between two points, bushing (6 directions), force / torque, torsion
+Forces: contact (a sphere on body1 against a plane or a sphere: radius, stiffness, damping,
+friction; the runtime locates each impact), spring_damper between two points, bushing (6 directions), force / torque, torsion
 spring, expressions of t, parameters and measures (expression_force), tire on a road.
 Measures (displacement, distance, angle, rates, ...) are scalars used in expressions and
 drivers; drivers prescribe a measure over time (motion).

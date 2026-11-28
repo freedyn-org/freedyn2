@@ -209,7 +209,7 @@ def _joint_node(out, j, bodies):
 _FORCE_KEYS = {"spring_damper": ["stiffness"], "torsion_spring": ["stiffness"], "force": ["vector"],
                "torque": ["vector"], "bushing": ["stiffness", "rot_stiffness"], "expression_force": ["force"],
                "curve_force": ["measure", "curve"], "curve_torque": ["measure", "curve", "axis"],
-               "expression_torque": ["torque", "axis"], "tire": []}
+               "expression_torque": ["torque", "axis"], "tire": [], "contact": ["stiffness", "radius"]}
 
 
 def _force(name, f, bodies, road, base_dir):
@@ -487,7 +487,7 @@ def write_fdm(model, path):
         f"{keys.get(k, k)} {int(s[k]) if isinstance(s[k], bool) else s[k]!r}".replace("'", "")
         for k in ("alpha", "form", "end_time", "step", "output_step", "output_begin", "newton_tol",
                   "max_newton", "newton", "newton_iterations", "adaptive", "h_min", "eps", "exact_output", "vproj_tol",
-                  "error_norm", "statics", "rho_inf", "controller")
+                  "error_norm", "statics", "rho_inf", "controller", "event_tol")
         if k in s
     )
     lines = [f"freedyn2_model {FDM_VERSION}", f"name {model['model']}", f"solver {solver}"]

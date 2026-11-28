@@ -21,7 +21,15 @@
 
 namespace fd {
 
-enum class StepStatus { ok, newton_not_converged, residual_increased, local_error, linear_solver_failed };
+// event: an event function changed sign within the step (only inside try_step_to_event).
+enum class StepStatus { ok, newton_not_converged, residual_increased, local_error, linear_solver_failed, event };
+
+// A located event: event function `index` (System::event_name) changed sign at time t, to
+// positive (direction +1: a contact begins) or to negative (-1: it ends).
+struct EventRecord {
+  double t;
+  int index, direction;
+};
 const char* to_string(StepStatus s);
 
 struct StepResult {
@@ -59,7 +67,19 @@ class HhtIntegrator {
   // Try one step of size h from the last accepted state, ending at time t_new. On
   // success the new state is accepted, otherwise the last accepted state is restored.
   StepResult try_step(double h, double t_new);
-  // Fixed step of size settings.step (throws if the step fails).
+  // The step of size h to t_new with event location (System::events): a step in which an event
+  // function changes sign is not accepted; the time of the sign change is located by the
+  // Illinois method (regula falsi) on probe steps from the last accepted state, to
+  // SolverSettings::event_tol, and the step to just past it is accepted, so the step ends
+  // early (time()). A crossing within `snap` of the end keeps the full step. Without event
+  // functions, and with newton fixed (the same work in every step), it is try_step.
+  StepResult try_step_to_event(double h, double t_new, double snap = 0.0);
+  const std::vector<EventRecord>& event_log() const { return event_log_; }
+  long event_probes() const { return event_probes_; }  // probe steps of the event location
+  long subdivided_steps() const { return subdivided_steps_; }  // grid steps halved (step())
+  // Fixed step of size settings.step to the next point of the grid k step; events end steps
+  // early, then the rest of the grid step follows; a step Newton does not converge is halved
+  // (down to step / 1024, then it throws; with newton fixed it throws at once).
   StepResult step();
 
   double time() const { return t_; }
@@ -110,6 +130,11 @@ class HhtIntegrator {
   std::vector<double> q_pred_, qd_pred_, incr_pred_;
   std::vector<double> scale_, scale_new_;  // element scales at the accepted and the trial state
   std::vector<double> x_, dx_, r_, f_, rhs_;
+  // events: values at the accepted state and at the end of the trial step; modes of try_step
+  std::vector<double> g_n_, g_trial_;
+  bool check_events_ = false, probe_ = false, allow_crossing_ = false;
+  std::vector<EventRecord> event_log_;
+  long event_probes_ = 0, grid_steps_ = 0, subdivided_steps_ = 0;
   double norm_dx_ = 0.0, norm_dx_prev_ = 0.0;
 };
 
