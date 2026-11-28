@@ -261,6 +261,7 @@ void HhtIntegrator::static_equilibrium() {
       project_positions(moved);
       m = at_rest();
     } catch (const std::exception&) {
+      m = std::numeric_limits<double>::infinity();  // not assembled there: undone below
     }
     if (!std::isfinite(m)) {  // undo, smaller pseudo-time step
       sys_.q = q_prev, moved = moved_prev;
@@ -599,7 +600,8 @@ void HhtIntegrator::classify_redundant() {
     try {
       project_positions(moved);
       nearby = sys_.find_redundant_constraints(1e-8, true);
-    } catch (const std::exception&) {  // cannot be assembled there: keep them all as structural
+    } catch (const std::exception&) {
+      nearby = report_.redundant;  // cannot be assembled there: keep them all as structural
     }
     sys_.q = q0;
   }

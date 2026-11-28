@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
     Reader r(argv[1]);
     auto h = r.read<int64_t>(9);
     if (h[0] != 0x464D4F44 || h[1] != 1) throw std::runtime_error("not a freedyn2_modal input (version 1)");
-    const int64_t n = h[2], nnzK = h[3], nnzM = h[4], nnzG = h[5], nb = h[6], nmodes = h[7], maxit = h[8];
+    const int64_t n = h[2], nnzK = h[3], nnzM = h[4], nnzG = h[5], nb = h[6], nmodes = h[7];  // h[8]: iteration limit of the earlier subspace iteration, unused
     auto hd = r.read<double>(2);
     const double shift = hd[0], tol = hd[1];
     Sp K = triplets(r, n, nnzK), M = triplets(r, n, nnzM), G = triplets(r, n, nnzG);
@@ -188,6 +188,7 @@ int main(int argc, char** argv) {
       if (!dep[i]) indep_of[i] = static_cast<int>(indep.size()), indep.push_back(static_cast<int>(i));
     const int ni_all = static_cast<int>(indep.size());
     std::vector<Trip> tt;
+    tt.reserve(indep.size());
     for (int i : indep) tt.emplace_back(i, indep_of[i], 1.0);
     for (int j = 0; j < G.outerSize(); ++j)
       for (Sp::InnerIterator it(G, j); it; ++it) {
@@ -230,6 +231,7 @@ int main(int argc, char** argv) {
       const Mat Kibd = Mat(Kib);
       const int nt = static_cast<int>(std::max(1u, std::min<unsigned>(std::thread::hardware_concurrency(), 16)));
       std::vector<std::thread> pool;
+      pool.reserve(nt);
       for (int t = 0; t < nt; ++t)
         pool.emplace_back([&, t] {
           for (int c = t; c < nb; c += nt) Psi.col(c) = -ldlt.solve(Vec(Kibd.col(c)));
@@ -336,10 +338,10 @@ int main(int argc, char** argv) {
     std::ofstream out(argv[2], std::ios::binary);
     const int64_t oh[4] = {n, nc, nb, it};
     out.write(reinterpret_cast<const char*>(oh), sizeof oh);
-    out.write(reinterpret_cast<const char*>(lam.data()), sizeof(double) * m);
-    out.write(reinterpret_cast<const char*>(V.data()), sizeof(double) * V.size());
-    out.write(reinterpret_cast<const char*>(Kr.data()), sizeof(double) * Kr.size());
-    out.write(reinterpret_cast<const char*>(Mr.data()), sizeof(double) * Mr.size());
+    out.write(reinterpret_cast<const char*>(lam.data()), static_cast<std::streamsize>(sizeof(double) * m));
+    out.write(reinterpret_cast<const char*>(V.data()), static_cast<std::streamsize>(sizeof(double) * V.size()));
+    out.write(reinterpret_cast<const char*>(Kr.data()), static_cast<std::streamsize>(sizeof(double) * Kr.size()));
+    out.write(reinterpret_cast<const char*>(Mr.data()), static_cast<std::streamsize>(sizeof(double) * Mr.size()));
     if (!out) throw std::runtime_error(std::string("cannot write ") + argv[2]);
     return 0;
   } catch (const std::exception& e) {

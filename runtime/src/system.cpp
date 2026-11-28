@@ -332,7 +332,7 @@ void System::modified_jacobian(Instance& e, const HhtCoef& c) {
   // Dense local products (element sizes are small).
   const int nr = e.nv + e.nc, nv = e.nv;
   auto dense = [](const Sparsity& sp, const std::vector<double>& nz) {
-    std::vector<double> d(sp.nrow * sp.ncol, 0.0);  // column major
+    std::vector<double> d(static_cast<size_t>(sp.nrow) * sp.ncol, 0.0);  // column major
     for (int j = 0; j < sp.ncol; ++j)
       for (int k = sp.colind[j]; k < sp.colind[j + 1]; ++k) d[j * sp.nrow + sp.row[k]] = nz[k];
     return d;
@@ -341,7 +341,7 @@ void System::modified_jacobian(Instance& e, const HhtCoef& c) {
   std::vector<double> D = dense(e.mn_qd->sparsity_out(1), e.mn_d_buf);              // nv x nv
   for (int i = 0; i < nv; ++i) D[i * nv + i] -= c.gamma * c.h;
   const Sparsity& sp = e.iter.sparsity_out(0);
-  std::vector<double> corr(nr * nv, 0.0);
+  std::vector<double> corr(static_cast<size_t>(nr) * nv, 0.0);
   for (int j = 0; j < nv; ++j)
     for (int k = 0; k < nv; ++k) {
       const double d = D[j * nv + k];
@@ -349,7 +349,7 @@ void System::modified_jacobian(Instance& e, const HhtCoef& c) {
         for (int i = 0; i < nr; ++i) corr[j * nr + i] += Jqd[k * nr + i] * d;
     }
   // Add into the nonzeros of the iteration matrix; the correction must lie in its pattern.
-  std::vector<char> seen(nr * nv, 0);
+  std::vector<char> seen(static_cast<size_t>(nr) * nv, 0);
   for (int j = 0; j < nv; ++j)
     for (int k = sp.colind[j]; k < sp.colind[j + 1]; ++k) {
       e.iter_buf[k] += corr[j * nr + sp.row[k]];

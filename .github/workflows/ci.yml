@@ -42,6 +42,59 @@ jobs:
           python -m fdgen.cli run examples/compare/spline_spring.fds -o spline_spring.csv
           python -m fdgen.cli run examples/driven_rotor.yaml -o driven_rotor.csv -- --linear-solver klu
 
+  # AddressSanitizer and UndefinedBehaviorSanitizer (FD_SANITIZE): the C++ tests, and the Python
+  # tests with this runtime (they run freedyn2_run and freedyn2_modal on many models: contacts,
+  # plugins, flexible bodies, roads). Leaks too (LeakSanitizer). Model plugins compiled at run
+  # time stay without the sanitizers.
+  sanitizers:
+    runs-on: ubuntu-24.04
+    env:
+      ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeigen3-dev libsuitesparse-dev
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+      - name: Configure and build (sanitizers)
+        run: |
+          cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFD_SANITIZE=ON -DPython3_EXECUTABLE="$(which python)"
+          cmake --build build-asan -j
+      - name: C++ tests
+        run: ctest --test-dir build-asan --output-on-failure
+      - name: Python tests with the sanitized runtime
+        run: |
+          export FREEDYN2_RUN="$PWD/build-asan/freedyn2_run" FREEDYN2_MODAL="$PWD/build-asan/freedyn2_modal"
+          python -m pytest -q
+
+  # clang-tidy on the runtime (.clang-tidy: bugs, the static analyzer, performance; warnings
+  # are errors). Needs the generated headers only (target fd_codegen).
+  clang-tidy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeigen3-dev libsuitesparse-dev clang-tidy
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+      - name: Configure, generate
+        run: |
+          cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPython3_EXECUTABLE="$(which python)"
+          cmake --build build --target fd_codegen
+      - name: clang-tidy
+        run: run-clang-tidy -quiet -p build 'runtime/(src|app)/'
+
   # Windows: MSVC; Eigen and KLU (SuiteSparse with only KLU and its parts, no BLAS, as DLLs:
   # LGPL, linked dynamically) from tools/build_deps.py as for the wheels, cached; model plugins
   # compiled with MSVC (CC=cl) as a user with Visual Studio Build Tools would.
