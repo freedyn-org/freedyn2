@@ -206,6 +206,11 @@ second sphere in place of the plane.
   the step. `freedyn2_run --event-log FILE` lists them; the run reports how many.
 - **Outputs**: `penetration`, `penetration_rate`, `normal_force`, `friction_force`,
   `slip_velocity`, `point` (the contact point), `force` (on body1).
+- **In the viewer** the contact geometry is drawn on its bodies: the sphere as three great
+  circles (they turn with the body) and a faint shell, the plane as a square under the sphere
+  with its normal, or the second sphere. While the bodies touch it is drawn stronger, with the
+  contact point; with *force arrows* on, the contact force is drawn there (on both bodies). It
+  shows a sphere placed off the body or a normal pointing the wrong way at a glance.
 - **The step**: during a contact the step must resolve it. A Hertz contact (`e = 1.5`) lasts about
   `3.22 (m/k)^(2/5) v^(-1/5)` (m the mass, v the impact speed; the ball of the tests: 2.9 ms); 20 to 30 steps across it are enough, or `adaptive: true`. With a fixed
   step an elastic impact keeps its energy very well (the scheme is time-reversible); with variable

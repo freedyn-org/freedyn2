@@ -730,3 +730,27 @@ def test_only_its_own_host(tmp_path):
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_scene_has_the_contact_geometry(tmp_path):
+    """A contact in the scene: the sphere on body1 (center, radius in its frame), the plane in the
+    frame of body2 (point, normal, the square drawn under the sphere) or the second sphere."""
+    q = euler_parameters(rotation_matrix([math.cos(0.25), 0, math.sin(0.25), 0]))  # body2 turned about y
+    m = validate({"model": "c", "gravity": [0, 0, -9.81],
+                  "bodies": {"ball": {"mass": 1.0, "inertia": [1, 1, 1], "position": [1, 0, 2]},
+                             "table": {"mass": 5.0, "inertia": [1, 1, 1], "position": [0, 0, 1], "orientation": list(q)}},
+                  "forces": {"top": {"type": "contact", "body1": "ball", "body2": "table", "radius": 0.1,
+                                     "point2": [0, 0, 1.2], "normal": [0, 0, 1], "stiffness": 1e6},
+                             "floor": {"type": "contact", "body1": "ball", "radius": 0.1, "stiffness": 1e6},
+                             "hit": {"type": "contact", "body1": "ball", "body2": "table", "geometry": "sphere_sphere",
+                                     "radius": 0.1, "radius2": 0.3, "stiffness": 1e6}},
+                  "solver": {"type": "HHT", "end_time": 1.0, "step": 1e-3}}, tmp_path)
+    f = {x["name"]: x for x in scene(m)["forces"]}
+    A = rotation_matrix(q)
+    top = f["top"]
+    assert top["geometry"] == "sphere_plane" and top["radius"] == 0.1 and top["point1"] == [0, 0, 0]
+    np.testing.assert_allclose(A @ top["normal2"], [0, 0, 1], atol=1e-12)        # normal, in the table frame
+    np.testing.assert_allclose(A @ top["point2"] + [0, 0, 1], [0, 0, 1.2], atol=1e-12)
+    np.testing.assert_allclose(A @ top["center2"] + [0, 0, 1], [1, 0, 1.2], atol=1e-12)  # under the ball
+    assert f["floor"]["normal2"] == [0, 0, 1] and f["floor"]["center2"] == [1, 0, 0]
+    assert f["hit"]["geometry"] == "sphere_sphere" and f["hit"]["radius2"] == 0.3 and f["hit"]["point2"] == [0, 0, 0]

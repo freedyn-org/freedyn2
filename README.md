@@ -17,7 +17,7 @@ The generated C needs no CasADi library.
 
 Contents: rigid bodies (Lie group R³×SO(3)), joints (fixed, spherical, revolute, cylindrical,
 prismatic, generic), gravity, library forces (spring-damper, torsion spring, bushing, constant
-force and torque), model-specific force laws (expressions of measures, parameters, splines and
+force and torque, contact of spheres and planes with friction), model-specific force laws (expressions of measures, parameters, splines and
 time, compiled into a model plugin), drivers (prescribed motion), splines from data files, tires
 (a Magic Formula tire on an analytic or OpenCRG road), sensors, hardpoints, linearization about
 a steady motion and eigenvalues (stability analysis), extensions.
@@ -123,8 +123,8 @@ freedyn2 view model.yaml --export page.html -- --end-time 2 # one HTML file to p
 ```
 
 `freedyn2 view` serves the viewer on `http://127.0.0.1:8765/` (`--port`) and opens the
-browser. It shows the bodies, joints, springs, bushings, tire contact points and the road (analytic
-or OpenCRG, colored by friction); a timeline plays the results, the channels of the result CSV
+browser. It shows the bodies, joints, springs, bushings, contacts, tire contact points and the
+road (analytic or OpenCRG, colored by friction); a timeline plays the results, the channels of the result CSV
 are plotted (click a name; channels of very different size get their own lanes; a click in the
 plot sets the time). Every save of the model file (or of a mesh or the given results) rebuilds
 and re-simulates; an invalid model is reported over the last valid one, so the model file can

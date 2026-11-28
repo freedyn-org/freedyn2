@@ -46,6 +46,10 @@ the section of a version becomes the text of its GitHub Release (docs/releasing.
 
 ### Added
 
+- Viewer: the geometry of contacts on their bodies (the sphere as great circles and a shell, the
+  plane as a square under it with its normal, or the second sphere), stronger while the bodies
+  touch, with the contact point; the contact force arrow at the contact point (it was drawn at
+  the center of mass of body1).
 - **Contact** (`type: contact`): a sphere on body1 against a plane or a sphere on body2 or the
   ground. Normal force of Hunt and Crossley (`k δ^e + d δ^e δ̇`, continuous at the touch),
   Coulomb friction with a Stribeck peak, regularized below a slip velocity; library types (no
