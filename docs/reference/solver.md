@@ -4,8 +4,9 @@
 solver: {type: HHT, alpha: -0.1, end_time: 10.0, step: 0.001, output_step: 0.01}
 ```
 
-freedyn2 integrates with the **HHT-α method** (Hilber–Hughes–Taylor) on the Lie group of
-the bodies, at a fixed step, solving the nonlinear equations of each step with Newton's
+freedyn2 integrates with the **HHT-α method** (Hilber–Hughes–Taylor) or
+[generalized-alpha](#numerical-damping-hht-or-generalized-alpha) on the Lie group of the bodies,
+at a fixed step or with [step size control](#step-size-control), solving the nonlinear equations of each step with Newton's
 method and a sparse LU (KLU). The equations and their Jacobians are exact (generated).
 
 <!-- keys: solver -->
@@ -52,7 +53,7 @@ each coordinate): small where the motion is fast, up to `step` where it is slow,
 `h_min`. Steps end exactly at the output times, so `output_step` need not be a multiple of `step`.
 The error of the results goes with `eps^(2/3)`: a hundred times smaller `eps` gives about 20
 times smaller errors (and about 4 times more steps). The controller is Gustafsson's PI
-controller (`controller: pi`); models converted from FreeDyn keep FreeDyn's own
+controller (`controller: pi`); models converted from FreeDyn keep legacy FreeDyn's own
 (`controller: legacy`). On the command line: `-- --adaptive pi --tolerance 1e-6`.
 
 ## Events
@@ -125,5 +126,6 @@ one run.
 
 ## Linear solvers and the command line
 
-`freedyn2_run` takes `--linear-solver klu|sparselu|dense`, `--step-log FILE` and
-`--timing-log FILE` for diagnosis; see [Command line](../cli.md).
+`freedyn2_run` takes `--linear-solver klu|sparselu|dense`, `--step-log FILE`,
+`--event-log FILE` and `--timing-log FILE` for diagnosis; all options:
+[Command line](../cli.md#runtime-options).

@@ -15,10 +15,10 @@ freedyn2 view car_on_crg.yaml
 ## 1. The road
 
 OpenCRG describes a road as a grid of heights along a reference line: `u` along the line, `v`
-across it (left positive), with optional heading, slope and banking of the line. FreeDyn reads
+across it (left positive), with optional heading, slope and banking of the line. freedyn2 reads
 CRG files with the official OpenCRG library, in all its data formats.
 
-The test track was written with FreeDyn's own CRG writer, `fdgen.crg.write_crg`, by
+The test track was written with freedyn2's own CRG writer, `fdgen.crg.write_crg`, by
 `data/make_test_track.py`; it is the place to start for a road of your own:
 
 ```python

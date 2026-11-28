@@ -17,6 +17,10 @@ re-simulates on every save; variant studies from a slider.
 | Motion (displacement, angle) | [`drivers`](reference/measures.md#drivers) on a measure |
 | Spring-damper (translational, rotational) | [`spring_damper`](reference/forces.md#spring-damper), `torsion_spring` |
 | Bushing | [`bushing`](reference/forces.md#bushing) |
+| Contact (sphere to plane, sphere to sphere), IMPACT | [`contact`](reference/forces.md#contact): Hunt-Crossley normal force, Coulomb friction with a Stribeck peak |
+| Static equilibrium | [`statics: true`](reference/solver.md#the-initial-state) in `solver`, as the start of the run |
+| Flexible body (MNF / MTX) | [`flex`](reference/bodies.md#flexible-bodies) of a body: an MTX file, a Nastran FE model or a mesh of its STL |
+| Adams Controls, FMU export | [`freedyn2 fmu`](fmu.md): FMI 2.0 or 3.0 co-simulation |
 | Single-component force / torque (SFORCE), VFORCE | [`expression_force`](reference/forces.md#expression-force-and-torque), `expression_torque` |
 | DX, DZ, VZ, AZ, DM, … in expressions | [`measures`](reference/measures.md), named and used by name |
 | STEP, IF, AKISPL, CUBSPL | `step()`, `if_else()`, [`splines`](reference/measures.md#splines) (`akima`) |
@@ -24,7 +28,7 @@ re-simulates on every save; variant studies from a slider.
 | Tire (MF-Tyre / PAC), road (RDF, CRG) | [`tire`](reference/tires-roads.md) (a built-in Magic Formula tire; `.tir` data sets through [extensions](extensions.md)), analytic road or OpenCRG |
 | Requests, measures for post-processing | result channels, formula channels in the viewer |
 | Accelerometer requests (ACCX, ACCY, ACCZ, WDTX …) | [`sensors`](reference/sensors.md): acceleration, specific force, angular velocity and acceleration at a point |
-| Dynamic simulation, HHT / GSTIFF | [`solver`](reference/solver.md): HHT on a Lie group, fixed step |
+| Dynamic simulation, HHT / GSTIFF | [`solver`](reference/solver.md): HHT or generalized-alpha on a Lie group, fixed step or step size control |
 | Linear analysis (eigenvalues) | Eigenmodes and root locus in the viewer, `modes` / `locus` for the assistant |
 | Design evaluation, DOE (one factor) | the fan (≋) in the viewer, `sweep` for the assistant |
 | Adams PostProcessor | the [viewer](viewer.md): plots, x-y, FFT, cursors, run comparison, Δ plots, report |
@@ -34,7 +38,7 @@ re-simulates on every save; variant studies from a slider.
 - **Units are SI**, always. An Adams model in mm, kg, N, s needs its lengths divided by 1000
   and its stiffnesses converted; the checks warn when a model looks like mm.
 - **No markers.** Where Adams attaches a joint to marker I on part 1 and marker J on part 2,
-  FreeDyn gives the joint one global location and orientation at t = 0; both bodies carry it
+  freedyn2 gives the joint one global location and orientation at t = 0; both bodies carry it
   from there. The same for springs (two global points) and forces.
 - **Orientations are quaternions**, not Euler angles (body 313 etc.): no singular angles. A
   rotation by φ about an axis *n* is `[cos(φ/2), n sin(φ/2)]`; formulas make it readable
@@ -46,9 +50,12 @@ re-simulates on every save; variant studies from a slider.
 
 ## Not (yet) in freedyn2
 
-Contacts (other than tires), couplers and gears, universal and
-constant-velocity joints, friction in joints, static and kinematic analyses (start from rest
-and let it settle, or prescribe the motion with drivers), co-simulation interfaces. An
+Contacts of general geometry (meshes, cylinders, boxes; freedyn2's
+[contact](reference/forces.md#contact) is a sphere against a plane or a sphere), couplers and
+gears, universal and constant-velocity joints, friction in joints, kinematic analyses (prescribe
+the motion with drivers). A static equilibrium as the start of a run is there
+([`statics: true`](reference/solver.md#the-initial-state)), co-simulation as an
+[FMU](fmu.md) instead of Adams Controls. An
 importer for Adams `.adm` (and `.cmd` with design variables) is planned; until then a model is
 quickest rebuilt by an assistant from the Adams listing.
 

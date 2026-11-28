@@ -22,6 +22,8 @@ EXAMPLES = {
     "dzhanibekov": ("examples/dzhanibekov.yaml", []),
     "spring_pendulum": ("examples/spring_pendulum.yaml", []),
     "driven_rotor": ("examples/driven_rotor.yaml", []),
+    "parallelogram": ("examples/parallelogram.yaml", []),
+    "bouncing_ball": ("examples/bouncing_ball.yaml", []),
 }
 
 

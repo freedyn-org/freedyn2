@@ -1,10 +1,10 @@
 # Examples
 
-Every example comes with FreeDyn: `freedyn2 examples` lists them, `freedyn2 examples NAME`
+Every example comes with freedyn2: `freedyn2 examples` lists them, `freedyn2 examples NAME`
 copies one into the current directory, `freedyn2 view NAME.yaml` opens it.
 
 The viewers on this page are the real viewer, exported with `freedyn2 view --export`: drag to
-rotate, space to play, click a channel to plot it. They run in your browser without FreeDyn
+rotate, space to play, click a channel to plot it. They run in your browser without freedyn2
 (tuning and the other server functions need `freedyn2 view`).
 
 ## Quarter car over a bump
@@ -80,6 +80,8 @@ loop is overconstrained: three of its constraints repeat the others. The run fin
 them at the start and moves on with the rest ([the initial state](reference/solver.md#the-initial-state));
 with `statics: true` it starts hanging still in its equilibrium instead.
 
+<iframe src="LIVE/parallelogram.html" width="100%" height="620" loading="lazy" style="border:1px solid #8884;border-radius:6px"></iframe>
+
 `freedyn2 examples parallelogram`
 
 ## Bouncing ball
@@ -88,11 +90,14 @@ A ball dropped on the floor with a sideways throw and backspin: a [contact](refe
 with damping and friction. At the first impact the friction reverses the spin and the ball leaves
 rolling; every bounce loses a part of the energy. The runtime locates each impact.
 
+<iframe src="LIVE/bouncing_ball.html" width="100%" height="620" loading="lazy" style="border:1px solid #8884;border-radius:6px"></iframe>
+
 `freedyn2 examples bouncing_ball`
 
 ## More
 
-`freedyn2 examples` lists the others: oscillators, a torsion pendulum, a bushing mount, a
-spline spring, two free bodies under internal forces, a winding spring, an oscillator and a
+`freedyn2 examples` lists the others: the pendulum of [Getting started](getting-started.md),
+oscillators, a torsion pendulum, a bushing mount, a spline spring, a free body, constant loads
+on a free body, two free bodies under internal forces, a winding spring, an oscillator and a
 driven cart moved by runtime inputs (`input_oscillator`). In the repository:
 `examples/scaling/` (the legacy comparison car), `examples/compare/` (legacy `.fds` models).

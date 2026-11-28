@@ -350,7 +350,7 @@ library (`runtime/third_party/opencrg`, the unmodified `c-api/baselib` of OpenCR
 Apache-2.0): one OpenCRG contact point per wheel (search history), z from `crgEvalxy2z`, the
 gradient by central differences over +-1e-4 m (exact inside a grid cell; the bilinear surface
 has kinks at cell edges). Modifiers follow section 6.4.6 of the standard: a file with a
-modifiers section gets exactly those; otherwise FreeDyn's defaults apply. They keep the file's
+modifiers section gets exactly those; otherwise freedyn2's defaults apply. They keep the file's
 coordinates and fill NaN grid values with the last valid one. The library's own defaults would
 move the reference point to the origin. A failed `crgCheck` (e.g. reference line curvature
 above the file's warning limits) is reported and the data are used, as in the OpenCRG tools.
@@ -458,7 +458,7 @@ unchanged by them.
 The server polls the modification times of the model, its meshes and the given result file;
 a change rebuilds (and re-simulates) in the background and raises the version the page polls.
 `--export` writes the page, three.js, scene, results and meshes into one HTML file (the
-modules as blob URLs of an import map), to pass a result on without FreeDyn.
+modules as blob URLs of an import map), to pass a result on without freedyn2.
 
 Every simulation is a run (`View.runs`, the last 20 and the reference): the page loads the
 runs it compares (`/api/runs/<id>.csv`), and while a simulation runs it draws

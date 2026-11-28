@@ -2,11 +2,14 @@
 
 ```text
 freedyn2 run model.yaml [-o result.csv] [--workdir DIR] [-- runtime options]
-freedyn2 view model.yaml [result.csv] [--no-run] [--export page.html] [--port N] [-- runtime options]
+freedyn2 view model.yaml [result.csv] [--no-run] [--no-browser] [--export page.html] [--port N] [-- runtime options]
 freedyn2 check model.yaml [result.csv | --run] [-- runtime options]
 freedyn2 examples [name [-o DIR]]
 freedyn2 convert model.fds [-o model.yaml] [--profile v2|legacy] [--force]
 freedyn2 rename model.yaml OLD NEW [--section SECTION]
+freedyn2 flex-info file.fdflex|file.mtx [--mtx OUT | --fdflex OUT]
+freedyn2 modal-stress model.yaml BODY [result.csv] [-o DIR] [-- runtime options]
+freedyn2 flex-export model.yaml BODY [-o body.bdf]
 freedyn2 fmu model.yaml [-o model.fmu] [--fmi 2|3]
 freedyn2 import-onshape <assembly address> [-o model.yaml] [--no-meshes] [--force | --update] [--record DIR]
 freedyn2 gui [model ...] [--browser] [--port N] [--new-instance]
@@ -23,7 +26,7 @@ freedyn2 compare model.fds ... --legacy <FreeDyn>
 | `run` | read the model (`.yaml`, or a legacy `.fds`), build it (and its plugin), simulate; reports build and simulation time |
 | `view` | the [viewer](viewer.md) in the browser; simulates again on every save |
 | `check` | the [checks](reference/checks.md) of the model and its results; exit status 1 on errors or failed references |
-| `examples` | list the example models that come with FreeDyn, or copy one into the current directory |
+| `examples` | list the example models that come with freedyn2, or copy one into the current directory |
 | `convert` | write a legacy `.fds` model as a YAML model file ([below](#convert)) |
 | `flex-info` | what a modal data file (`.fdflex`, `.mtx`) holds; `--mtx` / `--fdflex` convert between them |
 | `modal-stress` | modal stresses (`.unv`) and modal coordinates (CSV) of a flexible body in a run, for fatigue by modal superposition ([bodies](reference/bodies.md#flexible-bodies)) |
@@ -39,8 +42,10 @@ freedyn2 compare model.fds ... --legacy <FreeDyn>
 | `doctor` | what this installation finds: runtime, compiler, directories, MCP registration ([below](#doctor)) |
 | `compare` | legacy FreeDyn against freedyn2 on `.fds` models (needs the legacy program) |
 
-`.fds` models of the legacy FreeDyn are read by `run`, `view` and `check`; `--profile legacy`
-runs them with the legacy algorithms (for comparisons), the default `v2` with freedyn2's.
+`.fds` models of the legacy FreeDyn are read by `run`, `view`, `check`, `gui` and `fmu`;
+`--profile legacy` runs them with the legacy algorithms (for comparisons), the default `v2` with
+freedyn2's. `--runtime PATH` (of these commands) uses another `freedyn2_run`, as
+`FREEDYN2_RUN` does. `freedyn2 --version` prints the version.
 
 ## convert
 
@@ -102,10 +107,13 @@ section:
 | option | |
 |---|---|
 | `--end-time T`, `--step H`, `--output-step H`, `--alpha A` | the solver values |
-| `--tolerance E`, `--fixed-step` | step size control (legacy adaptive models) / none |
+| `--rho-inf R` | [generalized-alpha](reference/solver.md#numerical-damping-hht-or-generalized-alpha) instead of HHT, with the spectral radius R |
+| `--adaptive pi\|legacy`, `--tolerance E`, `--fixed-step` | [step size control](reference/solver.md#step-size-control) with this controller / its tolerance `eps` / none |
+| `--statics` | start from the [static equilibrium](reference/solver.md#the-initial-state) |
 | `--newton-fixed N` | [real-time mode](reference/solver.md#real-time-mode): exactly N Newton corrections per step |
 | `--linear-solver klu\|sparselu\|dense` | the linear solver (default KLU) |
 | `--step-log FILE`, `--timing`, `--timing-log FILE` | diagnosis: step sizes and Newton iterations per step; the distribution of the time per step; times per step |
+| `--event-log FILE` | the located [events](reference/solver.md#events) (contacts beginning and ending) |
 | `--input NAME=VALUE` | a [runtime input](reference/model-file.md#runtime-inputs) held constant (repeatable) |
 | `--inputs FILE.csv` | runtime inputs over time: header `t,NAME,...`, linear between the rows, held before the first and after the last; a step uses the value at its end time |
 
@@ -154,7 +162,7 @@ directory.
 ## doctor
 
 `freedyn2 doctor` prints what this installation finds – for a support request, paste it:
-the version, Python, where FreeDyn is installed, the runtime `freedyn2_run`, the C compiler
+the version, Python, where freedyn2 is installed, the runtime `freedyn2_run`, the C compiler
 (which one, where it was found, its version), the plugin cache, the configuration, data and log
 directories, whether the MCP server is registered with Claude Desktop and Claude Code, and
 whether pywebview is installed. Exit status 1 if the runtime or the compiler is missing.

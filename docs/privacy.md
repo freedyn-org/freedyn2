@@ -18,7 +18,7 @@ The local server of the viewer listens on `127.0.0.1` only and is not reachable 
 computers.
 
 **Assistants.** `freedyn2 mcp` serves an assistant you run yourself (for example Claude
-Desktop). FreeDyn sends nothing to the assistant's provider; what your assistant sends is
+Desktop). freedyn2 sends nothing to the assistant's provider; what your assistant sends is
 governed by that provider's terms.
 
 **This website** is hosted on GitHub Pages; GitHub may log visits
